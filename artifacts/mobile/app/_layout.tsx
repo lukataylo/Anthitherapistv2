@@ -6,36 +6,23 @@ import {
   useFonts,
 } from "@expo-google-fonts/inter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Stack } from "expo-router";
+import { Tabs } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { setBaseUrl } from "@workspace/api-client-react";
-import { Colors } from "@/constants/colors";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { GameProvider } from "@/context/GameContext";
+import { HistoryProvider } from "@/context/HistoryContext";
+import { TabBar } from "@/components/TabBar";
 
 setBaseUrl(`https://${process.env.EXPO_PUBLIC_DOMAIN}`);
 
 SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient();
-
-function RootLayoutNav() {
-  return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-        contentStyle: { backgroundColor: Colors.background },
-        animation: "fade",
-      }}
-    >
-      <Stack.Screen name="index" options={{ headerShown: false }} />
-    </Stack>
-  );
-}
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
@@ -57,10 +44,18 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <ErrorBoundary>
         <QueryClientProvider client={queryClient}>
-          <GestureHandlerRootView style={{ flex: 1, backgroundColor: Colors.background }}>
-            <GameProvider>
-              <RootLayoutNav />
-            </GameProvider>
+          <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#000" }}>
+            <HistoryProvider>
+              <GameProvider>
+                <Tabs
+                  tabBar={(props) => <TabBar {...props} />}
+                  screenOptions={{ headerShown: false }}
+                >
+                  <Tabs.Screen name="index" options={{ title: "Reframe" }} />
+                  <Tabs.Screen name="history" options={{ title: "History" }} />
+                </Tabs>
+              </GameProvider>
+            </HistoryProvider>
           </GestureHandlerRootView>
         </QueryClientProvider>
       </ErrorBoundary>

@@ -35,6 +35,7 @@ interface GameState {
 interface GameContextValue extends GameState {
   setThought: (thought: string) => void;
   setWords: (words: WordAnalysis[]) => void;
+  loadSession: (thought: string, words: WordAnalysis[], reframedWords: Record<number, string>) => void;
   openGame: (wordIndex: number) => void;
   closeGame: () => void;
   markReframed: (wordIndex: number, reframedWord: string) => void;
@@ -103,6 +104,19 @@ export function GameProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
+  const loadSession = useCallback(
+    (thought: string, words: WordAnalysis[], reframedWords: Record<number, string>) => {
+      setState({
+        screen: "cloud",
+        thought,
+        words,
+        reframedWords,
+        activeWordIndex: null,
+      });
+    },
+    []
+  );
+
   const goToCapture = useCallback(() => {
     setState({
       screen: "capture",
@@ -127,6 +141,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     ...state,
     setThought,
     setWords,
+    loadSession,
     openGame,
     closeGame,
     markReframed,
