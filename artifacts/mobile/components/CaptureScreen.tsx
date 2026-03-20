@@ -40,9 +40,9 @@ export function CaptureScreen({
   const { currentStreak, reflectedToday } = useStreak();
   const insets = useSafeAreaInsets();
   const inputRef = useRef<TextInput>(null);
+
   const sendScale = useSharedValue(1);
-  const sendOpacity = useSharedValue(0);
-  const micOpacity = useSharedValue(1);
+  const sendOpacity = useSharedValue(0.3);
   const nudgeOpacity = useSharedValue(0);
 
   const canSend = thought.trim().length > 0 && !isLoading;
@@ -56,8 +56,7 @@ export function CaptureScreen({
   const nudgeText = nudgeMessages[currentStreak % nudgeMessages.length];
 
   useEffect(() => {
-    sendOpacity.value = withTiming(canSend ? 1 : 0.3, { duration: 180 });
-    micOpacity.value = withTiming(canSend ? 0 : 1, { duration: 180 });
+    sendOpacity.value = withTiming(canSend ? 1 : 0.28, { duration: 180 });
   }, [canSend]);
 
   useEffect(() => {
@@ -69,10 +68,6 @@ export function CaptureScreen({
     opacity: sendOpacity.value,
   }));
 
-  const micBtnStyle = useAnimatedStyle(() => ({
-    opacity: micOpacity.value,
-  }));
-
   const nudgeStyle = useAnimatedStyle(() => ({
     opacity: nudgeOpacity.value,
   }));
@@ -81,7 +76,7 @@ export function CaptureScreen({
     if (!canSend) return;
     Keyboard.dismiss();
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    sendScale.value = withSpring(0.88, { damping: 6 }, () => {
+    sendScale.value = withSpring(0.9, { damping: 6 }, () => {
       sendScale.value = withSpring(1, { damping: 8 });
     });
     onSubmit(thought.trim());
@@ -108,7 +103,7 @@ export function CaptureScreen({
     >
       <View
         style={[
-          styles.container,
+          styles.screen,
           {
             paddingTop: insets.top + 14,
             paddingBottom: Math.max(insets.bottom, 16),
@@ -119,49 +114,45 @@ export function CaptureScreen({
           <StreakBadge animate={streakJustIncremented} />
         </View>
 
-        <TextInput
-          ref={inputRef}
-          style={styles.input}
-          value={thought}
-          onChangeText={setThought}
-          placeholder={PLACEHOLDER}
-          placeholderTextColor="rgba(255,255,255,0.2)"
-          multiline
-          maxLength={400}
-          textAlignVertical="top"
-          selectionColor="#2196F3"
-          autoFocus={false}
-          scrollEnabled
-        />
+        <View style={styles.card}>
+          <TextInput
+            ref={inputRef}
+            style={styles.input}
+            value={thought}
+            onChangeText={setThought}
+            placeholder={PLACEHOLDER}
+            placeholderTextColor="rgba(255,255,255,0.18)"
+            multiline
+            maxLength={400}
+            textAlignVertical="top"
+            selectionColor="rgba(255,255,255,0.5)"
+            autoFocus={false}
+            scrollEnabled
+          />
 
-        <View style={styles.toolbar}>
-          <Animated.View style={micBtnStyle}>
+          <View style={styles.toolbar}>
             <Pressable
               onPress={handleMicPress}
-              style={({ pressed }) => [
-                styles.iconBtn,
-                { opacity: pressed ? 0.6 : 1 },
-              ]}
-              hitSlop={12}
+              hitSlop={16}
+              style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}
             >
               <Ionicons
                 name="mic-outline"
-                size={24}
-                color="rgba(255,255,255,0.4)"
+                size={22}
+                color="rgba(255,255,255,0.28)"
               />
             </Pressable>
-          </Animated.View>
 
-          <Pressable
-            onPress={handleSubmit}
-            disabled={!canSend}
-            style={({ pressed }) => [{ opacity: pressed ? 0.85 : 1 }]}
-            hitSlop={8}
-          >
-            <Animated.View style={[styles.sendBtn, sendBtnStyle]}>
-              <Ionicons name="checkmark" size={22} color="#fff" />
-            </Animated.View>
-          </Pressable>
+            <Pressable
+              onPress={handleSubmit}
+              disabled={!canSend}
+              hitSlop={8}
+            >
+              <Animated.View style={[styles.sendBtn, sendBtnStyle]}>
+                <Ionicons name="arrow-up" size={20} color="#fff" />
+              </Animated.View>
+            </Pressable>
+          </View>
         </View>
 
         {showNudge && (
@@ -181,57 +172,61 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "#000",
   },
-  container: {
+  screen: {
     flex: 1,
     backgroundColor: "#000",
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
   },
   topBar: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "flex-start",
-    marginBottom: 20,
+    marginBottom: 16,
+  },
+  card: {
+    flex: 1,
+    backgroundColor: "#171717",
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.06)",
+    paddingHorizontal: 20,
+    paddingTop: 22,
+    paddingBottom: 18,
   },
   input: {
     flex: 1,
     color: "#fff",
-    fontSize: 34,
+    fontSize: 32,
     fontFamily: "Inter_700Bold",
-    lineHeight: 44,
+    lineHeight: 42,
     paddingTop: 0,
-    paddingBottom: 12,
+    paddingBottom: 0,
     letterSpacing: -0.5,
   },
   toolbar: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingTop: 12,
-    paddingBottom: 0,
-  },
-  iconBtn: {
-    width: 44,
-    height: 44,
-    alignItems: "center",
-    justifyContent: "center",
+    paddingTop: 14,
   },
   sendBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "#2196F3",
+    backgroundColor: "#0A84FF",
+    paddingHorizontal: 22,
+    paddingVertical: 13,
+    borderRadius: 100,
     alignItems: "center",
     justifyContent: "center",
+    flexDirection: "row",
+    gap: 4,
   },
   nudgeRow: {
-    paddingTop: 10,
-    paddingBottom: 2,
+    paddingTop: 12,
     alignItems: "center",
   },
   nudgeText: {
     fontSize: 12,
     fontFamily: "Inter_400Regular",
-    color: "rgba(255,149,0,0.55)",
+    color: "rgba(255,149,0,0.5)",
     letterSpacing: 0.2,
   },
 });
