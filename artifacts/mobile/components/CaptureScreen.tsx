@@ -243,9 +243,10 @@ export function CaptureScreen({
             >
               <Ionicons
                 name="pencil-outline"
-                size={16}
+                size={14}
                 color="rgba(255,255,255,0.5)"
               />
+              <Text style={styles.backBtnText}>New thought</Text>
             </Pressable>
 
             {totalSignificant > 0 && (
@@ -312,12 +313,19 @@ const styles = StyleSheet.create({
     minHeight: 34,
   },
   backBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: "rgba(255,255,255,0.07)",
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 100,
+    backgroundColor: "rgba(255,255,255,0.07)",
+  },
+  backBtnText: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+    color: "rgba(255,255,255,0.5)",
+    letterSpacing: 0.2,
   },
   progressText: {
     fontSize: 12,

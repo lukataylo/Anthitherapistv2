@@ -87,15 +87,15 @@ export function AnnotatedThought({ thought, words, reframedWords, onWordPress }:
   );
 }
 
-const FONT_SIZE = 30;
-const LINE_H = 46;
+const FONT_SIZE = 32;
+const LINE_H = 42;
 
 const styles = StyleSheet.create({
   root: {
     fontSize: FONT_SIZE,
     fontFamily: "Inter_700Bold",
     lineHeight: LINE_H,
-    letterSpacing: -0.4,
+    letterSpacing: -0.5,
     color: "#fff",
   },
   plain: {
@@ -105,14 +105,20 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZE,
     fontFamily: "Inter_700Bold",
     lineHeight: LINE_H,
-    letterSpacing: -0.4,
+    letterSpacing: -0.5,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 6,
   },
   reframed: {
     fontSize: FONT_SIZE,
     fontFamily: "Inter_700Bold",
     lineHeight: LINE_H,
-    letterSpacing: -0.4,
+    letterSpacing: -0.5,
     backgroundColor: Colors.successDim,
     color: Colors.success,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 6,
   },
 });
