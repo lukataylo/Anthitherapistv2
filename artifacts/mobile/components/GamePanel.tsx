@@ -129,12 +129,16 @@ export function GamePanel() {
   }));
 
   const timerFillStyle = useAnimatedStyle(() => ({
-    width: `${timerProgress.value * 100}%` as unknown as number,
+    flex: timerProgress.value,
     backgroundColor: interpolateColor(
       timerProgress.value,
       [0, 0.3, 1],
       [Colors.belief, Colors.absolute, Colors.fear]
     ) as string,
+  }));
+
+  const timerSpacerStyle = useAnimatedStyle(() => ({
+    flex: 1 - timerProgress.value,
   }));
 
   const handleSkip = () => {
@@ -242,6 +246,7 @@ export function GamePanel() {
             <Animated.View style={[styles.panel, panelStyle]}>
               <View style={styles.timerBar}>
                 <Animated.View style={[styles.timerFill, timerFillStyle]} />
+                <Animated.View style={timerSpacerStyle} />
               </View>
 
               <View style={styles.header}>
@@ -437,9 +442,10 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
     overflow: "hidden",
+    flexDirection: "row",
   },
   timerFill: {
-    height: "100%",
+    height: 3,
     borderRadius: 3,
   },
   header: {

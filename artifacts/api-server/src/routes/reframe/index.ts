@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import { z } from "zod";
 import { anthropic } from "@workspace/integrations-anthropic-ai";
 
 const router: IRouter = Router();
@@ -34,6 +35,19 @@ Return ONLY valid JSON with this exact structure:
 
 For neutral words, reframes should be [], hint should be null, fiftyFifty should be [], explainer should be null.
 Keep all responses concise and positive. Do not add any text outside the JSON.`;
+
+const wordSchema = z.object({
+  word: z.string().min(1),
+  category: z.enum(["neutral", "absolute", "belief", "fear", "self_judgment"]),
+  reframes: z.array(z.string()).default([]),
+  hint: z.string().nullable().default(null),
+  fiftyFifty: z.array(z.string()).default([]),
+  explainer: z.string().nullable().default(null),
+});
+
+const reframeResponseSchema = z.object({
+  words: z.array(wordSchema).min(1),
+});
 
 router.post("/reframe", async (req, res) => {
   const { thought } = req.body as { thought?: string };
@@ -76,7 +90,14 @@ router.post("/reframe", async (req, res) => {
       return;
     }
 
-    res.json(parsed);
+    const validated = reframeResponseSchema.safeParse(parsed);
+    if (!validated.success) {
+      req.log.error({ errors: validated.error.flatten(), parsed }, "AI response failed schema validation");
+      res.status(500).json({ error: "AI response did not match expected schema" });
+      return;
+    }
+
+    res.json(validated.data);
   } catch (err) {
     req.log.error({ err }, "Reframe API error");
     res.status(500).json({ error: "Internal server error" });
