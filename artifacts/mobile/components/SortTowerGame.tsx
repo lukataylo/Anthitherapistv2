@@ -1,7 +1,6 @@
 import React, {
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
 } from "react";
@@ -14,6 +13,7 @@ import {
   View,
 } from "react-native";
 import Animated, {
+  Easing,
   interpolate,
   interpolateColor,
   runOnJS,
@@ -22,31 +22,54 @@ import Animated, {
   withDelay,
   withSpring,
   withTiming,
+  withRepeat,
+  withSequence,
 } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { HistoryEntry } from "@/context/HistoryContext";
-import { Colors } from "@/constants/colors";
 
 const { width: SW, height: SH } = Dimensions.get("window");
-const NUM_COLS = 5;
-const BLOCK_H = 22;
-const TOWER_AREA_H = Math.floor(SH * 0.36);
-const MAX_ROWS = Math.floor(TOWER_AREA_H / (BLOCK_H + 2));
 const SWIPE_THRESHOLD = SW * 0.27;
 const GAME_SECONDS = 30;
 
-const BLOCK_PALETTE = [
-  "#7B3F3F", "#3F6B7B", "#7B6B3F", "#3F5E3F",
-  "#5E3F7B", "#7B503F", "#3F7B6B", "#6B3F5E",
-  "#4A7A6A", "#7A5A4A",
+const BG = "#FAF8F4";
+const TEXT_DARK = "#1A1005";
+const TEXT_MID = "rgba(26,16,5,0.45)";
+const NEG_COLOR = "#C24D3A";
+const POS_COLOR = "#2A8C7F";
+const CARD_BG = "#FFFFFF";
+const TOWER_BG = "rgba(26,16,5,0.04)";
+const FOUNDATION_COLOR = "#3D2B1F";
+
+const FLOOR_PALETTE = [
+  "#C2614F",
+  "#D4845A",
+  "#B85F7A",
+  "#7A6B9E",
+  "#8B9E6E",
+  "#C9935A",
+  "#5A7A9E",
+  "#B87A5A",
 ];
+
+const FLOOR_H = 28;
+const FLOOR_BASE_W = Math.round(SW * 0.64);
+const FLOOR_MIN_W = Math.round(FLOOR_BASE_W * 0.52);
+const TAPER_PX = 4;
+const MAX_VISIBLE_FLOORS = Math.floor((SH * 0.38) / (FLOOR_H + 2));
 
 interface SortWord {
   text: string;
   isNegative: boolean;
+}
+
+interface Floor {
+  id: number;
+  color: string;
+  windows: number;
 }
 
 function buildDeck(entries: HistoryEntry[]): SortWord[] {
@@ -56,71 +79,175 @@ function buildDeck(entries: HistoryEntry[]): SortWord[] {
     for (const w of entry.words) {
       if (w.category === "neutral") continue;
       const k = w.word.toLowerCase().trim();
-      if (!seen.has(k)) { seen.add(k); words.push({ text: w.word, isNegative: true }); }
+      if (!seen.has(k)) {
+        seen.add(k);
+        words.push({ text: w.word, isNegative: true });
+      }
       for (const r of w.reframes) {
         const rk = r.toLowerCase().trim();
-        if (!seen.has(rk)) { seen.add(rk); words.push({ text: r, isNegative: false }); }
+        if (!seen.has(rk)) {
+          seen.add(rk);
+          words.push({ text: r, isNegative: false });
+        }
       }
     }
   }
   return words.sort(() => Math.random() - 0.5);
 }
 
-type Tower = string[][];
-const emptyTower = (): Tower => Array.from({ length: NUM_COLS }, () => []);
+let floorIdCounter = 0;
 
-function addBlock(tower: Tower): Tower {
-  const next = tower.map((col) => [...col]);
-  if (next.every((c) => c.length >= MAX_ROWS)) return next;
-  const minH = Math.min(...next.map((c) => c.length));
-  const candidates = next.map((c, i) => c.length <= minH + 1 ? i : -1).filter((i) => i >= 0);
-  const col = candidates[Math.floor(Math.random() * candidates.length)];
-  next[col].push(BLOCK_PALETTE[Math.floor(Math.random() * BLOCK_PALETTE.length)]);
-  return next;
+function makeFloor(totalSoFar: number): Floor {
+  floorIdCounter += 1;
+  return {
+    id: floorIdCounter,
+    color: FLOOR_PALETTE[totalSoFar % FLOOR_PALETTE.length],
+    windows: Math.min(2 + Math.floor(totalSoFar / 4), 5),
+  };
 }
 
-function TowerDisplay({ columns }: { columns: Tower }) {
+function TowerFloor({
+  floor,
+  index,
+  totalFloors,
+}: {
+  floor: Floor;
+  index: number;
+  totalFloors: number;
+}) {
+  const dropY = useSharedValue(-FLOOR_H - 10);
+  const opacity = useSharedValue(0);
+
+  useEffect(() => {
+    dropY.value = withSpring(0, { damping: 13, stiffness: 220 });
+    opacity.value = withTiming(1, { duration: 80 });
+  }, []);
+
+  const style = useAnimatedStyle(() => ({
+    transform: [{ translateY: dropY.value }],
+    opacity: opacity.value,
+  }));
+
+  const isTop = index === totalFloors - 1;
+  const floorWidth = Math.max(FLOOR_BASE_W - index * TAPER_PX, FLOOR_MIN_W);
+  const borderR = isTop ? 4 : 2;
+
   return (
-    <View style={styles.towerArea}>
-      {columns.map((col, ci) => (
-        <View key={ci} style={styles.towerCol}>
-          {col.map((color, bi) => (
-            <View key={bi} style={[styles.block, { backgroundColor: color }]} />
+    <Animated.View style={[{ alignItems: "center" }, style]}>
+      <View
+        style={[
+          styles.floor,
+          {
+            width: floorWidth,
+            backgroundColor: floor.color,
+            borderTopLeftRadius: borderR,
+            borderTopRightRadius: borderR,
+          },
+        ]}
+      >
+        <View style={styles.windowRow}>
+          {Array.from({ length: floor.windows }).map((_, i) => (
+            <View key={i} style={styles.arch} />
           ))}
         </View>
-      ))}
+      </View>
+    </Animated.View>
+  );
+}
+
+function Spire({ visible }: { visible: boolean }) {
+  const opacity = useSharedValue(0);
+  const translateY = useSharedValue(12);
+
+  useEffect(() => {
+    if (visible) {
+      opacity.value = withTiming(1, { duration: 400 });
+      translateY.value = withSpring(0, { damping: 14, stiffness: 180 });
+    }
+  }, [visible]);
+
+  const style = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ translateY: translateY.value }],
+  }));
+
+  return (
+    <Animated.View style={[styles.spireWrap, style]}>
+      <View style={styles.spireCap} />
+      <View style={styles.spireBody} />
+    </Animated.View>
+  );
+}
+
+function TowerDisplay({ floors }: { floors: Floor[] }) {
+  const visibleFloors = floors.slice(-MAX_VISIBLE_FLOORS);
+  const hasSpire = floors.length >= 8;
+  const floorWidth0 = Math.max(FLOOR_BASE_W - 0 * TAPER_PX, FLOOR_MIN_W);
+
+  return (
+    <View style={styles.towerArea}>
+      <View style={styles.towerColumn}>
+        <Spire visible={hasSpire} />
+        {visibleFloors.map((floor, i) => (
+          <TowerFloor
+            key={floor.id}
+            floor={floor}
+            index={i}
+            totalFloors={visibleFloors.length}
+          />
+        ))}
+        {floors.length > 0 && (
+          <View style={[styles.foundation, { width: floorWidth0 + 16 }]} />
+        )}
+      </View>
     </View>
   );
 }
 
-function SideBurst({ side, trigger }: { side: "left" | "right"; trigger: number }) {
-  const scale = useSharedValue(0);
-  const opacity = useSharedValue(0);
+function ScorePop({ score }: { score: number }) {
+  const scale = useSharedValue(1);
 
   useEffect(() => {
-    if (trigger === 0) return;
-    scale.value = 0;
-    opacity.value = 0;
-    scale.value = withSpring(1.5, { damping: 5, stiffness: 180 });
-    opacity.value = withTiming(0.7, { duration: 60 }, () => {
-      opacity.value = withTiming(0, { duration: 500 });
-    });
-  }, [trigger]);
+    scale.value = withSequence(
+      withTiming(1.22, { duration: 100, easing: Easing.out(Easing.cubic) }),
+      withSpring(1, { damping: 9, stiffness: 240 })
+    );
+  }, [score]);
 
-  const style = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-    opacity: opacity.value,
-  }));
-
-  const color = side === "left" ? Colors.belief : Colors.success;
-  const positionStyle = side === "left"
-    ? { left: 16 }
-    : { right: 16 };
+  const style = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
   return (
-    <Animated.View
-      style={[styles.burst, { backgroundColor: color }, positionStyle, style]}
-    />
+    <Animated.Text style={[styles.scoreText, style]}>{score}</Animated.Text>
+  );
+}
+
+function ComboFlash({ combo }: { combo: number }) {
+  const opacity = useSharedValue(0);
+  const scale = useSharedValue(0.6);
+  const prevCombo = useRef(0);
+
+  useEffect(() => {
+    if (combo >= 3 && combo !== prevCombo.current) {
+      prevCombo.current = combo;
+      scale.value = 0.6;
+      opacity.value = 1;
+      scale.value = withSpring(1, { damping: 9, stiffness: 260 });
+      opacity.value = withDelay(700, withTiming(0, { duration: 250 }));
+    }
+  }, [combo]);
+
+  const style = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ scale: scale.value }],
+  }));
+
+  if (combo < 3) return null;
+  const multiplier = combo >= 8 ? 4 : combo >= 5 ? 3 : 2;
+
+  return (
+    <Animated.View style={[styles.comboFlash, style]}>
+      <Text style={styles.comboText}>{multiplier}× COMBO</Text>
+    </Animated.View>
   );
 }
 
@@ -141,20 +268,24 @@ function WordCard({ word, onSwipe }: WordCardProps) {
   const gesture = Gesture.Pan()
     .onUpdate((e) => {
       cardX.value = e.translationX;
-      cardRotate.value = interpolate(e.translationX, [-SW / 2, SW / 2], [-10, 10]);
+      cardRotate.value = interpolate(
+        e.translationX,
+        [-SW / 2, SW / 2],
+        [-8, 8]
+      );
     })
     .onEnd((e) => {
       if (e.translationX < -SWIPE_THRESHOLD) {
-        cardX.value = withTiming(-SW * 1.6, { duration: 240 });
-        cardRotate.value = withTiming(-22, { duration: 240 });
+        cardX.value = withTiming(-SW * 1.5, { duration: 220 });
+        cardRotate.value = withTiming(-18, { duration: 220 });
         runOnJS(swipeTo)(true);
       } else if (e.translationX > SWIPE_THRESHOLD) {
-        cardX.value = withTiming(SW * 1.6, { duration: 240 });
-        cardRotate.value = withTiming(22, { duration: 240 });
+        cardX.value = withTiming(SW * 1.5, { duration: 220 });
+        cardRotate.value = withTiming(18, { duration: 220 });
         runOnJS(swipeTo)(false);
       } else {
-        cardX.value = withSpring(0, { damping: 14 });
-        cardRotate.value = withSpring(0, { damping: 14 });
+        cardX.value = withSpring(0, { damping: 15 });
+        cardRotate.value = withSpring(0, { damping: 15 });
       }
     });
 
@@ -166,25 +297,43 @@ function WordCard({ word, onSwipe }: WordCardProps) {
     borderColor: interpolateColor(
       cardX.value,
       [-SWIPE_THRESHOLD, 0, SWIPE_THRESHOLD],
-      ["rgba(255,91,91,0.7)", "rgba(255,255,255,0.07)", "rgba(0,229,160,0.7)"]
+      [NEG_COLOR + "BB", "rgba(0,0,0,0.06)", POS_COLOR + "BB"]
     ) as string,
   }));
 
   const negHintStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(cardX.value, [0, -SWIPE_THRESHOLD * 0.6], [0.2, 1]),
-    transform: [{ scale: interpolate(cardX.value, [0, -SWIPE_THRESHOLD], [1, 1.18]) }],
+    opacity: interpolate(cardX.value, [0, -SWIPE_THRESHOLD * 0.7], [0, 1]),
+    transform: [
+      {
+        scale: interpolate(
+          cardX.value,
+          [0, -SWIPE_THRESHOLD],
+          [0.9, 1.1]
+        ),
+      },
+    ],
   }));
 
   const posHintStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(cardX.value, [0, SWIPE_THRESHOLD * 0.6], [0.2, 1]),
-    transform: [{ scale: interpolate(cardX.value, [0, SWIPE_THRESHOLD], [1, 1.18]) }],
+    opacity: interpolate(cardX.value, [0, SWIPE_THRESHOLD * 0.7], [0, 1]),
+    transform: [
+      {
+        scale: interpolate(
+          cardX.value,
+          [0, SWIPE_THRESHOLD],
+          [0.9, 1.1]
+        ),
+      },
+    ],
   }));
 
   return (
     <View style={styles.cardRow}>
       <Animated.View style={[styles.sideLabel, negHintStyle]}>
-        <Ionicons name="arrow-back" size={18} color={Colors.belief} />
-        <Text style={[styles.sideLabelText, { color: Colors.belief }]}>NEGATIVE</Text>
+        <Ionicons name="arrow-back" size={16} color={NEG_COLOR} />
+        <Text style={[styles.sideLabelText, { color: NEG_COLOR }]}>
+          NEGATIVE
+        </Text>
       </Animated.View>
 
       <GestureDetector gesture={gesture}>
@@ -194,8 +343,10 @@ function WordCard({ word, onSwipe }: WordCardProps) {
       </GestureDetector>
 
       <Animated.View style={[styles.sideLabel, styles.sideLabelRight, posHintStyle]}>
-        <Text style={[styles.sideLabelText, { color: Colors.success }]}>POSITIVE</Text>
-        <Ionicons name="arrow-forward" size={18} color={Colors.success} />
+        <Text style={[styles.sideLabelText, { color: POS_COLOR }]}>
+          POSITIVE
+        </Text>
+        <Ionicons name="arrow-forward" size={16} color={POS_COLOR} />
       </Animated.View>
     </View>
   );
@@ -214,16 +365,16 @@ export function SortTowerGame({ visible, entries, onClose }: SortTowerGameProps)
   const [deckIdx, setDeckIdx] = useState(0);
   const [cardKey, setCardKey] = useState(0);
   const [score, setScore] = useState(0);
-  const [tower, setTower] = useState<Tower>(emptyTower);
+  const [floors, setFloors] = useState<Floor[]>([]);
   const [timeLeft, setTimeLeft] = useState(GAME_SECONDS);
   const [phase, setPhase] = useState<"playing" | "done">("playing");
-  const [leftBurst, setLeftBurst] = useState(0);
-  const [rightBurst, setRightBurst] = useState(0);
+  const [streak, setStreak] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const feedbackOpacity = useSharedValue(0);
-  const [feedbackMsg, setFeedbackMsg] = useState<"correct" | "wrong">("correct");
+  const [feedbackCorrect, setFeedbackCorrect] = useState(true);
   const swipeHintOpacity = useSharedValue(1);
+  const timerPulse = useSharedValue(1);
 
   const startGame = useCallback(() => {
     const d = buildDeck(entries);
@@ -231,10 +382,12 @@ export function SortTowerGame({ visible, entries, onClose }: SortTowerGameProps)
     setDeckIdx(0);
     setCardKey((k) => k + 1);
     setScore(0);
-    setTower(emptyTower());
+    setFloors([]);
     setTimeLeft(GAME_SECONDS);
     setPhase("playing");
+    setStreak(0);
     swipeHintOpacity.value = 1;
+    timerPulse.value = 1;
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = setInterval(() => {
       setTimeLeft((t) => {
@@ -243,6 +396,16 @@ export function SortTowerGame({ visible, entries, onClose }: SortTowerGameProps)
           setPhase("done");
           return 0;
         }
+        if (t === 10) {
+          timerPulse.value = withRepeat(
+            withSequence(
+              withTiming(1.06, { duration: 400 }),
+              withTiming(1, { duration: 400 })
+            ),
+            -1,
+            true
+          );
+        }
         return t - 1;
       });
     }, 1000);
@@ -250,13 +413,15 @@ export function SortTowerGame({ visible, entries, onClose }: SortTowerGameProps)
 
   useEffect(() => {
     if (visible) startGame();
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
   }, [visible]);
 
-  const showFeedback = useCallback((type: "correct" | "wrong") => {
-    setFeedbackMsg(type);
-    feedbackOpacity.value = withTiming(1, { duration: 100 }, () => {
-      feedbackOpacity.value = withDelay(340, withTiming(0, { duration: 200 }));
+  const showFeedback = useCallback((correct: boolean) => {
+    setFeedbackCorrect(correct);
+    feedbackOpacity.value = withTiming(1, { duration: 80 }, () => {
+      feedbackOpacity.value = withDelay(380, withTiming(0, { duration: 180 }));
     });
   }, []);
 
@@ -267,18 +432,23 @@ export function SortTowerGame({ visible, entries, onClose }: SortTowerGameProps)
       if (!current) return;
 
       const correct = swipedNegative === current.isNegative;
-      Haptics.impactAsync(correct
-        ? Haptics.ImpactFeedbackStyle.Medium
-        : Haptics.ImpactFeedbackStyle.Heavy
+      Haptics.impactAsync(
+        correct
+          ? Haptics.ImpactFeedbackStyle.Medium
+          : Haptics.ImpactFeedbackStyle.Heavy
       );
 
       if (correct) {
-        if (swipedNegative) setLeftBurst((n) => n + 1);
-        else setRightBurst((n) => n + 1);
-        setScore((s) => s + 100);
-        setTower((t) => addBlock(t));
+        const newStreak = streak + 1;
+        setStreak(newStreak);
+        const multiplier =
+          newStreak >= 8 ? 4 : newStreak >= 5 ? 3 : newStreak >= 3 ? 2 : 1;
+        setScore((s) => s + 100 * multiplier);
+        setFloors((prev) => [...prev, makeFloor(prev.length)]);
+      } else {
+        setStreak(0);
       }
-      showFeedback(correct ? "correct" : "wrong");
+      showFeedback(correct);
 
       setTimeout(() => {
         setDeckIdx((i) => {
@@ -290,13 +460,14 @@ export function SortTowerGame({ visible, entries, onClose }: SortTowerGameProps)
           return next;
         });
         setCardKey((k) => k + 1);
-      }, 300);
+      }, 280);
     },
-    [deck, deckIdx, showFeedback]
+    [deck, deckIdx, showFeedback, streak]
   );
 
   const timerPct = timeLeft / GAME_SECONDS;
-  const timerColor = timerPct > 0.5 ? Colors.success : timerPct > 0.25 ? Colors.absolute : Colors.belief;
+  const timerColor =
+    timeLeft <= 10 ? NEG_COLOR : timeLeft <= 20 ? "#C9935A" : "#2A8C7F";
   const currentWord = deck[deckIdx] ?? null;
 
   const feedbackStyle = useAnimatedStyle(() => ({
@@ -307,48 +478,67 @@ export function SortTowerGame({ visible, entries, onClose }: SortTowerGameProps)
     opacity: swipeHintOpacity.value,
   }));
 
+  const timerPulseStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: timerPulse.value }],
+  }));
+
   if (!visible) return null;
 
   return (
-    <Modal visible animationType="slide" statusBarTranslucent>
+    <Modal visible animationType="fade" statusBarTranslucent>
       <View style={[styles.root, { paddingTop: insets.top }]}>
 
         {/* HUD */}
         <View style={styles.hud}>
-          <View style={styles.scoreBox}>
-            <Ionicons name="grid-outline" size={13} color="rgba(255,255,255,0.3)" />
-            <Text style={styles.scoreText}>{score}</Text>
-          </View>
-          <Pressable onPress={onClose} hitSlop={16}>
-            <Ionicons name="close" size={20} color="rgba(255,255,255,0.3)" />
+          <Pressable onPress={onClose} hitSlop={16} style={styles.closeBtn}>
+            <Ionicons name="close" size={18} color={TEXT_MID} />
           </Pressable>
-          <Text style={styles.timerText}>:{String(timeLeft).padStart(2, "0")}</Text>
+
+          <ScorePop score={score} />
+
+          <Animated.Text style={[styles.timerText, timerPulseStyle, { color: timerColor }]}>
+            {String(timeLeft).padStart(2, "0")}
+          </Animated.Text>
         </View>
 
         {/* Timer bar */}
         <View style={styles.timerTrack}>
-          <View style={[styles.timerFill, { width: `${timerPct * 100}%` as any, backgroundColor: timerColor }]} />
+          <View
+            style={[
+              styles.timerFill,
+              {
+                width: `${timerPct * 100}%` as any,
+                backgroundColor: timerColor,
+              },
+            ]}
+          />
         </View>
 
-        {/* Dashed goal line */}
-        <View style={styles.goalLine} />
+        {/* Tower */}
+        <TowerDisplay floors={floors} />
 
-        {/* Mid area */}
+        {/* Divider line */}
+        <View style={styles.divider} />
+
+        {/* Card area */}
         <View style={styles.midArea}>
           {phase === "playing" && currentWord ? (
             <>
+              <ComboFlash combo={streak} />
               <WordCard key={cardKey} word={currentWord} onSwipe={handleSwipe} />
               <Animated.View style={[styles.swipeHintRow, swipeHintStyle]}>
-                <Ionicons name="arrow-back" size={13} color="rgba(255,255,255,0.2)" />
-                <Text style={styles.swipeHintText}>swipe</Text>
-                <Ionicons name="arrow-forward" size={13} color="rgba(255,255,255,0.2)" />
+                <Ionicons name="arrow-back" size={12} color={TEXT_MID} />
+                <Text style={styles.swipeHintText}>swipe to sort</Text>
+                <Ionicons name="arrow-forward" size={12} color={TEXT_MID} />
               </Animated.View>
             </>
           ) : phase === "done" ? (
             <View style={styles.doneBox}>
-              <Text style={styles.doneLabel}>Done!</Text>
+              <Text style={styles.doneLabel}>TOWER BUILT</Text>
               <Text style={styles.doneScore}>{score}</Text>
-              <Text style={styles.donePts}>points</Text>
+              <Text style={styles.donePts}>
+                {floors.length} floor{floors.length !== 1 ? "s" : ""}
+              </Text>
               <Pressable style={styles.playAgainBtn} onPress={startGame}>
                 <Text style={styles.playAgainText}>Play Again</Text>
               </Pressable>
@@ -360,27 +550,19 @@ export function SortTowerGame({ visible, entries, onClose }: SortTowerGameProps)
         </View>
 
         {/* Feedback pill */}
-        <Animated.View style={[styles.feedbackPill, feedbackStyle]}>
+        <Animated.View
+          style={[
+            styles.feedbackPill,
+            { backgroundColor: feedbackCorrect ? "rgba(42,140,127,0.12)" : "rgba(194,77,58,0.12)" },
+            feedbackStyle,
+          ]}
+        >
           <Ionicons
-            name={feedbackMsg === "correct" ? "checkmark" : "close"}
+            name={feedbackCorrect ? "checkmark" : "close"}
             size={13}
-            color={feedbackMsg === "correct" ? Colors.success : Colors.belief}
+            color={feedbackCorrect ? POS_COLOR : NEG_COLOR}
           />
-          <Text style={{
-            fontSize: 13,
-            fontFamily: "Inter_600SemiBold",
-            color: feedbackMsg === "correct" ? Colors.success : Colors.belief,
-          }}>
-            {feedbackMsg === "correct" ? "Correct" : "Wrong"}
-          </Text>
         </Animated.View>
-
-        {/* Side burst effects */}
-        <SideBurst side="left" trigger={leftBurst} />
-        <SideBurst side="right" trigger={rightBurst} />
-
-        {/* Tower */}
-        <TowerDisplay columns={tower} />
 
       </View>
     </Modal>
@@ -390,34 +572,39 @@ export function SortTowerGame({ visible, entries, onClose }: SortTowerGameProps)
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: "#0A0A0F",
+    backgroundColor: BG,
   },
   hud: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingVertical: 12,
   },
-  scoreBox: {
-    flexDirection: "row",
+  closeBtn: {
+    width: 36,
+    height: 36,
     alignItems: "center",
-    gap: 6,
+    justifyContent: "center",
+    borderRadius: 18,
+    backgroundColor: "rgba(26,16,5,0.06)",
   },
   scoreText: {
-    color: "rgba(255,255,255,0.55)",
-    fontSize: 17,
+    color: TEXT_DARK,
+    fontSize: 20,
     fontFamily: "Inter_700Bold",
+    letterSpacing: -0.5,
   },
   timerText: {
-    color: "rgba(255,255,255,0.55)",
-    fontSize: 17,
-    fontFamily: "Inter_600SemiBold",
-    letterSpacing: 0.5,
+    fontSize: 20,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: -0.5,
+    minWidth: 36,
+    textAlign: "right",
   },
   timerTrack: {
     height: 2,
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: "rgba(26,16,5,0.08)",
     marginHorizontal: 20,
     borderRadius: 1,
     overflow: "hidden",
@@ -426,15 +613,69 @@ const styles = StyleSheet.create({
     height: 2,
     borderRadius: 1,
   },
-  goalLine: {
-    marginTop: 16,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "rgba(255,255,255,0.14)",
-    borderStyle: "dashed",
+  towerArea: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "flex-end",
+    paddingBottom: 0,
+  },
+  towerColumn: {
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: 2,
+  },
+  spireWrap: {
+    alignItems: "center",
+    marginBottom: 1,
+  },
+  spireCap: {
+    width: 0,
+    height: 0,
+    borderLeftWidth: 10,
+    borderRightWidth: 10,
+    borderBottomWidth: 18,
+    borderLeftColor: "transparent",
+    borderRightColor: "transparent",
+    borderBottomColor: FOUNDATION_COLOR,
+  },
+  spireBody: {
+    width: 10,
+    height: 6,
+    backgroundColor: FOUNDATION_COLOR,
+    borderRadius: 1,
+  },
+  floor: {
+    height: FLOOR_H,
+    justifyContent: "flex-end",
+    paddingBottom: 3,
+    paddingHorizontal: 4,
+    overflow: "hidden",
+  },
+  windowRow: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    alignItems: "flex-end",
+  },
+  arch: {
+    width: 7,
+    height: 11,
+    backgroundColor: "rgba(255,255,255,0.32)",
+    borderTopLeftRadius: 3.5,
+    borderTopRightRadius: 3.5,
+  },
+  foundation: {
+    height: 8,
+    backgroundColor: FOUNDATION_COLOR,
+    borderRadius: 1,
+  },
+  divider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: "rgba(26,16,5,0.10)",
     marginHorizontal: 20,
+    marginTop: 8,
   },
   midArea: {
-    flex: 1,
+    height: SH * 0.36,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -446,114 +687,107 @@ const styles = StyleSheet.create({
   },
   card: {
     flex: 1,
-    backgroundColor: "#1C1C24",
-    borderRadius: 18,
+    backgroundColor: CARD_BG,
+    borderRadius: 20,
     paddingHorizontal: 24,
-    paddingVertical: 34,
+    paddingVertical: 32,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.07)",
-    minHeight: 100,
-    marginHorizontal: 4,
+    borderWidth: 1.5,
+    borderColor: "rgba(0,0,0,0.06)",
+    minHeight: 96,
+    marginHorizontal: 8,
+    shadowColor: "#000",
+    shadowOpacity: 0.07,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
   },
   wordText: {
-    color: "#fff",
+    color: TEXT_DARK,
     fontSize: 22,
     fontFamily: "Inter_600SemiBold",
     textAlign: "center",
-    letterSpacing: -0.2,
+    letterSpacing: -0.3,
   },
   sideLabel: {
     alignItems: "center",
-    gap: 5,
-    width: 68,
+    gap: 4,
+    width: 64,
   },
   sideLabelRight: {
     alignItems: "center",
   },
   sideLabelText: {
-    fontSize: 9,
+    fontSize: 8,
     fontFamily: "Inter_700Bold",
-    letterSpacing: 1.4,
+    letterSpacing: 1.2,
   },
   swipeHintRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    marginTop: 26,
+    marginTop: 20,
   },
   swipeHintText: {
-    color: "rgba(255,255,255,0.2)",
-    fontSize: 13,
+    color: TEXT_MID,
+    fontSize: 12,
     fontFamily: "Inter_400Regular",
+    letterSpacing: 0.2,
   },
   feedbackPill: {
     position: "absolute",
     alignSelf: "center",
-    top: SH * 0.46,
-    backgroundColor: "#16161E",
+    top: SH * 0.56,
     paddingHorizontal: 14,
-    paddingVertical: 7,
+    paddingVertical: 8,
     borderRadius: 100,
     zIndex: 50,
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
   },
-  burst: {
+  comboFlash: {
     position: "absolute",
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    top: SH * 0.48,
-    zIndex: 30,
-    opacity: 0,
+    top: -32,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    backgroundColor: "#C9935A",
+    borderRadius: 100,
+    zIndex: 60,
   },
-  towerArea: {
-    height: TOWER_AREA_H,
-    flexDirection: "row",
-    alignItems: "flex-end",
-    paddingHorizontal: 20,
-    paddingBottom: 8,
-    gap: 3,
-  },
-  towerCol: {
-    flex: 1,
-    justifyContent: "flex-end",
-    gap: 2,
-  },
-  block: {
-    width: "100%",
-    height: BLOCK_H,
-    borderRadius: 3,
+  comboText: {
+    color: "#fff",
+    fontSize: 11,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 1.5,
   },
   doneBox: {
     alignItems: "center",
-    gap: 8,
+    gap: 6,
   },
   doneLabel: {
-    color: "rgba(255,255,255,0.4)",
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-    letterSpacing: 2,
-    textTransform: "uppercase",
+    color: TEXT_MID,
+    fontSize: 11,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 2.5,
   },
   doneScore: {
-    color: Colors.success,
-    fontSize: 72,
+    color: TEXT_DARK,
+    fontSize: 68,
     fontFamily: "Inter_700Bold",
-    lineHeight: 80,
+    lineHeight: 76,
+    letterSpacing: -2,
   },
   donePts: {
-    color: "rgba(255,255,255,0.28)",
+    color: TEXT_MID,
     fontSize: 13,
     fontFamily: "Inter_400Regular",
-    letterSpacing: 1,
+    letterSpacing: 0.4,
   },
   playAgainBtn: {
-    marginTop: 24,
-    backgroundColor: Colors.reframeBtn,
+    marginTop: 20,
+    backgroundColor: FOUNDATION_COLOR,
     paddingHorizontal: 32,
     paddingVertical: 14,
     borderRadius: 100,
@@ -564,11 +798,11 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_700Bold",
   },
   closeTextBtn: {
-    marginTop: 10,
+    marginTop: 8,
     padding: 8,
   },
   closeText: {
-    color: "rgba(255,255,255,0.3)",
+    color: TEXT_MID,
     fontSize: 14,
     fontFamily: "Inter_400Regular",
   },
