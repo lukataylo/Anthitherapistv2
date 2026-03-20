@@ -1,29 +1,39 @@
-import React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import React, { useMemo } from "react";
+import { StyleSheet, Text } from "react-native";
 import { Colors } from "@/constants/colors";
 import type { WordAnalysis } from "@/context/GameContext";
 
-const CATEGORY_STYLE: Record<
-  string,
-  { bg: string; text: string }
-> = {
-  belief: { bg: Colors.beliefDim, text: Colors.belief },
-  fear: { bg: Colors.fearDim, text: Colors.fear },
-  absolute: { bg: Colors.absoluteDim, text: Colors.absolute },
-  self_judgment: { bg: Colors.self_judgmentDim, text: Colors.self_judgment },
+const CATEGORY_STYLE: Record<string, { bg: string; fg: string }> = {
+  belief:       { bg: Colors.beliefDim,       fg: Colors.belief },
+  fear:         { bg: Colors.fearDim,         fg: Colors.fear },
+  absolute:     { bg: Colors.absoluteDim,     fg: Colors.absolute },
+  self_judgment:{ bg: Colors.self_judgmentDim,fg: Colors.self_judgment },
 };
 
-function matchToken(token: string, words: WordAnalysis[]): number {
-  const normalized = token
+function normalize(raw: string): string {
+  return raw
     .toLowerCase()
-    .replace(/^[^a-z0-9']+|[^a-z0-9']+$/gi, "");
-  if (!normalized) return -1;
-  const exact = words.findIndex((w) => w.word.toLowerCase() === normalized);
-  if (exact >= 0) return exact;
-  const stripped = normalized.replace(/'/g, "");
-  return words.findIndex(
-    (w) => w.word.toLowerCase().replace(/'/g, "") === stripped
-  );
+    .replace(/^[^a-z0-9']+|[^a-z0-9']+$/gi, "")
+    .replace(/'/g, "");
+}
+
+function buildTokenMap(tokens: string[], words: WordAnalysis[]): (number | null)[] {
+  const available = words.map((w, i) => ({
+    norm: normalize(w.word),
+    idx: i,
+    used: false,
+  }));
+
+  return tokens.map((raw) => {
+    const norm = normalize(raw);
+    if (!norm) return null;
+    const hit = available.find((a) => !a.used && a.norm === norm);
+    if (hit) {
+      hit.used = true;
+      return hit.idx;
+    }
+    return null;
+  });
 }
 
 interface Props {
@@ -33,95 +43,76 @@ interface Props {
   onWordPress: (idx: number) => void;
 }
 
-export function AnnotatedThought({
-  thought,
-  words,
-  reframedWords,
-  onWordPress,
-}: Props) {
-  const tokens = thought.trim().split(/\s+/);
+export function AnnotatedThought({ thought, words, reframedWords, onWordPress }: Props) {
+  const tokens = useMemo(() => thought.trim().split(/\s+/), [thought]);
+  const tokenMap = useMemo(() => buildTokenMap(tokens, words), [tokens, words]);
 
   return (
-    <View style={styles.wrap}>
+    <Text style={styles.root}>
       {tokens.map((raw, ti) => {
-        const wordIdx = matchToken(raw, words);
-        const word = wordIdx >= 0 ? words[wordIdx] : null;
+        const wordIdx = tokenMap[ti];
+        const word = wordIdx !== null ? words[wordIdx] : null;
 
         if (!word || word.category === "neutral") {
           return (
             <Text key={ti} style={styles.plain}>
-              {raw}
+              {raw}{" "}
             </Text>
           );
         }
 
-        const reframed = reframedWords[wordIdx];
+        const reframed = reframedWords[wordIdx as number];
         if (reframed !== undefined) {
+          const display = reframed !== word.word ? reframed : raw;
           return (
-            <View key={ti} style={[styles.chip, styles.reframedChip]}>
-              <Text style={styles.reframedText} numberOfLines={2}>
-                {reframed !== word.word ? reframed : raw}
-              </Text>
-            </View>
+            <Text key={ti} style={styles.reframed}>
+              {display}{" "}
+            </Text>
           );
         }
 
         const cat = CATEGORY_STYLE[word.category] ?? CATEGORY_STYLE.belief;
         return (
-          <Pressable
+          <Text
             key={ti}
-            onPress={() => onWordPress(wordIdx)}
-            style={({ pressed }) => [{ opacity: pressed ? 0.72 : 1 }]}
+            style={[styles.highlight, { backgroundColor: cat.bg, color: cat.fg }]}
+            onPress={() => onWordPress(wordIdx as number)}
+            suppressHighlighting
           >
-            <View style={[styles.chip, { backgroundColor: cat.bg }]}>
-              <Text style={[styles.chipText, { color: cat.text }]}>{raw}</Text>
-            </View>
-          </Pressable>
+            {raw}{" "}
+          </Text>
         );
       })}
-    </View>
+    </Text>
   );
 }
 
 const FONT_SIZE = 30;
-const LINE_HEIGHT = 40;
+const LINE_H = 46;
 
 const styles = StyleSheet.create({
-  wrap: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    columnGap: 5,
-    rowGap: 8,
-    alignContent: "flex-start",
+  root: {
+    fontSize: FONT_SIZE,
+    fontFamily: "Inter_700Bold",
+    lineHeight: LINE_H,
+    letterSpacing: -0.4,
+    color: "#fff",
   },
   plain: {
+    color: "#fff",
+  },
+  highlight: {
     fontSize: FONT_SIZE,
     fontFamily: "Inter_700Bold",
-    lineHeight: LINE_HEIGHT,
-    color: "rgba(255,255,255,0.72)",
+    lineHeight: LINE_H,
     letterSpacing: -0.4,
   },
-  chip: {
-    borderRadius: 10,
-    paddingHorizontal: 7,
-    paddingVertical: 1,
-    justifyContent: "center",
-  },
-  chipText: {
+  reframed: {
     fontSize: FONT_SIZE,
     fontFamily: "Inter_700Bold",
-    lineHeight: LINE_HEIGHT,
+    lineHeight: LINE_H,
     letterSpacing: -0.4,
-  },
-  reframedChip: {
     backgroundColor: Colors.successDim,
-    maxWidth: 260,
-  },
-  reframedText: {
-    fontSize: FONT_SIZE,
-    fontFamily: "Inter_700Bold",
-    lineHeight: LINE_HEIGHT,
-    letterSpacing: -0.4,
     color: Colors.success,
   },
 });
