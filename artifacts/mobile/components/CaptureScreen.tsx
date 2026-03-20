@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef } from "react";
 import {
   Keyboard,
   KeyboardAvoidingView,
@@ -19,9 +19,9 @@ import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useGame } from "@/context/GameContext";
+import { useStreak } from "@/context/StreakContext";
 import { ThinkingAnimation } from "@/components/ThinkingAnimation";
 import { StreakBadge } from "@/components/StreakBadge";
-import { StreakBanner } from "@/components/StreakBanner";
 
 interface CaptureScreenProps {
   onSubmit: (thought: string) => void;
@@ -37,18 +37,32 @@ export function CaptureScreen({
   streakJustIncremented = false,
 }: CaptureScreenProps) {
   const { thought, setThought } = useGame();
+  const { currentStreak, reflectedToday } = useStreak();
   const insets = useSafeAreaInsets();
   const inputRef = useRef<TextInput>(null);
   const sendScale = useSharedValue(1);
   const sendOpacity = useSharedValue(0);
   const micOpacity = useSharedValue(1);
+  const nudgeOpacity = useSharedValue(0);
 
   const canSend = thought.trim().length > 0 && !isLoading;
+  const showNudge = currentStreak > 0 && !reflectedToday;
+
+  const nudgeMessages = [
+    `${currentStreak} day streak — keep it going`,
+    `${currentStreak} days strong — don't stop now`,
+    `You're on a ${currentStreak} day run`,
+  ];
+  const nudgeText = nudgeMessages[currentStreak % nudgeMessages.length];
 
   useEffect(() => {
     sendOpacity.value = withTiming(canSend ? 1 : 0.3, { duration: 180 });
     micOpacity.value = withTiming(canSend ? 0 : 1, { duration: 180 });
   }, [canSend]);
+
+  useEffect(() => {
+    nudgeOpacity.value = withTiming(showNudge ? 1 : 0, { duration: 300 });
+  }, [showNudge]);
 
   const sendBtnStyle = useAnimatedStyle(() => ({
     transform: [{ scale: sendScale.value }],
@@ -57,6 +71,10 @@ export function CaptureScreen({
 
   const micBtnStyle = useAnimatedStyle(() => ({
     opacity: micOpacity.value,
+  }));
+
+  const nudgeStyle = useAnimatedStyle(() => ({
+    opacity: nudgeOpacity.value,
   }));
 
   const handleSubmit = () => {
@@ -92,7 +110,7 @@ export function CaptureScreen({
         style={[
           styles.container,
           {
-            paddingTop: insets.top + 12,
+            paddingTop: insets.top + 14,
             paddingBottom: Math.max(insets.bottom, 16),
           },
         ]}
@@ -101,15 +119,13 @@ export function CaptureScreen({
           <StreakBadge animate={streakJustIncremented} />
         </View>
 
-        <StreakBanner />
-
         <TextInput
           ref={inputRef}
           style={styles.input}
           value={thought}
           onChangeText={setThought}
           placeholder={PLACEHOLDER}
-          placeholderTextColor="rgba(255,255,255,0.22)"
+          placeholderTextColor="rgba(255,255,255,0.2)"
           multiline
           maxLength={400}
           textAlignVertical="top"
@@ -128,7 +144,11 @@ export function CaptureScreen({
               ]}
               hitSlop={12}
             >
-              <Ionicons name="mic-outline" size={26} color="rgba(255,255,255,0.55)" />
+              <Ionicons
+                name="mic-outline"
+                size={24}
+                color="rgba(255,255,255,0.4)"
+              />
             </Pressable>
           </Animated.View>
 
@@ -143,6 +163,10 @@ export function CaptureScreen({
             </Animated.View>
           </Pressable>
         </View>
+
+        <Animated.View style={[styles.nudgeRow, nudgeStyle]}>
+          <Text style={styles.nudgeText}>{nudgeText}</Text>
+        </Animated.View>
       </View>
     </KeyboardAvoidingView>
   );
@@ -158,29 +182,30 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#000",
-    paddingHorizontal: 18,
+    paddingHorizontal: 20,
   },
   topBar: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "flex-end",
-    marginBottom: 14,
+    justifyContent: "flex-start",
+    marginBottom: 20,
   },
   input: {
     flex: 1,
     color: "#fff",
-    fontSize: 20,
-    fontFamily: "Inter_400Regular",
-    lineHeight: 30,
-    paddingTop: 8,
+    fontSize: 34,
+    fontFamily: "Inter_700Bold",
+    lineHeight: 44,
+    paddingTop: 0,
     paddingBottom: 12,
+    letterSpacing: -0.5,
   },
   toolbar: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingTop: 12,
-    paddingBottom: 4,
+    paddingBottom: 0,
   },
   iconBtn: {
     width: 44,
@@ -189,11 +214,22 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   sendBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: "#2196F3",
     alignItems: "center",
     justifyContent: "center",
+  },
+  nudgeRow: {
+    paddingTop: 10,
+    paddingBottom: 2,
+    alignItems: "center",
+  },
+  nudgeText: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: "rgba(255,149,0,0.55)",
+    letterSpacing: 0.2,
   },
 });

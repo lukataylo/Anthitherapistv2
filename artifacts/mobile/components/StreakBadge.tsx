@@ -16,66 +16,54 @@ interface StreakBadgeProps {
 export function StreakBadge({ animate = false }: StreakBadgeProps) {
   const { currentStreak, reflectedToday } = useStreak();
   const scale = useSharedValue(1);
-  const fireOpacity = useSharedValue(reflectedToday ? 1 : 0.45);
+  const opacity = useSharedValue(1);
 
   useEffect(() => {
-    fireOpacity.value = withTiming(reflectedToday ? 1 : 0.45, {
-      duration: 400,
-    });
+    opacity.value = withTiming(reflectedToday ? 1 : 0.5, { duration: 350 });
   }, [reflectedToday]);
 
   useEffect(() => {
     if (animate && currentStreak > 0) {
       scale.value = withSequence(
-        withSpring(1.35, { damping: 4, stiffness: 300 }),
-        withSpring(1, { damping: 8 })
+        withSpring(1.4, { damping: 4, stiffness: 280 }),
+        withSpring(1, { damping: 10 })
       );
     }
   }, [animate, currentStreak]);
 
-  const fireStyle = useAnimatedStyle(() => ({
-    opacity: fireOpacity.value,
+  const pillStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
     transform: [{ scale: scale.value }],
   }));
 
-  if (currentStreak === 0 && !reflectedToday) {
-    return (
-      <View style={styles.container}>
-        <Animated.Text style={[styles.fireIcon, fireStyle]}>🔥</Animated.Text>
-        <Text style={[styles.count, { color: "rgba(255,255,255,0.25)" }]}>
-          0
-        </Text>
-      </View>
-    );
-  }
-
   return (
-    <View style={styles.container}>
-      <Animated.Text style={[styles.fireIcon, fireStyle]}>🔥</Animated.Text>
+    <Animated.View style={[styles.pill, pillStyle]}>
+      <Text style={styles.fire}>🔥</Text>
       <Text
         style={[
           styles.count,
-          { color: reflectedToday ? "#FF9500" : "rgba(255,255,255,0.6)" },
+          { color: reflectedToday ? "#FF9500" : "rgba(255,255,255,0.5)" },
         ]}
       >
         {currentStreak}
       </Text>
-    </View>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  pill: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: 3,
   },
-  fireIcon: {
-    fontSize: 20,
+  fire: {
+    fontSize: 16,
+    lineHeight: 20,
   },
   count: {
-    fontSize: 15,
+    fontSize: 13,
     fontFamily: "Inter_700Bold",
-    letterSpacing: -0.3,
+    letterSpacing: -0.2,
   },
 });
