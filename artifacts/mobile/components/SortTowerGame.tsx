@@ -361,12 +361,17 @@ export function SortTowerGame({ visible, entries, onClose }: SortTowerGameProps)
 
         {/* Feedback pill */}
         <Animated.View style={[styles.feedbackPill, feedbackStyle]}>
+          <Ionicons
+            name={feedbackMsg === "correct" ? "checkmark" : "close"}
+            size={13}
+            color={feedbackMsg === "correct" ? Colors.success : Colors.belief}
+          />
           <Text style={{
             fontSize: 13,
             fontFamily: "Inter_600SemiBold",
-            color: feedbackMsg.current === "correct" ? Colors.success : Colors.belief,
+            color: feedbackMsg === "correct" ? Colors.success : Colors.belief,
           }}>
-            {feedbackMsg.current === "correct" ? "✓ Correct" : "✗ Wrong"}
+            {feedbackMsg === "correct" ? "Correct" : "Wrong"}
           </Text>
         </Animated.View>
 
@@ -492,6 +497,9 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     borderRadius: 100,
     zIndex: 50,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
   },
   burst: {
     position: "absolute",

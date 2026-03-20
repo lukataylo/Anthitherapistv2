@@ -164,7 +164,10 @@ function CompletionBanner({
         bannerStyle,
       ]}
     >
-      <Text style={styles.completionTitle}>All reframed! 🌟</Text>
+      <View style={styles.completionTitleRow}>
+        <Ionicons name="sparkles" size={16} color="#fff" />
+        <Text style={styles.completionTitle}>All reframed</Text>
+      </View>
       <Text style={styles.completionSub}>
         You've challenged every distorted thought.
       </Text>
@@ -242,6 +245,11 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: Colors.border,
     padding: 24,
+    alignItems: "center",
+    gap: 8,
+  },
+  completionTitleRow: {
+    flexDirection: "row",
     alignItems: "center",
     gap: 8,
   },

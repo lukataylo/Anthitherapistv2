@@ -39,7 +39,7 @@ function TabItem({
   tab: (typeof TABS)[0];
   isFocused: boolean;
   onPress: () => void;
-  badge?: string;
+  badge?: "active" | "inactive";
 }) {
   const scale = useSharedValue(1);
 
@@ -64,7 +64,10 @@ function TabItem({
             color={isFocused ? "#fff" : "rgba(255,255,255,0.35)"}
           />
           {badge ? (
-            <Text style={styles.badge}>{badge}</Text>
+            <View style={[
+              styles.badge,
+              { backgroundColor: badge === "active" ? "#FF9500" : "rgba(255,255,255,0.25)" },
+            ]} />
           ) : null}
         </View>
         <Text
@@ -84,9 +87,9 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const { currentStreak, reflectedToday } = useStreak();
 
-  const getBadge = (tabName: string): string | undefined => {
+  const getBadge = (tabName: string): "active" | "inactive" | undefined => {
     if (tabName === "index" && currentStreak > 0) {
-      return reflectedToday ? "🔥" : "💤";
+      return reflectedToday ? "active" : "inactive";
     }
     return undefined;
   };
@@ -149,9 +152,11 @@ const styles = StyleSheet.create({
   },
   badge: {
     position: "absolute",
-    top: -6,
-    right: -10,
-    fontSize: 11,
+    top: -3,
+    right: -5,
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
   },
   tabLabel: {
     fontSize: 10,

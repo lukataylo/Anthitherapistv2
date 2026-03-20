@@ -168,19 +168,19 @@ export default function HistoryScreen() {
 
         <View style={styles.streakRow}>
           <View style={[styles.streakCard, reflectedToday && styles.streakCardActive]}>
-            <Text style={styles.streakEmoji}>🔥</Text>
+            <Ionicons name="flame" size={18} color={reflectedToday ? "#FF9500" : "rgba(255,255,255,0.3)"} />
             <Text style={[styles.streakNum, reflectedToday && styles.streakNumActive]}>
               {currentStreak}
             </Text>
             <Text style={styles.streakLabel}>day streak</Text>
           </View>
           <View style={styles.streakCard}>
-            <Text style={styles.streakEmoji}>🏆</Text>
+            <Ionicons name="trophy-outline" size={18} color="rgba(255,255,255,0.3)" />
             <Text style={styles.streakNum}>{longestStreak}</Text>
             <Text style={styles.streakLabel}>best streak</Text>
           </View>
           <View style={styles.streakCard}>
-            <Text style={styles.streakEmoji}>💬</Text>
+            <Ionicons name="chatbubble-outline" size={18} color="rgba(255,255,255,0.3)" />
             <Text style={styles.streakNum}>{entries.length}</Text>
             <Text style={styles.streakLabel}>total</Text>
           </View>
@@ -324,9 +324,6 @@ const styles = StyleSheet.create({
   streakCardActive: {
     backgroundColor: "rgba(255,149,0,0.1)",
     borderColor: "rgba(255,149,0,0.2)",
-  },
-  streakEmoji: {
-    fontSize: 18,
   },
   streakNum: {
     fontSize: 20,

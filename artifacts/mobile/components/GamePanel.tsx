@@ -271,7 +271,7 @@ export function GamePanel() {
               <View style={styles.header}>
                 <Text style={styles.timerText}>{timeLeft}s</Text>
                 <Pressable onPress={handleSkip} style={styles.closeBtn}>
-                  <Text style={styles.closeBtnText}>✕</Text>
+                  <Ionicons name="close" size={18} color={Colors.textSecondary} />
                 </Pressable>
               </View>
 
@@ -370,7 +370,7 @@ export function GamePanel() {
                     ]}
                     onPress={handleReframeSubmit}
                   >
-                    <Text style={styles.sendBtnText}>→</Text>
+                    <Ionicons name="arrow-forward" size={20} color="#fff" />
                   </Pressable>
                 </View>
               ) : null}
@@ -486,10 +486,6 @@ const styles = StyleSheet.create({
     height: 32,
     alignItems: "center",
     justifyContent: "center",
-  },
-  closeBtnText: {
-    color: Colors.textSecondary,
-    fontSize: 18,
   },
   wordArea: {
     alignItems: "center",
@@ -619,11 +615,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
-  },
-  sendBtnText: {
-    color: Colors.white,
-    fontSize: 22,
-    fontFamily: "Inter_700Bold",
   },
   actionRow: {
     flexDirection: "row",

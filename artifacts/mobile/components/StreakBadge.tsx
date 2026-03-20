@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
 import { StyleSheet, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -38,7 +39,11 @@ export function StreakBadge({ animate = false }: StreakBadgeProps) {
 
   return (
     <Animated.View style={[styles.pill, pillStyle]}>
-      <Text style={styles.fire}>🔥</Text>
+      <Ionicons
+        name="flame"
+        size={13}
+        color={reflectedToday ? "#FF9500" : "rgba(255,255,255,0.35)"}
+      />
       <Text
         style={[
           styles.count,
@@ -60,10 +65,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 20,
-  },
-  fire: {
-    fontSize: 14,
-    lineHeight: 18,
   },
   count: {
     fontSize: 13,
