@@ -17,6 +17,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { GameProvider } from "@/context/GameContext";
 import { HistoryProvider } from "@/context/HistoryContext";
 import { TabBar } from "@/components/TabBar";
+import { StreakProvider } from "@/context/StreakContext";
 
 setBaseUrl(`https://${process.env.EXPO_PUBLIC_DOMAIN}`);
 
@@ -46,15 +47,17 @@ export default function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#000" }}>
             <HistoryProvider>
-              <GameProvider>
-                <Tabs
-                  tabBar={(props) => <TabBar {...props} />}
-                  screenOptions={{ headerShown: false }}
-                >
-                  <Tabs.Screen name="index" options={{ title: "Reframe" }} />
-                  <Tabs.Screen name="history" options={{ title: "History" }} />
-                </Tabs>
-              </GameProvider>
+              <StreakProvider>
+                <GameProvider>
+                  <Tabs
+                    tabBar={(props) => <TabBar {...props} />}
+                    screenOptions={{ headerShown: false }}
+                  >
+                    <Tabs.Screen name="index" options={{ title: "Reframe" }} />
+                    <Tabs.Screen name="history" options={{ title: "History" }} />
+                  </Tabs>
+                </GameProvider>
+              </StreakProvider>
             </HistoryProvider>
           </GestureHandlerRootView>
         </QueryClientProvider>

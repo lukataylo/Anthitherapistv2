@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useHistory, type HistoryEntry } from "@/context/HistoryContext";
 import { useGame } from "@/context/GameContext";
+import { useStreak } from "@/context/StreakContext";
 
 function timeAgo(ts: number): string {
   const diff = Date.now() - ts;
@@ -100,6 +101,7 @@ export default function HistoryScreen() {
   const insets = useSafeAreaInsets();
   const { entries, removeEntry } = useHistory();
   const { loadSession } = useGame();
+  const { currentStreak, longestStreak, reflectedToday } = useStreak();
   const router = useRouter();
 
   const handlePress = useCallback(
@@ -134,6 +136,26 @@ export default function HistoryScreen() {
             ? `${entries.length} reflection${entries.length !== 1 ? "s" : ""}`
             : ""}
         </Text>
+
+        <View style={styles.streakRow}>
+          <View style={[styles.streakCard, reflectedToday && styles.streakCardActive]}>
+            <Text style={styles.streakEmoji}>🔥</Text>
+            <Text style={[styles.streakNum, reflectedToday && styles.streakNumActive]}>
+              {currentStreak}
+            </Text>
+            <Text style={styles.streakLabel}>day streak</Text>
+          </View>
+          <View style={styles.streakCard}>
+            <Text style={styles.streakEmoji}>🏆</Text>
+            <Text style={styles.streakNum}>{longestStreak}</Text>
+            <Text style={styles.streakLabel}>best streak</Text>
+          </View>
+          <View style={styles.streakCard}>
+            <Text style={styles.streakEmoji}>💬</Text>
+            <Text style={styles.streakNum}>{entries.length}</Text>
+            <Text style={styles.streakLabel}>total</Text>
+          </View>
+        </View>
       </View>
       <FlatList
         data={entries}
@@ -232,6 +254,43 @@ const styles = StyleSheet.create({
   },
   separator: {
     height: 8,
+  },
+  streakRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 16,
+  },
+  streakCard: {
+    flex: 1,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderRadius: 12,
+    padding: 12,
+    alignItems: "center",
+    gap: 3,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.07)",
+  },
+  streakCardActive: {
+    backgroundColor: "rgba(255,149,0,0.1)",
+    borderColor: "rgba(255,149,0,0.2)",
+  },
+  streakEmoji: {
+    fontSize: 18,
+  },
+  streakNum: {
+    fontSize: 20,
+    fontFamily: "Inter_700Bold",
+    color: "rgba(255,255,255,0.6)",
+  },
+  streakNumActive: {
+    color: "#FF9500",
+  },
+  streakLabel: {
+    fontSize: 10,
+    fontFamily: "Inter_400Regular",
+    color: "rgba(255,255,255,0.3)",
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
   },
   empty: {
     flex: 1,

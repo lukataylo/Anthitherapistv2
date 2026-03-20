@@ -1,9 +1,10 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { Colors } from "@/constants/colors";
 import { useGame } from "@/context/GameContext";
 import { useHistory } from "@/context/HistoryContext";
+import { useStreak } from "@/context/StreakContext";
 import { CaptureScreen } from "@/components/CaptureScreen";
 import { CloudScreen } from "@/components/CloudScreen";
 import { useReframeThought, type ReframeResponse } from "@workspace/api-client-react";
@@ -11,8 +12,10 @@ import { useReframeThought, type ReframeResponse } from "@workspace/api-client-r
 export default function HomeScreen() {
   const { screen, setWords, words, reframedWords } = useGame();
   const { addEntry, updateEntry } = useHistory();
+  const { recordReflection } = useStreak();
   const entryIdRef = useRef<string | null>(null);
   const pendingThoughtRef = useRef<string>("");
+  const [streakJustIncremented, setStreakJustIncremented] = useState(false);
 
   const mutation = useReframeThought({
     mutation: {
@@ -27,6 +30,8 @@ export default function HomeScreen() {
         }));
         const id = addEntry(pendingThoughtRef.current, mapped);
         entryIdRef.current = id;
+        recordReflection();
+        setStreakJustIncremented(true);
         setWords(mapped);
       },
       onError(err: unknown) {
@@ -40,6 +45,13 @@ export default function HomeScreen() {
       updateEntry(entryIdRef.current, reframedWords);
     }
   }, [reframedWords]);
+
+  useEffect(() => {
+    if (streakJustIncremented) {
+      const t = setTimeout(() => setStreakJustIncremented(false), 1500);
+      return () => clearTimeout(t);
+    }
+  }, [streakJustIncremented]);
 
   const handleSubmitThought = (text: string) => {
     pendingThoughtRef.current = text;
@@ -57,6 +69,7 @@ export default function HomeScreen() {
         <CaptureScreen
           onSubmit={handleSubmitThought}
           isLoading={mutation.isPending}
+          streakJustIncremented={streakJustIncremented}
         />
       )}
     </View>

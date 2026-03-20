@@ -8,6 +8,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useStreak } from "@/context/StreakContext";
 
 const TABS: Array<{
   name: string;
@@ -33,10 +34,12 @@ function TabItem({
   tab,
   isFocused,
   onPress,
+  badge,
 }: {
   tab: (typeof TABS)[0];
   isFocused: boolean;
   onPress: () => void;
+  badge?: string;
 }) {
   const scale = useSharedValue(1);
 
@@ -54,11 +57,16 @@ function TabItem({
   return (
     <Pressable onPress={handlePress} style={styles.tabItem} hitSlop={8}>
       <Animated.View style={[styles.tabInner, animStyle]}>
-        <Ionicons
-          name={isFocused ? tab.iconActive : tab.icon}
-          size={24}
-          color={isFocused ? "#fff" : "rgba(255,255,255,0.35)"}
-        />
+        <View style={styles.iconWrap}>
+          <Ionicons
+            name={isFocused ? tab.iconActive : tab.icon}
+            size={24}
+            color={isFocused ? "#fff" : "rgba(255,255,255,0.35)"}
+          />
+          {badge ? (
+            <Text style={styles.badge}>{badge}</Text>
+          ) : null}
+        </View>
         <Text
           style={[
             styles.tabLabel,
@@ -74,6 +82,14 @@ function TabItem({
 
 export function TabBar({ state, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
+  const { currentStreak, reflectedToday } = useStreak();
+
+  const getBadge = (tabName: string): string | undefined => {
+    if (tabName === "index" && currentStreak > 0) {
+      return reflectedToday ? "🔥" : "💤";
+    }
+    return undefined;
+  };
 
   return (
     <View
@@ -90,6 +106,7 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
               key={tab.name}
               tab={tab}
               isFocused={isFocused}
+              badge={getBadge(tab.name)}
               onPress={() => {
                 const event = navigation.emit({
                   type: "tabPress",
@@ -126,6 +143,15 @@ const styles = StyleSheet.create({
   tabInner: {
     alignItems: "center",
     gap: 4,
+  },
+  iconWrap: {
+    position: "relative",
+  },
+  badge: {
+    position: "absolute",
+    top: -6,
+    right: -10,
+    fontSize: 11,
   },
   tabLabel: {
     fontSize: 10,

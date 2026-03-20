@@ -20,15 +20,22 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useGame } from "@/context/GameContext";
 import { ThinkingAnimation } from "@/components/ThinkingAnimation";
+import { StreakBadge } from "@/components/StreakBadge";
+import { StreakBanner } from "@/components/StreakBanner";
 
 interface CaptureScreenProps {
   onSubmit: (thought: string) => void;
   isLoading: boolean;
+  streakJustIncremented?: boolean;
 }
 
 const PLACEHOLDER = "What's on your mind?";
 
-export function CaptureScreen({ onSubmit, isLoading }: CaptureScreenProps) {
+export function CaptureScreen({
+  onSubmit,
+  isLoading,
+  streakJustIncremented = false,
+}: CaptureScreenProps) {
   const { thought, setThought } = useGame();
   const insets = useSafeAreaInsets();
   const inputRef = useRef<TextInput>(null);
@@ -85,11 +92,17 @@ export function CaptureScreen({ onSubmit, isLoading }: CaptureScreenProps) {
         style={[
           styles.container,
           {
-            paddingTop: insets.top + 20,
+            paddingTop: insets.top + 12,
             paddingBottom: Math.max(insets.bottom, 16),
           },
         ]}
       >
+        <View style={styles.topBar}>
+          <StreakBadge animate={streakJustIncremented} />
+        </View>
+
+        <StreakBanner />
+
         <TextInput
           ref={inputRef}
           style={styles.input}
@@ -146,6 +159,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#000",
     paddingHorizontal: 18,
+  },
+  topBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    marginBottom: 14,
   },
   input: {
     flex: 1,
