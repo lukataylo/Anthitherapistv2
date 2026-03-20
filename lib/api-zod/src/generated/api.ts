@@ -14,3 +14,40 @@ import * as zod from "zod";
 export const HealthCheckResponse = zod.object({
   status: zod.string(),
 });
+
+/**
+ * Takes a raw thought string and returns word-level cognitive analysis with reframe suggestions
+ * @summary Analyse and reframe a thought
+ */
+export const ReframeThoughtBody = zod.object({
+  thought: zod.string().describe("The raw thought text to analyse"),
+});
+
+export const ReframeThoughtResponse = zod.object({
+  words: zod.array(
+    zod.object({
+      word: zod.string().describe("The original word"),
+      category: zod
+        .enum(["neutral", "belief", "fear", "absolute", "self_judgment"])
+        .describe("Cognitive category of the word"),
+      reframes: zod
+        .array(zod.string())
+        .describe("Possible reframe suggestions (only for significant words)"),
+      hint: zod
+        .string()
+        .nullish()
+        .describe("A softened hint for the word (only for significant words)"),
+      fiftyFifty: zod
+        .array(zod.string())
+        .describe(
+          "Two options for 50\/50 — one correct reframe and one decoy (only for significant words)",
+        ),
+      explainer: zod
+        .string()
+        .nullish()
+        .describe(
+          "Brief explanation of why this word is cognitively distorted",
+        ),
+    }),
+  ),
+});

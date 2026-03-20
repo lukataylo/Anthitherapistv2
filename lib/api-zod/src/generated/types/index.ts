@@ -6,4 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./errorResponse";
 export * from "./healthStatus";
+export * from "./reframeRequest";
+export * from "./reframeResponse";
+export * from "./wordAnalysis";
+export * from "./wordAnalysisCategory";

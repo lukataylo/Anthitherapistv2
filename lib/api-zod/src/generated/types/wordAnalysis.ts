@@ -5,28 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-export interface HealthStatus {
-  status: string;
-}
-
-export interface ReframeRequest {
-  /** The raw thought text to analyse */
-  thought: string;
-}
-
-/**
- * Cognitive category of the word
- */
-export type WordAnalysisCategory =
-  (typeof WordAnalysisCategory)[keyof typeof WordAnalysisCategory];
-
-export const WordAnalysisCategory = {
-  neutral: "neutral",
-  belief: "belief",
-  fear: "fear",
-  absolute: "absolute",
-  self_judgment: "self_judgment",
-} as const;
+import type { WordAnalysisCategory } from "./wordAnalysisCategory";
 
 export interface WordAnalysis {
   /** The original word */
@@ -41,12 +20,4 @@ export interface WordAnalysis {
   fiftyFifty: string[];
   /** Brief explanation of why this word is cognitively distorted */
   explainer?: string | null;
-}
-
-export interface ReframeResponse {
-  words: WordAnalysis[];
-}
-
-export interface ErrorResponse {
-  error: string;
 }

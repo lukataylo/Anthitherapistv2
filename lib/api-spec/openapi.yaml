@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: reframe
+    description: Cognitive reframing operations
 paths:
   /healthz:
     get:
@@ -24,6 +26,37 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /reframe:
+    post:
+      operationId: reframeThought
+      tags: [reframe]
+      summary: Analyse and reframe a thought
+      description: Takes a raw thought string and returns word-level cognitive analysis with reframe suggestions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReframeRequest"
+      responses:
+        "200":
+          description: Successful analysis
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReframeResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +66,60 @@ components:
           type: string
       required:
         - status
-
+    ReframeRequest:
+      type: object
+      properties:
+        thought:
+          type: string
+          description: The raw thought text to analyse
+      required:
+        - thought
+    WordAnalysis:
+      type: object
+      properties:
+        word:
+          type: string
+          description: The original word
+        category:
+          type: string
+          enum: [neutral, belief, fear, absolute, self_judgment]
+          description: Cognitive category of the word
+        reframes:
+          type: array
+          items:
+            type: string
+          description: Possible reframe suggestions (only for significant words)
+        hint:
+          type: string
+          nullable: true
+          description: A softened hint for the word (only for significant words)
+        fiftyFifty:
+          type: array
+          items:
+            type: string
+          description: Two options for 50/50 — one correct reframe and one decoy (only for significant words)
+        explainer:
+          type: string
+          nullable: true
+          description: Brief explanation of why this word is cognitively distorted
+      required:
+        - word
+        - category
+        - reframes
+        - fiftyFifty
+    ReframeResponse:
+      type: object
+      properties:
+        words:
+          type: array
+          items:
+            $ref: "#/components/schemas/WordAnalysis"
+      required:
+        - words
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error

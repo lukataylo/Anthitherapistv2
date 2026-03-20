@@ -5,18 +5,26 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import type {
+  MutationFunction,
   QueryFunction,
   QueryKey,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult,
 } from "@tanstack/react-query";
 
-import type { HealthStatus } from "./api.schemas";
+import type {
+  ErrorResponse,
+  HealthStatus,
+  ReframeRequest,
+  ReframeResponse,
+} from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
-import type { ErrorType } from "../custom-fetch";
+import type { ErrorType, BodyType } from "../custom-fetch";
 
 type AwaitedInput<T> = PromiseLike<T> | T;
 
@@ -99,3 +107,90 @@ export function useHealthCheck<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * Takes a raw thought string and returns word-level cognitive analysis with reframe suggestions
+ * @summary Analyse and reframe a thought
+ */
+export const getReframeThoughtUrl = () => {
+  return `/api/reframe`;
+};
+
+export const reframeThought = async (
+  reframeRequest: ReframeRequest,
+  options?: RequestInit,
+): Promise<ReframeResponse> => {
+  return customFetch<ReframeResponse>(getReframeThoughtUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(reframeRequest),
+  });
+};
+
+export const getReframeThoughtMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof reframeThought>>,
+    TError,
+    { data: BodyType<ReframeRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof reframeThought>>,
+  TError,
+  { data: BodyType<ReframeRequest> },
+  TContext
+> => {
+  const mutationKey = ["reframeThought"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof reframeThought>>,
+    { data: BodyType<ReframeRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return reframeThought(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ReframeThoughtMutationResult = NonNullable<
+  Awaited<ReturnType<typeof reframeThought>>
+>;
+export type ReframeThoughtMutationBody = BodyType<ReframeRequest>;
+export type ReframeThoughtMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Analyse and reframe a thought
+ */
+export const useReframeThought = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof reframeThought>>,
+    TError,
+    { data: BodyType<ReframeRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof reframeThought>>,
+  TError,
+  { data: BodyType<ReframeRequest> },
+  TContext
+> => {
+  return useMutation(getReframeThoughtMutationOptions(options));
+};
