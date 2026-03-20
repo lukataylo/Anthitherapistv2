@@ -35,24 +35,23 @@ const { width: SW, height: SH } = Dimensions.get("window");
 const SWIPE_THRESHOLD = SW * 0.27;
 const GAME_SECONDS = 30;
 
-const BG = "#FAF8F4";
-const TEXT_DARK = "#1A1005";
-const TEXT_MID = "rgba(26,16,5,0.45)";
-const NEG_COLOR = "#C24D3A";
-const POS_COLOR = "#2A8C7F";
-const CARD_BG = "#FFFFFF";
-const TOWER_BG = "rgba(26,16,5,0.04)";
-const FOUNDATION_COLOR = "#3D2B1F";
+const BG = "#000";
+const TEXT_DARK = "#fff";
+const TEXT_MID = "rgba(255,255,255,0.38)";
+const NEG_COLOR = "#FF5B5B";
+const POS_COLOR = "#00E5A0";
+const CARD_BG = "#1A1A1A";
+const FOUNDATION_COLOR = "#DCDCDC";
 
 const FLOOR_PALETTE = [
-  "#C2614F",
-  "#D4845A",
-  "#B85F7A",
-  "#7A6B9E",
-  "#8B9E6E",
-  "#C9935A",
-  "#5A7A9E",
-  "#B87A5A",
+  "#FFFFFF",
+  "#E8E8E8",
+  "#D0D0D0",
+  "#B8B8B8",
+  "#F0F0F0",
+  "#C8C8C8",
+  "#A0A0A0",
+  "#ECECEC",
 ];
 
 const FLOOR_H = 28;
@@ -636,12 +635,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: 18,
     borderLeftColor: "transparent",
     borderRightColor: "transparent",
-    borderBottomColor: FOUNDATION_COLOR,
+    borderBottomColor: "#E0E0E0",
   },
   spireBody: {
     width: 10,
     height: 6,
-    backgroundColor: FOUNDATION_COLOR,
+    backgroundColor: "#E0E0E0",
     borderRadius: 1,
   },
   floor: {
@@ -659,7 +658,7 @@ const styles = StyleSheet.create({
   arch: {
     width: 7,
     height: 11,
-    backgroundColor: "rgba(255,255,255,0.32)",
+    backgroundColor: "rgba(0,0,0,0.25)",
     borderTopLeftRadius: 3.5,
     borderTopRightRadius: 3.5,
   },
@@ -693,15 +692,10 @@ const styles = StyleSheet.create({
     paddingVertical: 32,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1.5,
-    borderColor: "rgba(0,0,0,0.06)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.07)",
     minHeight: 96,
     marginHorizontal: 8,
-    shadowColor: "#000",
-    shadowOpacity: 0.07,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 3,
   },
   wordText: {
     color: TEXT_DARK,
@@ -752,7 +746,7 @@ const styles = StyleSheet.create({
     top: -32,
     paddingHorizontal: 14,
     paddingVertical: 6,
-    backgroundColor: "#C9935A",
+    backgroundColor: "rgba(255,255,255,0.12)",
     borderRadius: 100,
     zIndex: 60,
   },

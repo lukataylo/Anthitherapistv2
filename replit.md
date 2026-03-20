@@ -21,9 +21,10 @@ pnpm workspace monorepo using TypeScript. Cognitive Reframing ("Reframe") — a 
 ## App Features
 
 ### Cognitive Reframing (Mobile App)
-1. **Capture Screen** — Dark minimal UI with a microphone button (for type-to-input) and a text area. User types or speaks a negative thought, hits "Analyse →".
-2. **Word Cloud Screen** — The thought explodes into animated word pills. Neutral words are small/grey; significant words (beliefs, fears, absolutes, self-judgements) are colour-coded and pulse with a neon glow. A progress counter shows how many words have been reframed.
-3. **Reframe Game Panel** — Full-screen overlay with: distorted word shown large, countdown timer bar (45s), wrong-attempt strikethrough zone, and four lifeline buttons (REFRAME / HINT / 50/50 / SKIP). Correct reframe triggers a letter-tumble celebration animation.
+1. **Capture Screen** — Dark minimal UI. User types a negative thought, hits the send button. On submit, the screen cross-fades to the inline annotation view (no separate cloud screen).
+2. **Inline Annotation View** — The original thought renders in-place with highlighted word chips. Distortion words are colour-coded spans (belief=red, fear=purple, absolute=orange, self_judgment=pink). Reframed words swap to green. A "pencil" button returns to capture. Progress counter "N of M reframed" shown top-right. Tapping a distortion word opens the Game Panel.
+3. **Reframe Game Panel** — Modal overlay: distorted word shown large, 45s countdown timer, lifeline buttons (REFRAME / HINT / 50/50 / SKIP). Correct reframe triggers a letter-tumble celebration animation.
+4. **Sort Tower Game** — Swipe-based word sorting game on the History screen. Builds an architectural tower (white/grey floors with arched windows + spire) on a black background. Streak multiplier up to 4×.
 
 ### AI Backend (`/api/reframe`)
 - POST endpoint that takes a thought string and returns word-by-word cognitive analysis
