@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
-  Animated,
   Keyboard,
   KeyboardAvoidingView,
   Modal,
@@ -12,6 +11,14 @@ import {
   TextInput,
   View,
 } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+  interpolate,
+  interpolateColor,
+} from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { Colors } from "@/constants/colors";
 import { useGame, WordAnalysis } from "@/context/GameContext";
@@ -22,6 +29,30 @@ const TIMER_SECONDS = 45;
 interface WrongAttempt {
   text: string;
   explainer: string;
+}
+
+function levenshtein(a: string, b: string): number {
+  const dp: number[][] = Array.from({ length: a.length + 1 }, (_, i) =>
+    Array.from({ length: b.length + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0))
+  );
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      if (a[i - 1] === b[j - 1]) {
+        dp[i][j] = dp[i - 1][j - 1];
+      } else {
+        dp[i][j] = 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+      }
+    }
+  }
+  return dp[a.length][b.length];
+}
+
+function isCloseEnoughToReframe(input: string, reframe: string): boolean {
+  const a = input.toLowerCase().trim();
+  const b = reframe.toLowerCase().trim();
+  if (a === b) return true;
+  const maxDist = Math.floor(Math.max(a.length, b.length) * 0.25);
+  return levenshtein(a, b) <= maxDist;
 }
 
 export function GamePanel() {
@@ -42,16 +73,14 @@ export function GamePanel() {
   const [showReframeInput, setShowReframeInput] = useState(false);
   const [wrongAttempts, setWrongAttempts] = useState<WrongAttempt[]>([]);
   const [hintRevealed, setHintRevealed] = useState(false);
-  const [fiftyFiftyOptions, setFiftyFiftyOptions] = useState<string[] | null>(
-    null
-  );
+  const [fiftyFiftyOptions, setFiftyFiftyOptions] = useState<string[] | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
   const [celebrationWord, setCelebrationWord] = useState("");
-  const [timerProgress] = useState(new Animated.Value(1));
   const [timeLeft, setTimeLeft] = useState(TIMER_SECONDS);
+
+  const timerProgress = useSharedValue(1);
+  const slideAnim = useSharedValue(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const timerAnimRef = useRef<Animated.CompositeAnimation | null>(null);
-  const slideAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (isVisible) {
@@ -62,21 +91,13 @@ export function GamePanel() {
       setFiftyFiftyOptions(null);
       setShowCelebration(false);
       setTimeLeft(TIMER_SECONDS);
-      timerProgress.setValue(1);
+      timerProgress.value = 1;
 
-      Animated.spring(slideAnim, {
-        toValue: 1,
-        friction: 8,
-        tension: 60,
-        useNativeDriver: true,
-      }).start();
+      slideAnim.value = withSpring(1, { damping: 16, stiffness: 120 });
 
-      timerAnimRef.current = Animated.timing(timerProgress, {
-        toValue: 0,
+      timerProgress.value = withTiming(0, {
         duration: TIMER_SECONDS * 1000,
-        useNativeDriver: false,
       });
-      timerAnimRef.current.start();
 
       timerRef.current = setInterval(() => {
         setTimeLeft((t) => {
@@ -89,20 +110,35 @@ export function GamePanel() {
         });
       }, 1000);
     } else {
-      slideAnim.setValue(0);
-      timerAnimRef.current?.stop();
+      slideAnim.value = 0;
       if (timerRef.current) clearInterval(timerRef.current);
     }
 
     return () => {
-      timerAnimRef.current?.stop();
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, [isVisible, activeWordIndex]);
 
+  const panelStyle = useAnimatedStyle(() => ({
+    transform: [
+      {
+        translateY: interpolate(slideAnim.value, [0, 1], [80, 0]),
+      },
+    ],
+    opacity: slideAnim.value,
+  }));
+
+  const timerFillStyle = useAnimatedStyle(() => ({
+    width: `${timerProgress.value * 100}%` as unknown as number,
+    backgroundColor: interpolateColor(
+      timerProgress.value,
+      [0, 0.3, 1],
+      [Colors.belief, Colors.absolute, Colors.fear]
+    ) as string,
+  }));
+
   const handleSkip = () => {
     if (activeWordIndex === null) return;
-    timerAnimRef.current?.stop();
     if (timerRef.current) clearInterval(timerRef.current);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     skipWord(activeWordIndex);
@@ -111,22 +147,19 @@ export function GamePanel() {
   const evaluateReframe = (input: string): boolean => {
     if (!activeWord) return false;
     const lower = input.toLowerCase().trim();
-    if (lower === activeWord.word.toLowerCase()) return false;
-    if (activeWord.category === "absolute") {
-      const absolutes = [
-        "always","never","everyone","nobody","everything","nothing",
-        "completely","totally","forever","impossible","every","all","none",
-      ];
-      if (absolutes.includes(lower)) return false;
-    }
-    const goodReframes = activeWord.reframes.map((r) => r.toLowerCase());
-    if (goodReframes.some((r) => lower.includes(r) || r.includes(lower))) {
-      return true;
-    }
-    if (lower.length >= 3 && lower !== activeWord.word.toLowerCase()) {
-      return true;
-    }
-    return false;
+    const original = activeWord.word.toLowerCase();
+
+    if (lower === original) return false;
+
+    const ABSOLUTE_WORDS = new Set([
+      "always", "never", "everyone", "nobody", "everything", "nothing",
+      "completely", "totally", "forever", "impossible", "every", "all", "none",
+      "must", "cant", "can't", "worthless", "useless", "failure",
+    ]);
+    if (ABSOLUTE_WORDS.has(lower)) return false;
+
+    const goodReframes = activeWord.reframes.map((r) => r.toLowerCase().trim());
+    return goodReframes.some((r) => isCloseEnoughToReframe(lower, r));
   };
 
   const handleReframeSubmit = () => {
@@ -154,7 +187,11 @@ export function GamePanel() {
   };
 
   const handleFiftyFiftyPick = (option: string) => {
-    const isCorrect = evaluateReframe(option);
+    if (!activeWord) return;
+    const goodReframes = activeWord.reframes.map((r) => r.toLowerCase().trim());
+    const optLower = option.toLowerCase().trim();
+    const isCorrect = goodReframes.some((r) => isCloseEnoughToReframe(optLower, r));
+
     if (isCorrect) {
       handleSuccess(option);
     } else {
@@ -164,8 +201,7 @@ export function GamePanel() {
         {
           text: option,
           explainer:
-            activeWord?.explainer ||
-            "Not quite — try the other option.",
+            activeWord?.explainer || "Not quite — try the other option.",
         },
       ]);
       setFiftyFiftyOptions(null);
@@ -174,7 +210,6 @@ export function GamePanel() {
 
   const handleSuccess = (reframedWord: string) => {
     if (activeWordIndex === null) return;
-    timerAnimRef.current?.stop();
     if (timerRef.current) clearInterval(timerRef.current);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setCelebrationWord(reframedWord);
@@ -204,38 +239,9 @@ export function GamePanel() {
       >
         <Pressable onPress={Keyboard.dismiss} style={{ flex: 1 }}>
           <View style={styles.overlay}>
-            <Animated.View
-              style={[
-                styles.panel,
-                {
-                  transform: [
-                    {
-                      translateY: slideAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [80, 0],
-                      }),
-                    },
-                  ],
-                  opacity: slideAnim,
-                },
-              ]}
-            >
+            <Animated.View style={[styles.panel, panelStyle]}>
               <View style={styles.timerBar}>
-                <Animated.View
-                  style={[
-                    styles.timerFill,
-                    {
-                      width: timerProgress.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: ["0%", "100%"],
-                      }),
-                      backgroundColor: timerProgress.interpolate({
-                        inputRange: [0, 0.3, 1],
-                        outputRange: [Colors.belief, Colors.absolute, Colors.fear],
-                      }),
-                    },
-                  ]}
-                />
+                <Animated.View style={[styles.timerFill, timerFillStyle]} />
               </View>
 
               <View style={styles.header}>
@@ -253,10 +259,10 @@ export function GamePanel() {
                   style={[
                     styles.categoryBadge,
                     {
-                      backgroundColor:
-                        Colors[
-                          `${activeWord.category}Dim` as keyof typeof Colors
-                        ] ?? Colors.neutralText,
+                      backgroundColor: (
+                        Colors[`${activeWord.category}Dim` as keyof typeof Colors] ??
+                        Colors.neutralText
+                      ) as string,
                     },
                   ]}
                 >
@@ -264,10 +270,10 @@ export function GamePanel() {
                     style={[
                       styles.categoryText,
                       {
-                        color:
-                          Colors[
-                            activeWord.category as keyof typeof Colors
-                          ] ?? Colors.textSecondary,
+                        color: (
+                          Colors[activeWord.category as keyof typeof Colors] ??
+                          Colors.textSecondary
+                        ) as string,
                       },
                     ]}
                   >
@@ -382,9 +388,10 @@ export function GamePanel() {
                   onPress={() => {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                     setShowReframeInput(false);
-                    const opts = activeWord.fiftyFifty?.length >= 2
-                      ? [...activeWord.fiftyFifty].sort(() => Math.random() - 0.5)
-                      : [activeWord.hint ?? "sometimes", activeWord.word];
+                    const opts =
+                      activeWord.fiftyFifty?.length >= 2
+                        ? [...activeWord.fiftyFifty].sort(() => Math.random() - 0.5)
+                        : [activeWord.hint ?? "sometimes", activeWord.word];
                     setFiftyFiftyOptions(opts);
                   }}
                 >

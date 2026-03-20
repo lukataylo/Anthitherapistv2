@@ -1,6 +1,5 @@
 import React, { useRef, useState } from "react";
 import {
-  Animated,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -10,6 +9,12 @@ import {
   TextInput,
   View,
 } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withSpring,
+} from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -18,7 +23,7 @@ import { useGame } from "@/context/GameContext";
 import { ThinkingAnimation } from "@/components/ThinkingAnimation";
 
 interface CaptureScreenProps {
-  onSubmit: (thought: string) => Promise<void>;
+  onSubmit: (thought: string) => void;
   isLoading: boolean;
 }
 
@@ -33,35 +38,31 @@ export function CaptureScreen({ onSubmit, isLoading }: CaptureScreenProps) {
   const { thought, setThought } = useGame();
   const insets = useSafeAreaInsets();
   const [isFocused, setIsFocused] = useState(false);
-  const micPulse = useRef(new Animated.Value(1)).current;
   const inputRef = useRef<TextInput>(null);
+  const micScale = useSharedValue(1);
 
   const [currentExample] = useState(
     () => EXAMPLES[Math.floor(Math.random() * EXAMPLES.length)]
   );
 
-  const handleSubmit = async () => {
+  const micStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: micScale.value }],
+  }));
+
+  const handleSubmit = () => {
     if (!thought.trim() || isLoading) return;
     Keyboard.dismiss();
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    await onSubmit(thought.trim());
+    onSubmit(thought.trim());
   };
 
   const handleMicPress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     inputRef.current?.focus();
-    Animated.sequence([
-      Animated.spring(micPulse, {
-        toValue: 1.2,
-        friction: 3,
-        useNativeDriver: true,
-      }),
-      Animated.spring(micPulse, {
-        toValue: 1,
-        friction: 3,
-        useNativeDriver: true,
-      }),
-    ]).start();
+    micScale.value = withSequence(
+      withSpring(1.2, { damping: 4 }),
+      withSpring(1, { damping: 6 })
+    );
   };
 
   return (
@@ -96,12 +97,7 @@ export function CaptureScreen({ onSubmit, isLoading }: CaptureScreenProps) {
                   { opacity: pressed ? 0.9 : 1 },
                 ]}
               >
-                <Animated.View
-                  style={[
-                    styles.micOuter,
-                    { transform: [{ scale: micPulse }] },
-                  ]}
-                >
+                <Animated.View style={[styles.micOuter, micStyle]}>
                   <View style={styles.micInner}>
                     <Ionicons name="mic" size={40} color={Colors.text} />
                   </View>

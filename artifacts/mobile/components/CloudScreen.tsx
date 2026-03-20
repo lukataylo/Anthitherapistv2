@@ -1,12 +1,18 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
-  Animated,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -26,16 +32,12 @@ export function CloudScreen() {
     allDone,
   } = useGame();
   const insets = useSafeAreaInsets();
-  const fadeIn = useRef(new Animated.Value(0)).current;
+  const fadeIn = useSharedValue(0);
   const [showDone, setShowDone] = useState(false);
 
   useEffect(() => {
-    Animated.timing(fadeIn, {
-      toValue: 1,
-      duration: 500,
-      useNativeDriver: true,
-    }).start();
-  }, [fadeIn]);
+    fadeIn.value = withTiming(1, { duration: 500 });
+  }, []);
 
   useEffect(() => {
     if (allDone && totalSignificant > 0) {
@@ -44,6 +46,10 @@ export function CloudScreen() {
     }
   }, [allDone, totalSignificant]);
 
+  const containerStyle = useAnimatedStyle(() => ({
+    opacity: fadeIn.value,
+  }));
+
   const handleWordPress = (wordIndex: number) => {
     if (reframedWords[wordIndex] !== undefined) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -51,9 +57,7 @@ export function CloudScreen() {
   };
 
   return (
-    <Animated.View
-      style={[styles.container, { opacity: fadeIn }]}
-    >
+    <Animated.View style={[styles.container, containerStyle]}>
       <View
         style={[
           styles.topBar,
@@ -79,9 +83,10 @@ export function CloudScreen() {
               style={[
                 styles.progressFill,
                 {
-                  width: totalSignificant > 0
-                    ? `${(reframedCount / totalSignificant) * 100}%`
-                    : "0%",
+                  width:
+                    totalSignificant > 0
+                      ? `${(reframedCount / totalSignificant) * 100}%`
+                      : "0%",
                 },
               ]}
             />
@@ -118,18 +123,13 @@ export function CloudScreen() {
       </ScrollView>
 
       {showDone && allDone && (
-        <CompletionBanner
-          onReset={goToCapture}
-          insets={insets}
-        />
+        <CompletionBanner onReset={goToCapture} insets={insets} />
       )}
 
       <GamePanel />
     </Animated.View>
   );
 }
-
-import { Platform } from "react-native";
 
 function CompletionBanner({
   onReset,
@@ -138,25 +138,22 @@ function CompletionBanner({
   onReset: () => void;
   insets: { bottom: number };
 }) {
-  const slideAnim = useRef(new Animated.Value(120)).current;
+  const slideAnim = useSharedValue(120);
 
   useEffect(() => {
-    Animated.spring(slideAnim, {
-      toValue: 0,
-      friction: 7,
-      tension: 50,
-      useNativeDriver: true,
-    }).start();
-  }, [slideAnim]);
+    slideAnim.value = withSpring(0, { damping: 14, stiffness: 100 });
+  }, []);
+
+  const bannerStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: slideAnim.value }],
+  }));
 
   return (
     <Animated.View
       style={[
         styles.completionBanner,
-        {
-          paddingBottom: insets.bottom + 20,
-          transform: [{ translateY: slideAnim }],
-        },
+        { paddingBottom: insets.bottom + 20 },
+        bannerStyle,
       ]}
     >
       <Text style={styles.completionTitle}>All reframed! 🌟</Text>

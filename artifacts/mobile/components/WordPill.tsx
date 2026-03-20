@@ -1,10 +1,6 @@
-import React, { useEffect, useRef } from "react";
-import {
-  Animated,
-  Pressable,
-  StyleSheet,
-  Text,
-} from "react-native";
+import React from "react";
+import { Pressable, StyleSheet, Text } from "react-native";
+import { MotiView } from "moti";
 import { Colors } from "@/constants/colors";
 import type { WordCategory } from "@/context/GameContext";
 
@@ -51,59 +47,6 @@ export function WordPill({
   delay = 0,
   isNeutral = false,
 }: WordPillProps) {
-  const scaleAnim = useRef(new Animated.Value(0)).current;
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-  const glowAnim = useRef(new Animated.Value(0.3)).current;
-
-  useEffect(() => {
-    Animated.spring(scaleAnim, {
-      toValue: 1,
-      delay,
-      friction: 6,
-      tension: 80,
-      useNativeDriver: true,
-    }).start();
-  }, [delay, scaleAnim]);
-
-  useEffect(() => {
-    if (!isNeutral && !isReframed && category !== "neutral") {
-      const pulse = Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.05,
-            duration: 1200,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 1200,
-            useNativeDriver: true,
-          }),
-        ])
-      );
-      const glow = Animated.loop(
-        Animated.sequence([
-          Animated.timing(glowAnim, {
-            toValue: 1,
-            duration: 1200,
-            useNativeDriver: true,
-          }),
-          Animated.timing(glowAnim, {
-            toValue: 0.3,
-            duration: 1200,
-            useNativeDriver: true,
-          }),
-        ])
-      );
-      pulse.start();
-      glow.start();
-      return () => {
-        pulse.stop();
-        glow.stop();
-      };
-    }
-  }, [isNeutral, isReframed, category, pulseAnim, glowAnim]);
-
   const displayWord = isReframed && reframedWord ? reframedWord : word;
   const effectiveCategory = isReframed ? "neutral" : category;
   const isSignificant = category !== "neutral" && !isReframed;
@@ -122,27 +65,47 @@ export function WordPill({
     : CATEGORY_TEXT[effectiveCategory];
 
   return (
-    <Animated.View
-      style={[
-        styles.container,
-        { transform: [{ scale: scaleAnim }] },
-      ]}
+    <MotiView
+      from={{ scale: 0, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      transition={{
+        type: "spring",
+        delay,
+        damping: 12,
+        stiffness: 160,
+      }}
+      style={styles.container}
     >
-      <Animated.View
-        style={[
-          styles.glow,
-          {
-            backgroundColor: isComplete
-              ? Colors.successGlow
-              : isSignificant
-              ? CATEGORY_COLORS[category]
-              : "transparent",
-            opacity: isSignificant && !isComplete ? glowAnim : isComplete ? 0.5 : 0,
-          },
-        ]}
-      />
-      <Animated.View
-        style={{ transform: [{ scale: isSignificant && !isComplete ? pulseAnim : 1 }] }}
+      {isSignificant && !isComplete && (
+        <MotiView
+          from={{ opacity: 0.3 }}
+          animate={{ opacity: 1 }}
+          transition={{
+            type: "timing",
+            duration: 1200,
+            loop: true,
+            repeatReverse: true,
+          }}
+          style={[
+            styles.glow,
+            { backgroundColor: CATEGORY_COLORS[category] },
+          ]}
+        />
+      )}
+      {isComplete && (
+        <MotiView
+          style={[styles.glow, { backgroundColor: Colors.successGlow, opacity: 0.5 }]}
+        />
+      )}
+
+      <MotiView
+        from={{ scale: 1 }}
+        animate={isSignificant && !isComplete ? { scale: [1, 1.05, 1] } : { scale: 1 }}
+        transition={
+          isSignificant && !isComplete
+            ? { type: "timing", duration: 1200, loop: true, repeatReverse: false }
+            : undefined
+        }
       >
         <Pressable
           onPress={isSignificant ? onPress : undefined}
@@ -168,8 +131,8 @@ export function WordPill({
             {displayWord}
           </Text>
         </Pressable>
-      </Animated.View>
-    </Animated.View>
+      </MotiView>
+    </MotiView>
   );
 }
 

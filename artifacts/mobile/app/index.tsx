@@ -1,54 +1,37 @@
-import React, { useState } from "react";
+import React from "react";
 import { StyleSheet, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { Colors } from "@/constants/colors";
-import { useGame, WordAnalysis } from "@/context/GameContext";
+import { useGame } from "@/context/GameContext";
 import { CaptureScreen } from "@/components/CaptureScreen";
 import { CloudScreen } from "@/components/CloudScreen";
+import { useReframeThought, type ReframeResponse } from "@workspace/api-client-react";
 
 export default function HomeScreen() {
   const { screen, setWords } = useGame();
-  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmitThought = async (thought: string) => {
-    setIsLoading(true);
-    try {
-      const domain = process.env.EXPO_PUBLIC_DOMAIN;
-      const url = domain
-        ? `https://${domain}/api/reframe`
-        : "/api/reframe";
+  const mutation = useReframeThought({
+    mutation: {
+      onSuccess(data: ReframeResponse) {
+        setWords(
+          data.words.map((w) => ({
+            word: w.word,
+            category: w.category ?? "neutral",
+            reframes: w.reframes ?? [],
+            hint: w.hint ?? null,
+            fiftyFifty: w.fiftyFifty ?? [],
+            explainer: w.explainer ?? null,
+          }))
+        );
+      },
+      onError(err: unknown) {
+        console.error("Reframe error:", err);
+      },
+    },
+  });
 
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ thought }),
-      });
-
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || `Server error ${res.status}`);
-      }
-
-      const data = await res.json();
-      if (!data.words || !Array.isArray(data.words)) {
-        throw new Error("Unexpected response format");
-      }
-
-      const words: WordAnalysis[] = (data.words as WordAnalysis[]).map((w) => ({
-        word: w.word,
-        category: w.category ?? "neutral",
-        reframes: w.reframes ?? [],
-        hint: w.hint ?? null,
-        fiftyFifty: w.fiftyFifty ?? [],
-        explainer: w.explainer ?? null,
-      }));
-
-      setWords(words);
-    } catch (err: unknown) {
-      console.error("Reframe error:", err);
-    } finally {
-      setIsLoading(false);
-    }
+  const handleSubmitThought = (thought: string) => {
+    mutation.mutate({ data: { thought } });
   };
 
   const showCloud = screen === "cloud" || screen === "game";
@@ -61,7 +44,7 @@ export default function HomeScreen() {
       ) : (
         <CaptureScreen
           onSubmit={handleSubmitThought}
-          isLoading={isLoading}
+          isLoading={mutation.isPending}
         />
       )}
     </View>
