@@ -164,9 +164,11 @@ export function CaptureScreen({
           </Pressable>
         </View>
 
-        <Animated.View style={[styles.nudgeRow, nudgeStyle]}>
-          <Text style={styles.nudgeText}>{nudgeText}</Text>
-        </Animated.View>
+        {showNudge && (
+          <Animated.View style={[styles.nudgeRow, nudgeStyle]}>
+            <Text style={styles.nudgeText}>{nudgeText}</Text>
+          </Animated.View>
+        )}
       </View>
     </KeyboardAvoidingView>
   );
