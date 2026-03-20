@@ -1,75 +1,186 @@
-import React from "react";
-import { StyleSheet, Text, View } from "react-native";
-import { MotiView } from "moti";
+import React, { useEffect, useState } from "react";
+import { StyleSheet, View } from "react-native";
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from "react-native-reanimated";
 import { Colors } from "@/constants/colors";
 
-function PulsingRing({
-  delay,
+const MESSAGES = [
+  "Reading your thought...",
+  "Identifying patterns...",
+  "Mapping the language...",
+  "Almost there...",
+];
+
+function PulseRing({
+  phaseScale,
+  phaseOpacity,
   color,
   size,
 }: {
-  delay: number;
+  phaseScale: number;
+  phaseOpacity: number;
   color: string;
   size: number;
 }) {
+  const scale = useSharedValue(phaseScale);
+  const opacity = useSharedValue(phaseOpacity);
+
+  useEffect(() => {
+    scale.value = withRepeat(
+      withTiming(2.0, { duration: 2400, easing: Easing.out(Easing.cubic) }),
+      -1,
+      false
+    );
+    opacity.value = withRepeat(
+      withSequence(
+        withTiming(phaseOpacity, { duration: 0 }),
+        withTiming(0, { duration: 2400, easing: Easing.out(Easing.cubic) })
+      ),
+      -1,
+      false
+    );
+  }, []);
+
+  const style = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+    opacity: opacity.value,
+  }));
+
   return (
-    <MotiView
-      from={{ opacity: 0.6, scale: 0.6 }}
-      animate={{ opacity: 0, scale: 1.6 }}
-      transition={{
-        type: "timing",
-        duration: 1600,
-        delay,
-        loop: true,
-        repeatReverse: false,
-      }}
+    <Animated.View
       style={[
-        styles.ring,
-        {
-          width: size,
-          height: size,
-          borderRadius: size / 2,
-          borderColor: color,
-          position: "absolute",
-        },
+        styles.pulseRing,
+        { width: size, height: size, borderRadius: size / 2, borderColor: color },
+        style,
       ]}
     />
   );
 }
 
-function BounceDot({ delay, color }: { delay: number; color: string }) {
+function OrbitalDot({
+  radius,
+  speed,
+  angleOffset,
+  color,
+  size = 7,
+}: {
+  radius: number;
+  speed: number;
+  angleOffset: number;
+  color: string;
+  size?: number;
+}) {
+  const angle = useSharedValue(angleOffset);
+
+  useEffect(() => {
+    angle.value = withRepeat(
+      withTiming(angleOffset + 360, { duration: speed, easing: Easing.linear }),
+      -1,
+      false
+    );
+  }, []);
+
+  const style = useAnimatedStyle(() => {
+    const rad = (angle.value * Math.PI) / 180;
+    return {
+      transform: [
+        { translateX: Math.cos(rad) * radius },
+        { translateY: Math.sin(rad) * radius },
+      ],
+    };
+  });
+
   return (
-    <MotiView
-      from={{ translateY: 0, opacity: 0.3 }}
-      animate={{ translateY: -6, opacity: 1 }}
-      transition={{
-        type: "timing",
-        duration: 400,
-        delay,
-        loop: true,
-        repeatReverse: true,
-      }}
-      style={[styles.dot, { backgroundColor: color }]}
+    <Animated.View
+      style={[
+        {
+          position: "absolute",
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          backgroundColor: color,
+        },
+        style,
+      ]}
     />
+  );
+}
+
+function OrbCore() {
+  const scale = useSharedValue(1);
+
+  useEffect(() => {
+    scale.value = withRepeat(
+      withSequence(
+        withTiming(1.18, { duration: 1600, easing: Easing.inOut(Easing.sine) }),
+        withTiming(0.92, { duration: 1600, easing: Easing.inOut(Easing.sine) })
+      ),
+      -1,
+      false
+    );
+  }, []);
+
+  const coreStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const glowStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value * 2.2 }],
+    opacity: 0.18,
+  }));
+
+  return (
+    <View style={styles.orbWrap}>
+      <Animated.View style={[styles.orbGlow, glowStyle]} />
+      <Animated.View style={[styles.orbCore, coreStyle]} />
+    </View>
+  );
+}
+
+function CyclingLabel() {
+  const [idx, setIdx] = useState(0);
+  const opacity = useSharedValue(1);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      opacity.value = withSequence(
+        withTiming(0, { duration: 280 }),
+        withTiming(1, { duration: 280 })
+      );
+      setTimeout(() => setIdx((i) => (i + 1) % MESSAGES.length), 280);
+    }, 2200);
+    return () => clearInterval(interval);
+  }, []);
+
+  const style = useAnimatedStyle(() => ({ opacity: opacity.value }));
+
+  return (
+    <Animated.Text style={[styles.label, style]}>{MESSAGES[idx]}</Animated.Text>
   );
 }
 
 export function ThinkingAnimation() {
   return (
     <View style={styles.container}>
-      <View style={styles.ringContainer}>
-        <PulsingRing delay={0} color={Colors.fear} size={80} />
-        <PulsingRing delay={800} color={Colors.absolute} size={80} />
-        <View style={styles.innerDot} />
+      <View style={styles.orbitArea}>
+        <PulseRing phaseScale={0.38} phaseOpacity={0.55} color={Colors.fear} size={88} />
+        <PulseRing phaseScale={0.82} phaseOpacity={0.35} color={Colors.absolute} size={88} />
+        <PulseRing phaseScale={1.28} phaseOpacity={0.18} color={Colors.belief} size={88} />
+
+        <OrbCore />
+
+        <OrbitalDot radius={52} speed={2800} angleOffset={0} color={Colors.fear} size={8} />
+        <OrbitalDot radius={38} speed={2000} angleOffset={120} color={Colors.absolute} size={6} />
+        <OrbitalDot radius={62} speed={3800} angleOffset={240} color={Colors.belief} size={5} />
       </View>
 
-      <View style={styles.dotsRow}>
-        <BounceDot delay={0} color={Colors.fear} />
-        <BounceDot delay={200} color={Colors.fear} />
-        <BounceDot delay={400} color={Colors.fear} />
-      </View>
-
-      <Text style={styles.text}>Analysing your thought...</Text>
+      <CyclingLabel />
     </View>
   );
 }
@@ -77,36 +188,40 @@ export function ThinkingAnimation() {
 const styles = StyleSheet.create({
   container: {
     alignItems: "center",
-    gap: 28,
+    gap: 44,
   },
-  ringContainer: {
-    width: 80,
-    height: 80,
+  orbitArea: {
+    width: 140,
+    height: 140,
     alignItems: "center",
     justifyContent: "center",
   },
-  ring: {
-    borderWidth: 2,
+  pulseRing: {
+    position: "absolute",
+    borderWidth: 1.5,
   },
-  innerDot: {
+  orbWrap: {
+    position: "absolute",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  orbGlow: {
+    position: "absolute",
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: Colors.fear,
+  },
+  orbCore: {
     width: 16,
     height: 16,
     borderRadius: 8,
-    backgroundColor: Colors.belief,
+    backgroundColor: "#fff",
   },
-  dotsRow: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  text: {
-    color: Colors.textSecondary,
-    fontSize: 15,
+  label: {
+    color: "rgba(255,255,255,0.38)",
+    fontSize: 14,
     fontFamily: "Inter_400Regular",
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
   },
 });

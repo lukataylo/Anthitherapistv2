@@ -14,6 +14,7 @@ import {
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
+  withDelay,
   withSpring,
   withTiming,
   interpolate,
@@ -80,6 +81,8 @@ export function GamePanel() {
 
   const timerProgress = useSharedValue(1);
   const slideAnim = useSharedValue(0);
+  const wordAnim = useSharedValue(0);
+  const actionsAnim = useSharedValue(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -93,7 +96,11 @@ export function GamePanel() {
       setTimeLeft(TIMER_SECONDS);
       timerProgress.value = 1;
 
-      slideAnim.value = withSpring(1, { damping: 16, stiffness: 120 });
+      wordAnim.value = 0;
+      actionsAnim.value = 0;
+      slideAnim.value = withSpring(1, { damping: 9, stiffness: 160 });
+      wordAnim.value = withDelay(120, withSpring(1, { damping: 11, stiffness: 200 }));
+      actionsAnim.value = withDelay(200, withSpring(1, { damping: 14, stiffness: 180 }));
 
       timerProgress.value = withTiming(0, {
         duration: TIMER_SECONDS * 1000,
@@ -121,11 +128,23 @@ export function GamePanel() {
 
   const panelStyle = useAnimatedStyle(() => ({
     transform: [
-      {
-        translateY: interpolate(slideAnim.value, [0, 1], [80, 0]),
-      },
+      { translateY: interpolate(slideAnim.value, [0, 1], [110, 0]) },
+      { scale: interpolate(slideAnim.value, [0, 1], [0.96, 1]) },
     ],
-    opacity: slideAnim.value,
+    opacity: interpolate(slideAnim.value, [0, 0.4], [0, 1]),
+  }));
+
+  const wordEnterStyle = useAnimatedStyle(() => ({
+    transform: [
+      { scale: interpolate(wordAnim.value, [0, 1], [0.45, 1]) },
+      { translateY: interpolate(wordAnim.value, [0, 1], [20, 0]) },
+    ],
+    opacity: wordAnim.value,
+  }));
+
+  const actionsEnterStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: interpolate(actionsAnim.value, [0, 1], [22, 0]) }],
+    opacity: actionsAnim.value,
   }));
 
   const timerFillStyle = useAnimatedStyle(() => ({
@@ -256,7 +275,7 @@ export function GamePanel() {
                 </Pressable>
               </View>
 
-              <View style={styles.wordArea}>
+              <Animated.View style={[styles.wordArea, wordEnterStyle]}>
                 <Text style={styles.distortedWord}>
                   {activeWord.word.toUpperCase()}
                 </Text>
@@ -285,7 +304,7 @@ export function GamePanel() {
                     {activeWord.category.replace("_", " ").toUpperCase()}
                   </Text>
                 </View>
-              </View>
+              </Animated.View>
 
               {hintRevealed && activeWord.hint && (
                 <View style={styles.hintBubble}>
@@ -356,7 +375,7 @@ export function GamePanel() {
                 </View>
               ) : null}
 
-              <View style={styles.actionRow}>
+              <Animated.View style={[styles.actionRow, actionsEnterStyle]}>
                 <Pressable
                   style={({ pressed }) => [
                     styles.actionBtn,
@@ -412,7 +431,7 @@ export function GamePanel() {
                 >
                   <Text style={styles.actionBtnText}>SKIP</Text>
                 </Pressable>
-              </View>
+              </Animated.View>
             </Animated.View>
           </View>
         </Pressable>

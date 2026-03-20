@@ -1,6 +1,15 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Pressable, StyleSheet, Text } from "react-native";
-import { MotiView } from "moti";
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withRepeat,
+  withSequence,
+  withSpring,
+  withTiming,
+} from "react-native-reanimated";
 import { Colors } from "@/constants/colors";
 import type { WordCategory } from "@/context/GameContext";
 
@@ -52,72 +61,106 @@ export function WordPill({
   const isSignificant = category !== "neutral" && !isReframed;
   const isComplete = isReframed;
 
-  const pillBg = isComplete
-    ? Colors.successDim
-    : CATEGORY_BG[effectiveCategory];
+  const pillBg = isComplete ? Colors.successDim : CATEGORY_BG[effectiveCategory];
   const pillBorder = isComplete
     ? Colors.success
     : isSignificant
     ? CATEGORY_COLORS[category]
     : "transparent";
-  const textColor = isComplete
-    ? Colors.success
-    : CATEGORY_TEXT[effectiveCategory];
+  const textColor = isComplete ? Colors.success : CATEGORY_TEXT[effectiveCategory];
+
+  const scale = useSharedValue(0.5);
+  const opacity = useSharedValue(0);
+  const translateY = useSharedValue(18);
+  const glowScale = useSharedValue(1);
+  const glowOpacity = useSharedValue(0.35);
+  const pressScale = useSharedValue(1);
+
+  useEffect(() => {
+    opacity.value = withDelay(delay, withTiming(1, { duration: 220 }));
+    translateY.value = withDelay(
+      delay,
+      withSpring(0, { damping: 14, stiffness: 200 })
+    );
+    scale.value = withDelay(
+      delay,
+      withSpring(1, { damping: 10, stiffness: 200 })
+    );
+  }, [delay]);
+
+  useEffect(() => {
+    if (isSignificant && !isComplete) {
+      glowScale.value = withRepeat(
+        withSequence(
+          withTiming(1.45, { duration: 1100, easing: Easing.out(Easing.ease) }),
+          withTiming(1.0, { duration: 0 })
+        ),
+        -1,
+        false
+      );
+      glowOpacity.value = withRepeat(
+        withSequence(
+          withTiming(0.25, { duration: 0 }),
+          withTiming(0, { duration: 1100, easing: Easing.out(Easing.ease) })
+        ),
+        -1,
+        false
+      );
+    }
+  }, [isSignificant, isComplete]);
+
+  const containerStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ translateY: translateY.value }, { scale: scale.value }],
+  }));
+
+  const glowStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: glowScale.value }],
+    opacity: glowOpacity.value,
+  }));
+
+  const pressStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pressScale.value }],
+  }));
+
+  const handlePressIn = () => {
+    if (!isSignificant) return;
+    pressScale.value = withSpring(0.92, { damping: 10, stiffness: 300 });
+  };
+
+  const handlePressOut = () => {
+    pressScale.value = withSpring(1, { damping: 10, stiffness: 300 });
+  };
 
   return (
-    <MotiView
-      from={{ scale: 0, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      transition={{
-        type: "spring",
-        delay,
-        damping: 12,
-        stiffness: 160,
-      }}
-      style={styles.container}
-    >
+    <Animated.View style={[styles.container, containerStyle]}>
       {isSignificant && !isComplete && (
-        <MotiView
-          from={{ opacity: 0.3 }}
-          animate={{ opacity: 1 }}
-          transition={{
-            type: "timing",
-            duration: 1200,
-            loop: true,
-            repeatReverse: true,
-          }}
+        <Animated.View
           style={[
             styles.glow,
             { backgroundColor: CATEGORY_COLORS[category] },
+            glowStyle,
           ]}
         />
       )}
       {isComplete && (
-        <MotiView
-          style={[styles.glow, { backgroundColor: Colors.successGlow, opacity: 0.5 }]}
+        <Animated.View
+          style={[styles.glow, { backgroundColor: Colors.successGlow, opacity: 0.4 }]}
         />
       )}
 
-      <MotiView
-        from={{ scale: 1 }}
-        animate={isSignificant && !isComplete ? { scale: [1, 1.05, 1] } : { scale: 1 }}
-        transition={
-          isSignificant && !isComplete
-            ? { type: "timing", duration: 1200, loop: true, repeatReverse: false }
-            : undefined
-        }
-      >
+      <Animated.View style={pressStyle}>
         <Pressable
           onPress={isSignificant ? onPress : undefined}
-          style={({ pressed }) => [
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
+          style={[
             styles.pill,
             isNeutral && styles.pillNeutral,
             {
               backgroundColor: pillBg,
               borderColor: pillBorder,
               borderWidth: isSignificant || isComplete ? 1 : 0,
-              opacity: pressed ? 0.85 : 1,
-              transform: [{ scale: pressed ? 0.96 : 1 }],
             },
           ]}
         >
@@ -131,8 +174,8 @@ export function WordPill({
             {displayWord}
           </Text>
         </Pressable>
-      </MotiView>
-    </MotiView>
+      </Animated.View>
+    </Animated.View>
   );
 }
 
@@ -143,11 +186,11 @@ const styles = StyleSheet.create({
   },
   glow: {
     position: "absolute",
-    top: -4,
-    left: -4,
-    right: -4,
-    bottom: -4,
-    borderRadius: 24,
+    top: -5,
+    left: -5,
+    right: -5,
+    bottom: -5,
+    borderRadius: 26,
   },
   pill: {
     paddingHorizontal: 14,

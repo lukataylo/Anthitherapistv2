@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect, useState } from "react";
-import { Dimensions, StyleSheet, Text, View } from "react-native";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Dimensions, StyleSheet, View } from "react-native";
 import Animated, {
+  Easing,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
@@ -25,7 +26,11 @@ const CELEBRATE_COLORS = [
   "#FFE500",
   "#00E5A0",
   "#FF5B5B",
+  "#FF9F0A",
+  "#30D158",
 ];
+
+const PARTICLE_COUNT = 18;
 
 interface LetterState {
   randX: number;
@@ -35,20 +40,78 @@ interface LetterState {
   targetX: number;
 }
 
-function AnimatedLetter({
+function Particle({
+  color,
+  angle,
+  distance,
+  size,
+  delay,
+}: {
+  color: string;
+  angle: number;
+  distance: number;
+  size: number;
+  delay: number;
+}) {
+  const x = useSharedValue(0);
+  const y = useSharedValue(0);
+  const opacity = useSharedValue(0);
+  const scale = useSharedValue(0);
+
+  useEffect(() => {
+    const tx = Math.cos(angle) * distance;
+    const ty = Math.sin(angle) * distance;
+
+    opacity.value = withDelay(delay, withSequence(
+      withTiming(1, { duration: 80 }),
+      withTiming(1, { duration: 400 }),
+      withTiming(0, { duration: 280 })
+    ));
+    scale.value = withDelay(delay, withSequence(
+      withSpring(1, { damping: 8, stiffness: 300 }),
+      withTiming(0.3, { duration: 400 })
+    ));
+    x.value = withDelay(delay, withTiming(tx, { duration: 600, easing: Easing.out(Easing.cubic) }));
+    y.value = withDelay(delay, withTiming(ty, { duration: 600, easing: Easing.out(Easing.cubic) }));
+  }, []);
+
+  const style = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: x.value },
+      { translateY: y.value },
+      { scale: scale.value },
+    ],
+    opacity: opacity.value,
+  }));
+
+  return (
+    <Animated.View
+      style={[
+        {
+          position: "absolute",
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          backgroundColor: color,
+        },
+        style,
+      ]}
+    />
+  );
+}
+
+function AnimatedScatterLetter({
   letter,
   color,
   letterState,
-  index,
-  onDone,
   isLast,
+  onDone,
 }: {
   letter: string;
   color: string;
   letterState: LetterState;
-  index: number;
-  onDone: () => void;
   isLast: boolean;
+  onDone: () => void;
 }) {
   const x = useSharedValue(0);
   const y = useSharedValue(0);
@@ -57,37 +120,23 @@ function AnimatedLetter({
   const opacity = useSharedValue(0);
 
   useEffect(() => {
-    opacity.value = withTiming(1, { duration: 300 });
-    x.value = withSpring(letterState.randX, { damping: 4, stiffness: 40 });
-    y.value = withSpring(letterState.randY, { damping: 4, stiffness: 40 });
-    scale.value = withSpring(letterState.randSize, { damping: 4, stiffness: 40 });
+    opacity.value = withTiming(1, { duration: 260 });
+    x.value = withSpring(letterState.randX, { damping: 3, stiffness: 35 });
+    y.value = withSpring(letterState.randY, { damping: 3, stiffness: 35 });
+    scale.value = withSpring(letterState.randSize, { damping: 3, stiffness: 35 });
     rotate.value = withTiming(letterState.randRot, { duration: 600 });
 
-    const convergeDelay = 900;
+    const CONVERGE = 900;
 
-    x.value = withDelay(
-      convergeDelay,
-      withSpring(letterState.targetX, { damping: 14, stiffness: 120 })
-    );
-    y.value = withDelay(
-      convergeDelay,
-      withSpring(0, { damping: 14, stiffness: 120 })
-    );
-    scale.value = withDelay(
-      convergeDelay,
-      withSpring(1.8, { damping: 14, stiffness: 120 })
-    );
-    rotate.value = withDelay(
-      convergeDelay,
-      withTiming(0, { duration: 500 }, (finished) => {
-        if (finished && isLast) {
-          runOnJS(onDone)();
-        }
-      })
-    );
+    x.value = withDelay(CONVERGE, withSpring(letterState.targetX, { damping: 16, stiffness: 140 }));
+    y.value = withDelay(CONVERGE, withSpring(0, { damping: 16, stiffness: 140 }));
+    scale.value = withDelay(CONVERGE, withSpring(1.6, { damping: 16, stiffness: 140 }));
+    rotate.value = withDelay(CONVERGE, withTiming(0, { duration: 500 }, (finished) => {
+      if (finished && isLast) runOnJS(onDone)();
+    }));
   }, []);
 
-  const animStyle = useAnimatedStyle(() => ({
+  const style = useAnimatedStyle(() => ({
     opacity: opacity.value,
     transform: [
       { translateX: x.value },
@@ -98,49 +147,117 @@ function AnimatedLetter({
   }));
 
   return (
-    <Animated.Text style={[styles.letter, { color }, animStyle]}>
+    <Animated.Text style={[styles.scatterLetter, { color }, style]}>
+      {letter}
+    </Animated.Text>
+  );
+}
+
+function FinalLetterReveal({
+  letter,
+  color,
+  delay,
+}: {
+  letter: string;
+  color: string;
+  delay: number;
+}) {
+  const scale = useSharedValue(0.3);
+  const opacity = useSharedValue(0);
+  const translateY = useSharedValue(-28);
+
+  useEffect(() => {
+    opacity.value = withDelay(delay, withTiming(1, { duration: 180 }));
+    scale.value = withDelay(delay, withSpring(1, { damping: 8, stiffness: 220 }));
+    translateY.value = withDelay(delay, withSpring(0, { damping: 10, stiffness: 200 }));
+  }, [delay]);
+
+  const style = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ scale: scale.value }, { translateY: translateY.value }],
+  }));
+
+  return (
+    <Animated.Text style={[styles.finalLetter, { color }, style]}>
       {letter}
     </Animated.Text>
   );
 }
 
 export function LetterTumble({ word, onComplete }: LetterTumbleProps) {
-  const letters = word.toUpperCase().split("");
-  const [showFinalWord, setShowFinalWord] = useState(false);
+  const letters = useMemo(() => word.toUpperCase().split(""), [word]);
+  const [phase, setPhase] = useState<"scatter" | "burst" | "reveal">("scatter");
 
-  const letterWidth = 32;
+  const letterWidth = 34;
   const totalWidth = letters.length * letterWidth;
   const startX = -totalWidth / 2;
 
-  const letterStates: LetterState[] = letters.map((_, i) => ({
-    randX: (Math.random() - 0.5) * SCREEN_W * 0.9,
-    randY: (Math.random() - 0.5) * SCREEN_H * 0.7,
-    randSize: 0.8 + Math.random() * 1.5,
-    randRot: (Math.random() - 0.5) * 720,
-    targetX: startX + i * letterWidth + letterWidth / 2,
-  }));
+  const letterStates = useMemo<LetterState[]>(
+    () =>
+      letters.map((_, i) => ({
+        randX: (Math.random() - 0.5) * SCREEN_W * 0.85,
+        randY: (Math.random() - 0.5) * SCREEN_H * 0.65,
+        randSize: 0.7 + Math.random() * 1.4,
+        randRot: (Math.random() - 0.5) * 680,
+        targetX: startX + i * letterWidth + letterWidth / 2,
+      })),
+    [word]
+  );
+
+  const particles = useMemo(() =>
+    Array.from({ length: PARTICLE_COUNT }, (_, i) => ({
+      color: CELEBRATE_COLORS[i % CELEBRATE_COLORS.length],
+      angle: (i / PARTICLE_COUNT) * Math.PI * 2,
+      distance: 55 + Math.random() * 80,
+      size: 5 + Math.random() * 7,
+    })),
+    []
+  );
 
   const handleConvergeDone = useCallback(() => {
-    setShowFinalWord(true);
-    setTimeout(onComplete, 800);
-  }, [onComplete]);
+    setPhase("burst");
+    setTimeout(() => {
+      setPhase("reveal");
+      setTimeout(onComplete, letters.length * 70 + 600);
+    }, 500);
+  }, [onComplete, letters.length]);
 
   return (
     <View style={styles.container} pointerEvents="none">
-      {letters.map((letter, i) => (
-        <AnimatedLetter
-          key={i}
-          letter={letter}
-          color={CELEBRATE_COLORS[i % CELEBRATE_COLORS.length]}
-          letterState={letterStates[i]}
-          index={i}
-          isLast={i === letters.length - 1}
-          onDone={handleConvergeDone}
-        />
-      ))}
-      {showFinalWord && (
-        <View style={styles.glowWord}>
-          <Text style={styles.finalWord}>{word.toUpperCase()}</Text>
+      {phase === "scatter" &&
+        letters.map((letter, i) => (
+          <AnimatedScatterLetter
+            key={i}
+            letter={letter}
+            color={CELEBRATE_COLORS[i % CELEBRATE_COLORS.length]}
+            letterState={letterStates[i]}
+            isLast={i === letters.length - 1}
+            onDone={handleConvergeDone}
+          />
+        ))}
+
+      {(phase === "burst" || phase === "reveal") &&
+        particles.map((p, i) => (
+          <Particle
+            key={i}
+            color={p.color}
+            angle={p.angle}
+            distance={p.distance}
+            size={p.size}
+            delay={i * 12}
+          />
+        ))}
+
+      {phase === "reveal" && (
+        <View style={styles.finalRow}>
+          {letters.map((letter, i) => (
+            <FinalLetterReveal
+              key={i}
+              letter={letter}
+              color={CELEBRATE_COLORS[i % CELEBRATE_COLORS.length]}
+              delay={i * 65}
+            />
+          ))}
         </View>
       )}
     </View>
@@ -152,22 +269,23 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(10,10,15,0.95)",
+    backgroundColor: "rgba(8,8,12,0.97)",
     zIndex: 100,
   },
-  letter: {
+  scatterLetter: {
     position: "absolute",
-    fontSize: 32,
+    fontSize: 30,
     fontFamily: "Inter_700Bold",
     textAlign: "center",
   },
-  glowWord: {
+  finalRow: {
+    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
   },
-  finalWord: {
-    fontSize: 48,
+  finalLetter: {
+    fontSize: 52,
     fontFamily: "Inter_700Bold",
-    color: Colors.success,
-    letterSpacing: 4,
+    letterSpacing: 2,
   },
 });

@@ -32,11 +32,15 @@ export function CloudScreen() {
     allDone,
   } = useGame();
   const insets = useSafeAreaInsets();
-  const fadeIn = useSharedValue(0);
+  const enterOpacity = useSharedValue(0);
+  const enterScale = useSharedValue(0.93);
+  const enterTranslateY = useSharedValue(14);
   const [showDone, setShowDone] = useState(false);
 
   useEffect(() => {
-    fadeIn.value = withTiming(1, { duration: 500 });
+    enterOpacity.value = withTiming(1, { duration: 380 });
+    enterScale.value = withSpring(1, { damping: 18, stiffness: 160 });
+    enterTranslateY.value = withSpring(0, { damping: 18, stiffness: 160 });
   }, []);
 
   useEffect(() => {
@@ -47,7 +51,11 @@ export function CloudScreen() {
   }, [allDone, totalSignificant]);
 
   const containerStyle = useAnimatedStyle(() => ({
-    opacity: fadeIn.value,
+    opacity: enterOpacity.value,
+    transform: [
+      { scale: enterScale.value },
+      { translateY: enterTranslateY.value },
+    ],
   }));
 
   const handleWordPress = (wordIndex: number) => {
