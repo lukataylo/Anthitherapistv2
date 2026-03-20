@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useState } from "react";
 import {
   FlatList,
   Pressable,
@@ -14,6 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useHistory, type HistoryEntry } from "@/context/HistoryContext";
 import { useGame } from "@/context/GameContext";
 import { useStreak } from "@/context/StreakContext";
+import { SortTowerGame } from "@/components/SortTowerGame";
 
 function timeAgo(ts: number): string {
   const diff = Date.now() - ts;
@@ -103,6 +104,11 @@ export default function HistoryScreen() {
   const { loadSession } = useGame();
   const { currentStreak, longestStreak, reflectedToday } = useStreak();
   const router = useRouter();
+  const [practiceVisible, setPracticeVisible] = useState(false);
+
+  const hasWords = entries.some((e) =>
+    e.words.some((w) => w.category !== "neutral")
+  );
 
   const handlePress = useCallback(
     (entry: HistoryEntry) => {
@@ -129,13 +135,36 @@ export default function HistoryScreen() {
   return (
     <View style={styles.root}>
       <StatusBar style="light" />
+
+      <SortTowerGame
+        visible={practiceVisible}
+        entries={entries}
+        onClose={() => setPracticeVisible(false)}
+      />
+
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <Text style={styles.title}>History</Text>
-        <Text style={styles.subtitle}>
-          {entries.length > 0
-            ? `${entries.length} reflection${entries.length !== 1 ? "s" : ""}`
-            : ""}
-        </Text>
+        <View style={styles.titleRow}>
+          <View>
+            <Text style={styles.title}>History</Text>
+            <Text style={styles.subtitle}>
+              {entries.length > 0
+                ? `${entries.length} reflection${entries.length !== 1 ? "s" : ""}`
+                : ""}
+            </Text>
+          </View>
+          {hasWords && (
+            <Pressable
+              style={({ pressed }) => [
+                styles.practiceBtn,
+                pressed && { opacity: 0.8 },
+              ]}
+              onPress={() => setPracticeVisible(true)}
+            >
+              <Ionicons name="game-controller-outline" size={15} color="#fff" />
+              <Text style={styles.practiceBtnText}>Practice</Text>
+            </Pressable>
+          )}
+        </View>
 
         <View style={styles.streakRow}>
           <View style={[styles.streakCard, reflectedToday && styles.streakCardActive]}>
@@ -186,6 +215,28 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 24,
     paddingBottom: 16,
+  },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+  },
+  practiceBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#1E1E2E",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 100,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.12)",
+    marginTop: 2,
+  },
+  practiceBtnText: {
+    color: "#fff",
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
   },
   title: {
     fontSize: 28,
