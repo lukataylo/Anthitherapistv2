@@ -1,6 +1,12 @@
 import React, { useEffect, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
 import { Colors } from "@/constants/colors";
 import { useGame } from "@/context/GameContext";
 import { useHistory } from "@/context/HistoryContext";
@@ -8,6 +14,8 @@ import { useStreak } from "@/context/StreakContext";
 import { CaptureScreen } from "@/components/CaptureScreen";
 import { CloudScreen } from "@/components/CloudScreen";
 import { useReframeThought, type ReframeResponse } from "@workspace/api-client-react";
+
+const FADE = { duration: 240, easing: Easing.out(Easing.cubic) };
 
 export default function HomeScreen() {
   const { screen, setWords, words, reframedWords } = useGame();
@@ -60,18 +68,45 @@ export default function HomeScreen() {
 
   const showCloud = screen === "cloud" || screen === "game";
 
+  const fadeProgress = useSharedValue(0);
+
+  useEffect(() => {
+    fadeProgress.value = withTiming(showCloud ? 1 : 0, FADE);
+  }, [showCloud]);
+
+  const captureStyle = useAnimatedStyle(() => ({
+    opacity: 1 - fadeProgress.value,
+  }));
+
+  const cloudStyle = useAnimatedStyle(() => ({
+    opacity: fadeProgress.value,
+  }));
+
   return (
     <View style={styles.root}>
       <StatusBar style="light" />
-      {showCloud ? (
-        <CloudScreen />
-      ) : (
+      <Animated.View
+        style={[
+          StyleSheet.absoluteFill,
+          captureStyle,
+          { pointerEvents: showCloud ? "none" : "auto" },
+        ]}
+      >
         <CaptureScreen
           onSubmit={handleSubmitThought}
           isLoading={mutation.isPending}
           streakJustIncremented={streakJustIncremented}
         />
-      )}
+      </Animated.View>
+      <Animated.View
+        style={[
+          StyleSheet.absoluteFill,
+          cloudStyle,
+          { pointerEvents: showCloud ? "auto" : "none" },
+        ]}
+      >
+        <CloudScreen />
+      </Animated.View>
     </View>
   );
 }

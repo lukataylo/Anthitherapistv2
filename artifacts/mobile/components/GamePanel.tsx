@@ -12,10 +12,10 @@ import {
   View,
 } from "react-native";
 import Animated, {
+  Easing,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
-  withSpring,
   withTiming,
   interpolate,
   interpolateColor,
@@ -98,9 +98,9 @@ export function GamePanel() {
 
       wordAnim.value = 0;
       actionsAnim.value = 0;
-      slideAnim.value = withSpring(1, { damping: 9, stiffness: 160 });
-      wordAnim.value = withDelay(120, withSpring(1, { damping: 11, stiffness: 200 }));
-      actionsAnim.value = withDelay(200, withSpring(1, { damping: 14, stiffness: 180 }));
+      slideAnim.value = withTiming(1, { duration: 240, easing: Easing.out(Easing.cubic) });
+      wordAnim.value = withDelay(80, withTiming(1, { duration: 200, easing: Easing.out(Easing.cubic) }));
+      actionsAnim.value = withDelay(140, withTiming(1, { duration: 200, easing: Easing.out(Easing.cubic) }));
 
       timerProgress.value = withTiming(0, {
         duration: TIMER_SECONDS * 1000,
@@ -128,22 +128,20 @@ export function GamePanel() {
 
   const panelStyle = useAnimatedStyle(() => ({
     transform: [
-      { translateY: interpolate(slideAnim.value, [0, 1], [110, 0]) },
-      { scale: interpolate(slideAnim.value, [0, 1], [0.96, 1]) },
+      { translateY: interpolate(slideAnim.value, [0, 1], [20, 0]) },
     ],
-    opacity: interpolate(slideAnim.value, [0, 0.4], [0, 1]),
+    opacity: slideAnim.value,
   }));
 
   const wordEnterStyle = useAnimatedStyle(() => ({
     transform: [
-      { scale: interpolate(wordAnim.value, [0, 1], [0.45, 1]) },
-      { translateY: interpolate(wordAnim.value, [0, 1], [20, 0]) },
+      { translateY: interpolate(wordAnim.value, [0, 1], [10, 0]) },
     ],
     opacity: wordAnim.value,
   }));
 
   const actionsEnterStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: interpolate(actionsAnim.value, [0, 1], [22, 0]) }],
+    transform: [{ translateY: interpolate(actionsAnim.value, [0, 1], [10, 0]) }],
     opacity: actionsAnim.value,
   }));
 

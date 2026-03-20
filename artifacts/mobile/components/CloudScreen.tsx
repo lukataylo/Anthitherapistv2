@@ -8,9 +8,9 @@ import {
   View,
 } from "react-native";
 import Animated, {
+  Easing,
   useAnimatedStyle,
   useSharedValue,
-  withSpring,
   withTiming,
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
@@ -32,15 +32,11 @@ export function CloudScreen() {
     allDone,
   } = useGame();
   const insets = useSafeAreaInsets();
-  const enterOpacity = useSharedValue(0);
-  const enterScale = useSharedValue(0.93);
-  const enterTranslateY = useSharedValue(14);
+  const enterTranslateY = useSharedValue(12);
   const [showDone, setShowDone] = useState(false);
 
   useEffect(() => {
-    enterOpacity.value = withTiming(1, { duration: 380 });
-    enterScale.value = withSpring(1, { damping: 18, stiffness: 160 });
-    enterTranslateY.value = withSpring(0, { damping: 18, stiffness: 160 });
+    enterTranslateY.value = withTiming(0, { duration: 300, easing: Easing.out(Easing.cubic) });
   }, []);
 
   useEffect(() => {
@@ -51,11 +47,7 @@ export function CloudScreen() {
   }, [allDone, totalSignificant]);
 
   const containerStyle = useAnimatedStyle(() => ({
-    opacity: enterOpacity.value,
-    transform: [
-      { scale: enterScale.value },
-      { translateY: enterTranslateY.value },
-    ],
+    transform: [{ translateY: enterTranslateY.value }],
   }));
 
   const handleWordPress = (wordIndex: number) => {
