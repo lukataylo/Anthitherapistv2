@@ -1,0 +1,55 @@
+App: Gamified Cognitive Reframing Tool
+Overview
+A single-page web app where users speak or type a thought, and the app turns it into a word-cloud game that helps them reframe negative or distorted thinking. The whole experience is visual, tactile, and game-like — no traditional "results list."
+
+Screen 1 — Capture Screen
+A minimal centered UI with a large microphone button and a text input as an alternative.
+User records or types a thought (e.g., "I always fail at everything I try").
+A loading/thinking animation plays while the app processes the input.
+Screen 2 — Word Tag Cloud
+The transcript explodes into individual word-pill tags arranged in a flowing, wrapping layout — like a soft word cloud.
+Neutral words (the, at, I, etc.) appear as small, dim grey pills with no interaction.
+Cognitively significant words (beliefs, fears, assumptions, absolutes) are colour-coded by type:
+Beliefs → red/coral
+Fears → purple
+Absolutes (always, never) → orange
+Self-judgements → pink
+Significant pills gently pulse with a soft glow animation to invite a tap.
+The whole cloud animates in — pills fly in from different directions and settle into position.
+A small counter at the top shows "3 of 5 reframed" as the user works through them.
+Screen 3 — Reframe Game Panel (Full-Screen Overlay)
+Triggered when the user taps any glowing significant word pill.
+
+Layout (top to bottom):
+
+The distorted word/phrase — displayed very large at the top of the screen, centered, in a bold, slightly ominous style (e.g., "ALWAYS").
+A countdown timer — a thin progress bar or circular ring counting down (e.g., 30 seconds).
+Wrong attempt zone — a mid-screen area where failed reframe attempts appear struck-through in red with a one-line gentle explainer beneath them (e.g., "Still absolute — try softening the certainty").
+Four pill action buttons arranged horizontally or in a 2×2 grid:
+REFRAME — Opens a text field for the user to type their own reframe attempt. On submit, it's evaluated. If wrong, it gets struck through with an explainer. If correct, the celebration fires.
+HINT — Fetches and displays a softened version of the thought as a clue (e.g., "sometimes" instead of "always").
+50/50 — Presents two reframe options on screen; user taps the one they think is most accurate.
+SKIP — Dismisses this word and moves to the next unresolved one.
+Interaction: Correct Reframe — Letter Tumble Celebration
+When the user gets the reframe right:
+
+The original distorted word at the top gets a strikethrough and fades/dims out simultaneously.
+The letters of the correct reframe word scatter across the full screen — flying to random positions, in random sizes, in vivid colours (cyan, magenta, purple, electric yellow).
+After a brief moment, all letters animate back together, converging to form the final reframed word centred on screen — large and glowing.
+The panel then closes and the user is returned to the word cloud.
+Post-Game Word Cloud State
+The word tag that was just reframed updates in place — text changes to the reframed version, and the pill turns green with a steady glow (no longer pulsing).
+The counter increments (e.g., "4 of 5 reframed").
+When all significant words are resolved, a completion screen or animation plays.
+Visual Style
+Dark background (near-black).
+Vivid neon pill colours on dark backgrounds.
+Rounded pill/chip shapes for all tags and buttons.
+Smooth Framer Motion animations throughout — nothing snaps, everything flows.
+Font: bold, modern sans-serif.
+State the LLM Should Know
+This is a React + Vite app using Framer Motion for animations.
+Pill buttons and word tags share a consistent "rounded pill" component aesthetic.
+The app has an existing history sidebar and voice capture that should be preserved — only the results view and the new game overlay are being added/replaced.
+No backend — all classification logic comes from an existing Claude service already wired in (src/services/claude.ts).
+That should give an LLM everything it needs to build the front-end faithfully. Let me know if you'd like me to adjust the level of detail or focus on any specific part.
