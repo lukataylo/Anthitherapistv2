@@ -1,11 +1,6 @@
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { BottomTabBarProps } from "@react-navigation/bottom-tabs";
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useStreak } from "@/context/StreakContext";
@@ -41,22 +36,9 @@ function TabItem({
   onPress: () => void;
   badge?: "active" | "inactive";
 }) {
-  const scale = useSharedValue(1);
-
-  const animStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
-  const handlePress = () => {
-    scale.value = withSpring(0.85, { damping: 8 }, () => {
-      scale.value = withSpring(1, { damping: 10 });
-    });
-    onPress();
-  };
-
   return (
-    <Pressable onPress={handlePress} style={styles.tabItem} hitSlop={8}>
-      <Animated.View style={[styles.tabInner, animStyle]}>
+    <Pressable onPress={onPress} style={styles.tabItem} hitSlop={8}>
+      <View style={styles.tabInner}>
         <View style={styles.iconWrap}>
           <Ionicons
             name={isFocused ? tab.iconActive : tab.icon}
@@ -78,7 +60,7 @@ function TabItem({
         >
           {tab.label}
         </Text>
-      </Animated.View>
+      </View>
     </Pressable>
   );
 }
