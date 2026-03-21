@@ -21,6 +21,7 @@ import Animated, {
   interpolateColor,
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
+import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "@/constants/colors";
 import { useGame, WordAnalysis } from "@/context/GameContext";
 import { LetterTumble } from "@/components/LetterTumble";
