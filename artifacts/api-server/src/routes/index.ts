@@ -13,6 +13,7 @@
  *   GET  /api/conversations                  — list past Discuss conversations
  *   GET  /api/conversations/:id/messages     — full message history for one conversation
  *   POST /api/patterns                       — AI-generated pattern observations from history
+ *   POST /api/analyse-turn                   — background therapeutic analysis of a journal turn
  */
 
 import { Router, type IRouter } from "express";
@@ -21,6 +22,8 @@ import reframeRouter from "./reframe";
 import discussRouter from "./discuss";
 import reflectRouter from "./reflect";
 import patternsRouter from "./patterns";
+import analyseTurnRouter from "./analyse-turn";
+import summariseSessionRouter from "./summarise-session";
 
 const router: IRouter = Router();
 
@@ -29,5 +32,7 @@ router.use(reframeRouter);
 router.use(discussRouter);
 router.use(reflectRouter);
 router.use(patternsRouter);
+router.use(analyseTurnRouter);
+router.use(summariseSessionRouter);
 
 export default router;

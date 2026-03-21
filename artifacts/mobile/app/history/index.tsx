@@ -36,7 +36,7 @@
  * "just now" for anything under a minute to avoid displaying "0m ago".
  */
 
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   FlatList,
   Pressable,
@@ -46,7 +46,7 @@ import {
   Alert,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useHistory, type HistoryEntry } from "@/context/HistoryContext";
@@ -249,15 +249,14 @@ export default function HistoryScreen() {
   const { entries, removeEntry } = useHistory();
   const { currentStreak, longestStreak, reflectedToday } = useStreak();
   const router = useRouter();
+  const params = useLocalSearchParams<{ game?: string }>();
 
-  // Each mini-game is a full-screen modal — visibility is toggled independently
   const [practiceVisible, setPracticeVisible] = useState(false);
   const [rocketVisible, setRocketVisible] = useState(false);
   const [thoughtCheckVisible, setThoughtCheckVisible] = useState(false);
   const [sailVisible, setSailVisible] = useState(false);
   const [rewordVisible, setRewordVisible] = useState(false);
 
-  // Intro screen state — tracks which game's intro is currently shown
   const [introGameId, setIntroGameId] = useState<string | null>(null);
   const introGame = introGameId ? GAME_INTROS[introGameId] ?? null : null;
 
@@ -268,6 +267,17 @@ export default function HistoryScreen() {
     setSailVisible,
     setRewordVisible,
   };
+
+  useEffect(() => {
+    if (params.game) {
+      const id = params.game;
+      if (id === "sort-tower") setPracticeVisible(true);
+      if (id === "rocket-reframe") setRocketVisible(true);
+      if (id === "thought-check") setThoughtCheckVisible(true);
+      if (id === "mind-voyage") setSailVisible(true);
+      if (id === "reword") setRewordVisible(true);
+    }
+  }, [params.game]);
 
   /** Open the game's intro screen first, rather than jumping straight into gameplay. */
   const handleGamePress = useCallback(

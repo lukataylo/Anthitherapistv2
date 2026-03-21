@@ -55,6 +55,7 @@ import { HistoryProvider } from "@/context/HistoryContext";
 import { TabBar } from "@/components/TabBar";
 import { StreakProvider } from "@/context/StreakContext";
 import { seedIfEmpty } from "@/utils/seedData";
+import { JournalSessionProvider } from "@/context/JournalSessionContext";
 
 // Configure the API client before any hooks can run
 const domain = process.env.EXPO_PUBLIC_DOMAIN;
@@ -107,14 +108,18 @@ export default function RootLayout() {
             <HistoryProvider>
               <StreakProvider>
                 <GameProvider>
-                  <Tabs
-                    tabBar={(props) => <TabBar {...props} />}
-                    screenOptions={{ headerShown: false }}
-                  >
-                    <Tabs.Screen name="index" options={{ title: "Reframe" }} />
-                    <Tabs.Screen name="history" options={{ title: "History" }} />
-                    <Tabs.Screen name="discuss" options={{ title: "Discuss", href: null }} />
-                  </Tabs>
+                  <JournalSessionProvider>
+                    <Tabs
+                      tabBar={(props) => <TabBar {...props} />}
+                      screenOptions={{ headerShown: false }}
+                    >
+                      <Tabs.Screen name="index" options={{ title: "Reframe" }} />
+                      <Tabs.Screen name="history" options={{ title: "History" }} />
+                      <Tabs.Screen name="discuss" options={{ title: "Discuss", href: null }} />
+                      <Tabs.Screen name="journal" options={{ title: "Journal", href: null }} />
+                      <Tabs.Screen name="journal-feedback" options={{ title: "Session Complete", href: null }} />
+                    </Tabs>
+                  </JournalSessionProvider>
                 </GameProvider>
               </StreakProvider>
             </HistoryProvider>
