@@ -79,6 +79,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import type { HistoryEntry } from "@/context/HistoryContext";
+import { QuitButton } from "@/components/QuitButton";
 
 const { width: SW, height: SH } = Dimensions.get("window");
 
@@ -690,6 +691,7 @@ export function RewordGame({
 
         {/* HUD */}
         <View style={[styles.hud, { paddingTop: insets.top + 10 }]}>
+          <QuitButton onQuit={onClose} isPlaying={phase === "playing"} />
           <View style={styles.scoreRow}>
             <Ionicons name="pause" size={11} color="rgba(255,255,255,0.55)" />
             <Text style={styles.scoreTxt}>{score}</Text>
@@ -748,9 +750,6 @@ export function RewordGame({
               <Pressable style={[styles.actionBtn, { marginTop: 16 }]} onPress={startGame}>
                 <Text style={styles.actionBtnTxt}>Play</Text>
               </Pressable>
-              <Pressable onPress={onClose} style={{ padding: 10 }}>
-                <Text style={styles.closeLinkTxt}>Close</Text>
-              </Pressable>
             </View>
           </View>
         )}
@@ -766,9 +765,7 @@ export function RewordGame({
                 <Pressable style={styles.actionBtn} onPress={startGame}>
                   <Text style={styles.actionBtnTxt}>Play Again</Text>
                 </Pressable>
-                <Pressable style={styles.closeRound} onPress={onClose}>
-                  <Ionicons name="close" size={17} color="rgba(255,255,255,0.55)" />
-                </Pressable>
+                <QuitButton onQuit={onClose} isPlaying={false} />
               </View>
             </View>
           </View>

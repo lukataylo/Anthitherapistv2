@@ -84,6 +84,7 @@ import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { HistoryEntry } from "@/context/HistoryContext";
+import { QuitButton } from "@/components/QuitButton";
 
 const { width: SW, height: SH } = Dimensions.get("window");
 const SWIPE_THRESHOLD = SW * 0.27;
@@ -571,9 +572,7 @@ export function SortTowerGame({ visible, entries, onClose }: SortTowerGameProps)
 
         {/* HUD */}
         <View style={styles.hud}>
-          <Pressable onPress={onClose} hitSlop={16} style={styles.closeBtn}>
-            <Ionicons name="close" size={18} color={TEXT_MID} />
-          </Pressable>
+          <QuitButton onQuit={onClose} isPlaying={phase === "playing"} />
 
           <ScorePop score={score} />
 
@@ -610,7 +609,7 @@ export function SortTowerGame({ visible, entries, onClose }: SortTowerGameProps)
                 Complete a few more reflections first, then come back to play.
               </Text>
               <Pressable style={styles.emptyCloseBtn} onPress={onClose}>
-                <Text style={styles.emptyCloseBtnText}>Close</Text>
+                <Text style={styles.emptyCloseBtnText}>Got it</Text>
               </Pressable>
             </View>
           ) : phase === "playing" && currentWord ? (
@@ -637,9 +636,7 @@ export function SortTowerGame({ visible, entries, onClose }: SortTowerGameProps)
                 <Pressable style={styles.playAgainBtn} onPress={startGame}>
                   <Text style={styles.playAgainText}>Play Again</Text>
                 </Pressable>
-                <Pressable onPress={onClose} style={styles.closeIconBtn}>
-                  <Ionicons name="close" size={18} color="rgba(255,255,255,0.5)" />
-                </Pressable>
+                <QuitButton onQuit={onClose} isPlaying={false} />
               </View>
             </View>
           ) : null}

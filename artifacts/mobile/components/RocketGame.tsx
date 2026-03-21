@@ -92,6 +92,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import type { HistoryEntry } from "@/context/HistoryContext";
+import { QuitButton } from "@/components/QuitButton";
 
 const { width: SW, height: SH } = Dimensions.get("window");
 
@@ -794,6 +795,7 @@ export function RocketGame({
 
         {/* ── HUD row ── */}
         <View style={[styles.hud, { paddingTop: insets.top + 10 }]}>
+          <QuitButton onQuit={onClose} isPlaying={phase === "playing"} />
           <View style={styles.scoreBox}>
             <Text style={styles.scoreNum}>{score}</Text>
             {bonusText && (
@@ -804,13 +806,6 @@ export function RocketGame({
               </Animated.Text>
             )}
           </View>
-          <Pressable onPress={onClose} hitSlop={12} style={styles.closeBtn}>
-            <Ionicons
-              name="close"
-              size={17}
-              color="rgba(255,255,255,0.45)"
-            />
-          </Pressable>
         </View>
 
         {/* ── Lives (top right) ── */}
@@ -942,13 +937,7 @@ export function RocketGame({
                 <Pressable style={styles.launchBtn} onPress={startGame}>
                   <Text style={styles.launchBtnTxt}>Relaunch</Text>
                 </Pressable>
-                <Pressable style={styles.closeRound} onPress={onClose}>
-                  <Ionicons
-                    name="close"
-                    size={17}
-                    color="rgba(255,255,255,0.45)"
-                  />
-                </Pressable>
+                <QuitButton onQuit={onClose} isPlaying={false} />
               </View>
             </View>
           </View>

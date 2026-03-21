@@ -77,6 +77,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import Svg, { Defs, RadialGradient, Stop, Rect } from "react-native-svg";
 import type { HistoryEntry } from "@/context/HistoryContext";
+import { QuitButton } from "@/components/QuitButton";
 
 const { width: SW, height: SH } = Dimensions.get("window");
 
@@ -570,6 +571,7 @@ export function ThoughtCheckGame({
 
         {/* ── HUD ── */}
         <View style={[styles.hud, { paddingTop: insets.top + 10 }]}>
+          <QuitButton onQuit={onClose} isPlaying={phase === "playing"} />
           <View style={styles.scoreRow}>
             <Ionicons
               name="pause"
@@ -706,28 +708,12 @@ export function ThoughtCheckGame({
                 <Pressable style={styles.startBtn} onPress={startGame}>
                   <Text style={styles.startBtnTxt}>Play Again</Text>
                 </Pressable>
-                <Pressable style={styles.closeRound} onPress={onClose}>
-                  <Ionicons
-                    name="close"
-                    size={17}
-                    color="rgba(255,255,255,0.45)"
-                  />
-                </Pressable>
+                <QuitButton onQuit={onClose} isPlaying={false} />
               </View>
             </View>
           </View>
         )}
 
-        {/* Close button (always visible except explain/overlays) */}
-        {phase === "playing" && (
-          <Pressable
-            onPress={onClose}
-            hitSlop={12}
-            style={[styles.closeBtn, { top: insets.top + 10 }]}
-          >
-            <Ionicons name="close" size={17} color="rgba(255,255,255,0.35)" />
-          </Pressable>
-        )}
       </View>
     </Modal>
   );

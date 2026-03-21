@@ -71,6 +71,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "@/constants/colors";
 import { useGame, WordAnalysis } from "@/context/GameContext";
 import { LetterTumble } from "@/components/LetterTumble";
+import { QuitButton } from "@/components/QuitButton";
 
 /** Seconds the user has to reframe a word before it is auto-skipped. */
 const TIMER_SECONDS = 45;
@@ -360,10 +361,12 @@ export function GamePanel() {
               </View>
 
               <View style={styles.header}>
+                <QuitButton
+                  onQuit={closeGame}
+                  isPlaying={!showCelebration && timeLeft > 0}
+                  tintColor={Colors.textSecondary}
+                />
                 <Text style={styles.timerText}>{timeLeft}s</Text>
-                <Pressable onPress={handleSkip} style={styles.closeBtn}>
-                  <Ionicons name="close" size={18} color={Colors.textSecondary} />
-                </Pressable>
               </View>
 
               {/* Word display: shown large in uppercase with the distortion category badge */}

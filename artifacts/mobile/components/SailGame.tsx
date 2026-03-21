@@ -81,6 +81,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import type { HistoryEntry } from "@/context/HistoryContext";
+import { QuitButton } from "@/components/QuitButton";
 
 const { width: SW, height: SH } = Dimensions.get("window");
 
@@ -720,6 +721,7 @@ export function SailGame({
 
         {/* ── HUD ── */}
         <View style={[styles.hud, { paddingTop: insets.top + 10 }]}>
+          <QuitButton onQuit={onClose} isPlaying={phase === "playing"} />
           <View>
             <View style={styles.scoreRow}>
               <Ionicons
@@ -807,9 +809,6 @@ export function SailGame({
               <Pressable style={[styles.startBtn, { marginTop: 12 }]} onPress={startGame}>
                 <Text style={styles.startBtnTxt}>Set Sail</Text>
               </Pressable>
-              <Pressable onPress={onClose} style={{ padding: 10 }}>
-                <Text style={styles.closeLinkTxt}>Close</Text>
-              </Pressable>
             </View>
           </View>
         )}
@@ -829,13 +828,7 @@ export function SailGame({
                 <Pressable style={styles.startBtn} onPress={startGame}>
                   <Text style={styles.startBtnTxt}>Sail Again</Text>
                 </Pressable>
-                <Pressable style={styles.closeRound} onPress={onClose}>
-                  <Ionicons
-                    name="close"
-                    size={17}
-                    color="rgba(0,80,72,0.6)"
-                  />
-                </Pressable>
+                <QuitButton onQuit={onClose} isPlaying={false} />
               </View>
             </View>
           </View>
