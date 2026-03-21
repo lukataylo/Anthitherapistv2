@@ -35,8 +35,8 @@
  *
  * Uses expo-speech-recognition for real device speech-to-text. Tapping the mic
  * starts a recognition session; speech is appended to any existing thought text.
- * The button pulses red while listening. On web (where the API may be absent)
- * the button is gracefully hidden.
+ * The button pulses red while listening. On web (where the native API is absent)
+ * tapping shows an informational alert; no additional guard is needed at render time.
  *
  * ## Loading state
  *
@@ -386,9 +386,8 @@ export function CaptureScreen({
               )}
 
               <View style={styles.toolbar}>
-                {/* Mic button — always visible on native (iOS/Android); hidden on web.
-                    If the speech module failed to load, tapping shows an error message. */}
-                {Platform.OS !== "web" && (
+                {/* Mic button — visible on all platforms.
+                    If the speech module failed to load (e.g. on web), tapping shows an error message. */}
                 <Pressable
                   onPress={handleMicPress}
                   hitSlop={8}
@@ -408,7 +407,6 @@ export function CaptureScreen({
                     </Animated.View>
                   </View>
                 </Pressable>
-                )}
 
                 {/* Send button — icon colour inverts with the background */}
                 <Pressable
