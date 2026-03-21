@@ -35,7 +35,6 @@ import { useJournalSession } from "@/context/JournalSessionContext";
 import { matchPatterns } from "@/utils/patternMatcher";
 import { getPatternQuestion } from "@/utils/patternQuestions";
 import { cumulativeEmotionalScore, CHECKIN_THRESHOLD } from "@/utils/emotionalScoring";
-import { StreakBadge } from "@/components/StreakBadge";
 import type { Turn, FeedbackPayload, HighlightItem, Session, Analysis } from "@/types/journal";
 
 const _speechMod = (() => {
@@ -475,10 +474,6 @@ export function CaptureScreen() {
           },
         ]}
       >
-        <View style={styles.topBar}>
-          <StreakBadge animate={false} />
-        </View>
-
         <View style={styles.moodContainer}>
           <Text style={styles.moodTitle}>How are you feeling?</Text>
           <Text style={styles.moodSubtitle}>Tap to begin</Text>
@@ -546,7 +541,6 @@ export function CaptureScreen() {
         ]}
       >
         <View style={styles.topBar}>
-          <StreakBadge animate={streakJustIncremented} />
           {turns.length >= 2 && !isWrapping && (
             <Pressable
               onPress={handleWrapUp}
@@ -841,10 +835,6 @@ function ReflectionLoadingScreen({
         },
       ]}
     >
-      <View style={styles.topBar}>
-        <StreakBadge animate={false} />
-      </View>
-
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ padding: 20, gap: 24 }}
@@ -944,10 +934,6 @@ function SummaryScreen({
         },
       ]}
     >
-      <View style={styles.topBar}>
-        <StreakBadge animate={showStreakAnimation} />
-      </View>
-
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={styles.feedbackScroll}
