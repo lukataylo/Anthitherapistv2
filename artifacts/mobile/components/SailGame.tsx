@@ -623,6 +623,20 @@ export function SailGame({
   const [feedbackColor, setFeedbackColor] = useState("#00E5CC");
   const [annotating, setAnnotating] = useState(false);
 
+  const [correctCount, setCorrectCount] = useState(0);
+  const [wrongCount, setWrongCount] = useState(0);
+  const [bestStreak, setBestStreak] = useState(0);
+  const [missedItems, setMissedItems] = useState<{ highlight: string; thought: string }[]>([]);
+  const [distancePct, setDistancePct] = useState(0);
+  const [mostFlaggedCat, setMostFlaggedCat] = useState<string | null>(null);
+
+  const correctCountRef = useRef(0);
+  const wrongCountRef = useRef(0);
+  const streakRef2 = useRef(0);
+  const bestStreakRef = useRef(0);
+  const missedItemsRef = useRef<{ highlight: string; thought: string }[]>([]);
+  const flaggedCatsRef = useRef<Record<string, number>>({});
+
   const boatX = useRef(new Animated.Value(BOAT_START)).current;
   const progressAnim = useRef(new Animated.Value(0)).current;
   const feedbackOpacity = useRef(new Animated.Value(0)).current;
@@ -648,6 +662,8 @@ export function SailGame({
     }
   }, []);
 
+  const captureDoneStatsRef = useRef<() => void>(() => {});
+
   const startTimer = useCallback(() => {
     stopTimer();
     timeLeftRef.current = GAME_SEC;
@@ -659,6 +675,7 @@ export function SailGame({
         stopTimer();
         if (phaseRef.current === "playing") {
           phaseRef.current = "done";
+          captureDoneStatsRef.current();
           setPhase("done");
         }
       }
@@ -687,6 +704,7 @@ export function SailGame({
       setTimeout(() => {
         if (phaseRef.current === "playing" && !annotatingRef.current) {
           phaseRef.current = "done";
+          captureDoneStatsRef.current();
           setPhase("done");
         }
       }, 500);
@@ -722,7 +740,14 @@ export function SailGame({
       flashFeedback(correct);
 
       if (correct) {
-        const ns = streak + 1;
+        correctCountRef.current += 1;
+        const ns = streakRef2.current + 1;
+        streakRef2.current = ns;
+        if (ns > bestStreakRef.current) bestStreakRef.current = ns;
+        if (round.isError) {
+          const word = round.highlight.toLowerCase();
+          flaggedCatsRef.current[word] = (flaggedCatsRef.current[word] ?? 0) + 1;
+        }
         setStreak(ns);
         const multi = ns >= 3 ? 3 : ns >= 2 ? 2 : 1;
         setScore((s) => s + 100 * multi);
@@ -738,6 +763,7 @@ export function SailGame({
             setAnnotating(false);
             if (next >= rounds.length || boatXVal.current >= BOAT_END) {
               phaseRef.current = "done";
+              captureDoneStats();
               setPhase("done");
               stopTimer();
             } else {
@@ -746,8 +772,9 @@ export function SailGame({
             }
           }, 2000);
         } else {
-          if (next >= rounds.length) {
+          if (next >= rounds.length || boatXVal.current >= BOAT_END) {
             phaseRef.current = "done";
+            captureDoneStats();
             setPhase("done");
             stopTimer();
           } else {
@@ -756,7 +783,15 @@ export function SailGame({
           }
         }
       } else {
+        wrongCountRef.current += 1;
+        streakRef2.current = 0;
         setStreak(0);
+        if (missedItemsRef.current.length < 3) {
+          missedItemsRef.current = [
+            ...missedItemsRef.current,
+            { highlight: round.highlight, thought: round.thought },
+          ];
+        }
         setExplanation(
           round.isError && round.explanation
             ? round.explanation
@@ -764,20 +799,34 @@ export function SailGame({
         );
       }
     },
-    [rounds, rIdx, streak, flashFeedback, advanceBoat, stopTimer]
+    [rounds, rIdx, flashFeedback, advanceBoat, stopTimer]
   );
+
+  const captureDoneStats = useCallback(() => {
+    const pct = Math.round(((boatXVal.current - BOAT_START) / (BOAT_END - BOAT_START)) * 100);
+    const cats = flaggedCatsRef.current;
+    const topCat = Object.entries(cats).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+    setCorrectCount(correctCountRef.current);
+    setWrongCount(wrongCountRef.current);
+    setBestStreak(bestStreakRef.current);
+    setMissedItems([...missedItemsRef.current]);
+    setDistancePct(Math.min(100, Math.max(0, pct)));
+    setMostFlaggedCat(topCat);
+  }, []);
+  captureDoneStatsRef.current = captureDoneStats;
 
   const dismissExplanation = useCallback(() => {
     setExplanation(null);
     const next = rIdx + 1;
     if (next >= rounds.length) {
       phaseRef.current = "done";
+      captureDoneStats();
       setPhase("done");
       stopTimer();
     } else {
       setRIdx(next);
     }
-  }, [rIdx, rounds, stopTimer]);
+  }, [rIdx, rounds, stopTimer, captureDoneStats]);
 
   const startGame = useCallback(() => {
     if (annotationTimerRef.current) {
@@ -797,6 +846,18 @@ export function SailGame({
     boatXVal.current = BOAT_START;
     phaseRef.current = "playing";
     setPhase("playing");
+    correctCountRef.current = 0;
+    wrongCountRef.current = 0;
+    streakRef2.current = 0;
+    bestStreakRef.current = 0;
+    missedItemsRef.current = [];
+    flaggedCatsRef.current = {};
+    setCorrectCount(0);
+    setWrongCount(0);
+    setBestStreak(0);
+    setMissedItems([]);
+    setDistancePct(0);
+    setMostFlaggedCat(null);
     startTimer();
   }, [entries, boatX, progressAnim, startTimer]);
 
@@ -956,12 +1017,31 @@ export function SailGame({
           <View style={styles.overlay}>
             <View style={styles.overlayCard}>
               <Text style={styles.doneLabel}>
-                {boatXVal.current >= BOAT_END
-                  ? "VOYAGE COMPLETE"
-                  : "VOYAGE ENDED"}
+                {distancePct >= 100 ? "VOYAGE COMPLETE" : "VOYAGE ENDED"}
               </Text>
               <Text style={styles.doneScore}>{score}</Text>
-              <Text style={styles.donePts}>points</Text>
+              <View style={styles.doneSummary}>
+                <Text style={styles.doneStat}>
+                  {correctCount}/{correctCount + wrongCount} correct ({correctCount + wrongCount > 0 ? Math.round((correctCount / (correctCount + wrongCount)) * 100) : 0}%)
+                </Text>
+                <Text style={styles.doneStat}>Best streak: {bestStreak}</Text>
+                <Text style={styles.doneStat}>Distance sailed: {distancePct}%</Text>
+                {mostFlaggedCat && (
+                  <Text style={styles.doneStat}>
+                    Most flagged word: "{mostFlaggedCat}"
+                  </Text>
+                )}
+              </View>
+              {missedItems.length > 0 && (
+                <View style={styles.doneMissed}>
+                  <Text style={styles.doneMissedLabel}>WORDS TO REVIEW</Text>
+                  {missedItems.map((item, i) => (
+                    <Text key={i} style={styles.doneMissedItem} numberOfLines={2}>
+                      "{item.highlight}" — {item.thought.slice(0, 40)}{item.thought.length > 40 ? "…" : ""}
+                    </Text>
+                  ))}
+                </View>
+              )}
               <View style={styles.doneBtns}>
                 <Pressable style={styles.startBtn} onPress={startGame}>
                   <Text style={styles.startBtnTxt}>Sail Again</Text>
@@ -1192,6 +1272,36 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.5)",
     fontSize: 14,
     fontFamily: "Inter_400Regular",
+  },
+  doneSummary: {
+    alignItems: "center",
+    gap: 3,
+    marginTop: 4,
+  },
+  doneStat: {
+    color: "rgba(255,255,255,0.55)",
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+  },
+  doneMissed: {
+    marginTop: 8,
+    alignItems: "center",
+    gap: 3,
+    paddingHorizontal: 8,
+  },
+  doneMissedLabel: {
+    color: "rgba(255,255,255,0.45)",
+    fontSize: 9,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 2,
+    marginBottom: 2,
+  },
+  doneMissedItem: {
+    color: "#fff",
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
   },
   doneBtns: {
     flexDirection: "row",

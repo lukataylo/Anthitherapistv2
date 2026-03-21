@@ -455,6 +455,25 @@ export function ThoughtCheckGame({
   const [showWrong, setShowWrong] = useState(false);
   const [triggerKey, setTriggerKey] = useState(0);
 
+  const [correctCount, setCorrectCount] = useState(0);
+  const [wrongCount, setWrongCount] = useState(0);
+  const [bestStreak, setBestStreak] = useState(0);
+  const [missedItems, setMissedItems] = useState<string[]>([]);
+  const [truePos, setTruePos] = useState(0);
+  const [trueNeg, setTrueNeg] = useState(0);
+  const [falsePos, setFalsePos] = useState(0);
+  const [falseNeg, setFalseNeg] = useState(0);
+
+  const streakRef = useRef(0);
+  const bestStreakRef = useRef(0);
+  const correctCountRef = useRef(0);
+  const wrongCountRef = useRef(0);
+  const missedItemsRef = useRef<string[]>([]);
+  const truePosRef = useRef(0);
+  const trueNegRef = useRef(0);
+  const falsePosRef = useRef(0);
+  const falseNegRef = useRef(0);
+
   const feedbackOpacity = useRef(new Animated.Value(0)).current;
 
   const currentRound = rounds[rIdx];
@@ -469,7 +488,35 @@ export function ThoughtCheckGame({
     setShowWrong(false);
     setPhase("playing");
     setTriggerKey((k) => k + 1);
+    streakRef.current = 0;
+    bestStreakRef.current = 0;
+    correctCountRef.current = 0;
+    wrongCountRef.current = 0;
+    missedItemsRef.current = [];
+    truePosRef.current = 0;
+    trueNegRef.current = 0;
+    falsePosRef.current = 0;
+    falseNegRef.current = 0;
+    setCorrectCount(0);
+    setWrongCount(0);
+    setBestStreak(0);
+    setMissedItems([]);
+    setTruePos(0);
+    setTrueNeg(0);
+    setFalsePos(0);
+    setFalseNeg(0);
   }, [entries]);
+
+  const captureDoneStats = useCallback(() => {
+    setCorrectCount(correctCountRef.current);
+    setWrongCount(wrongCountRef.current);
+    setBestStreak(bestStreakRef.current);
+    setMissedItems([...missedItemsRef.current]);
+    setTruePos(truePosRef.current);
+    setTrueNeg(trueNegRef.current);
+    setFalsePos(falsePosRef.current);
+    setFalseNeg(falseNegRef.current);
+  }, []);
 
   // ── Answer ──
   const handleAnswer = useCallback(
@@ -493,15 +540,29 @@ export function ThoughtCheckGame({
       ]).start();
 
       if (isCorrect) {
+        correctCountRef.current += 1;
+        const ns = streakRef.current + 1;
+        streakRef.current = ns;
+        if (ns > bestStreakRef.current) bestStreakRef.current = ns;
+        if (answerDistorted && currentRound.isDistorted) truePosRef.current += 1;
+        else if (!answerDistorted && !currentRound.isDistorted) trueNegRef.current += 1;
         setScore((s) => s + 200);
         const next = rIdx + 1;
         if (next >= rounds.length) {
+          captureDoneStats();
           setPhase("done");
         } else {
           setRIdx(next);
           setTriggerKey((k) => k + 1);
         }
       } else {
+        wrongCountRef.current += 1;
+        streakRef.current = 0;
+        if (answerDistorted && !currentRound.isDistorted) falsePosRef.current += 1;
+        else if (!answerDistorted && currentRound.isDistorted) falseNegRef.current += 1;
+        if (missedItemsRef.current.length < 3) {
+          missedItemsRef.current = [...missedItemsRef.current, currentRound.thought];
+        }
         const newLives = lives - 1;
         setLives(newLives);
 
@@ -512,11 +573,13 @@ export function ThoughtCheckGame({
         } else {
           // User said "distorted" but it was healthy — brief pause then continue
           if (newLives <= 0) {
+            captureDoneStats();
             setPhase("done");
             return;
           }
           const next = rIdx + 1;
           if (next >= rounds.length) {
+            captureDoneStats();
             setPhase("done");
           } else {
             setRIdx(next);
@@ -525,25 +588,27 @@ export function ThoughtCheckGame({
         }
       }
     },
-    [phase, currentRound, rIdx, rounds, lives, feedbackOpacity]
+    [phase, currentRound, rIdx, rounds, lives, feedbackOpacity, captureDoneStats]
   );
 
   // ── Continue after explanation ──
   const handleContinue = useCallback(() => {
     setShowWrong(false);
     if (lives <= 0) {
+      captureDoneStats();
       setPhase("done");
       return;
     }
     const next = rIdx + 1;
     if (next >= rounds.length) {
+      captureDoneStats();
       setPhase("done");
     } else {
       setRIdx(next);
       setPhase("playing");
       setTriggerKey((k) => k + 1);
     }
-  }, [lives, rIdx, rounds]);
+  }, [lives, rIdx, rounds, captureDoneStats]);
 
   // ── Reset on hide ──
   useEffect(() => {
@@ -703,7 +768,37 @@ export function ThoughtCheckGame({
             <View style={styles.overlayCard}>
               <Text style={styles.doneLabel}>SESSION COMPLETE</Text>
               <Text style={styles.doneScore}>{score}</Text>
-              <Text style={styles.donePts}>points</Text>
+              <View style={styles.doneSummary}>
+                <Text style={styles.doneStat}>
+                  {correctCount}/{correctCount + wrongCount} correct ({correctCount + wrongCount > 0 ? Math.round((correctCount / (correctCount + wrongCount)) * 100) : 0}%)
+                </Text>
+                <Text style={styles.doneStat}>Best streak: {bestStreak}</Text>
+                <Text style={styles.doneStat}>
+                  Caught: {truePos} distorted, {trueNeg} healthy
+                </Text>
+                {(falsePos > 0 || falseNeg > 0) && (
+                  <Text style={styles.doneStat}>
+                    Missed: {falseNeg} distortions, {falsePos} false alarms
+                  </Text>
+                )}
+                <Text style={[styles.doneStat, styles.doneInsight]}>
+                  {falseNeg > falsePos
+                    ? "You tend to miss distortions"
+                    : falsePos > falseNeg
+                    ? "You over-identify distortions"
+                    : "Good balance"}
+                </Text>
+              </View>
+              {missedItems.length > 0 && (
+                <View style={styles.doneMissed}>
+                  <Text style={styles.doneMissedLabel}>WORDS TO REVIEW</Text>
+                  {missedItems.map((thought, i) => (
+                    <Text key={i} style={styles.doneMissedItem} numberOfLines={2}>
+                      "{thought}"
+                    </Text>
+                  ))}
+                </View>
+              )}
               <View style={styles.doneBtns}>
                 <Pressable style={styles.startBtn} onPress={startGame}>
                   <Text style={styles.startBtnTxt}>Play Again</Text>
@@ -920,6 +1015,41 @@ const styles = StyleSheet.create({
     color: C.textDim,
     fontSize: 14,
     fontFamily: "Inter_400Regular",
+  },
+  doneSummary: {
+    alignItems: "center",
+    gap: 3,
+    marginTop: 4,
+  },
+  doneStat: {
+    color: C.textDim,
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+  },
+  doneInsight: {
+    color: C.accent,
+    fontFamily: "Inter_600SemiBold",
+    marginTop: 2,
+  },
+  doneMissed: {
+    marginTop: 8,
+    alignItems: "center",
+    gap: 3,
+    paddingHorizontal: 8,
+  },
+  doneMissedLabel: {
+    color: C.textDim,
+    fontSize: 9,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 2,
+    marginBottom: 2,
+  },
+  doneMissedItem: {
+    color: "#fff",
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
   },
   doneBtns: {
     flexDirection: "row",

@@ -458,9 +458,22 @@ export function SortTowerGame({ visible, entries, onClose }: SortTowerGameProps)
   const [streak, setStreak] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  const [correctCount, setCorrectCount] = useState(0);
+  const [wrongCount, setWrongCount] = useState(0);
+  const [bestStreak, setBestStreak] = useState(0);
+  const [missedItems, setMissedItems] = useState<{ word: string; correctLabel: string }[]>([]);
+  const [negCorrect, setNegCorrect] = useState(0);
+  const [posCorrect, setPosCorrect] = useState(0);
+
   const deckRef = useRef<SortWord[]>([]);
   const deckIdxRef = useRef(0);
   const streakRef = useRef(0);
+  const bestStreakRef = useRef(0);
+  const correctCountRef = useRef(0);
+  const wrongCountRef = useRef(0);
+  const negCorrectRef = useRef(0);
+  const posCorrectRef = useRef(0);
+  const missedItemsRef = useRef<{ word: string; correctLabel: string }[]>([]);
 
   const feedbackOpacity = useSharedValue(0);
   const [feedbackCorrect, setFeedbackCorrect] = useState(true);
@@ -475,6 +488,12 @@ export function SortTowerGame({ visible, entries, onClose }: SortTowerGameProps)
     deckRef.current = d;
     deckIdxRef.current = 0;
     streakRef.current = 0;
+    bestStreakRef.current = 0;
+    correctCountRef.current = 0;
+    wrongCountRef.current = 0;
+    negCorrectRef.current = 0;
+    posCorrectRef.current = 0;
+    missedItemsRef.current = [];
     setDeck(d);
     setDeckIdx(0);
     setCardKey((k) => k + 1);
@@ -482,6 +501,12 @@ export function SortTowerGame({ visible, entries, onClose }: SortTowerGameProps)
     setFloors([]);
     setTimeLeft(GAME_SECONDS);
     setStreak(0);
+    setCorrectCount(0);
+    setWrongCount(0);
+    setBestStreak(0);
+    setMissedItems([]);
+    setNegCorrect(0);
+    setPosCorrect(0);
     swipeHintOpacity.value = 1;
     timerPulse.value = 1;
     toastOpacity.value = 0;
@@ -496,6 +521,12 @@ export function SortTowerGame({ visible, entries, onClose }: SortTowerGameProps)
       setTimeLeft((t) => {
         if (t <= 1) {
           clearInterval(timerRef.current!);
+          setCorrectCount(correctCountRef.current);
+          setWrongCount(wrongCountRef.current);
+          setBestStreak(bestStreakRef.current);
+          setMissedItems([...missedItemsRef.current]);
+          setNegCorrect(negCorrectRef.current);
+          setPosCorrect(posCorrectRef.current);
           setPhase("done");
           return 0;
         }
@@ -563,15 +594,26 @@ export function SortTowerGame({ visible, entries, onClose }: SortTowerGameProps)
       if (correct) {
         const newStreak = streakRef.current + 1;
         streakRef.current = newStreak;
+        if (newStreak > bestStreakRef.current) bestStreakRef.current = newStreak;
         setStreak(newStreak);
         const multiplier =
           newStreak >= 8 ? 4 : newStreak >= 5 ? 3 : newStreak >= 3 ? 2 : 1;
         setScore((s) => s + 100 * multiplier);
         setFloors((prev) => [...prev, makeFloor(prev.length)]);
+        correctCountRef.current += 1;
+        if (current.isNegative) negCorrectRef.current += 1;
+        else posCorrectRef.current += 1;
       } else {
         streakRef.current = 0;
         setStreak(0);
         showToast(current.text, current.explainer);
+        wrongCountRef.current += 1;
+        if (missedItemsRef.current.length < 3) {
+          missedItemsRef.current = [
+            ...missedItemsRef.current,
+            { word: current.text, correctLabel: current.isNegative ? "negative" : "positive" },
+          ];
+        }
       }
       showFeedback(correct);
 
@@ -579,6 +621,12 @@ export function SortTowerGame({ visible, entries, onClose }: SortTowerGameProps)
         const nextIdx = deckIdxRef.current + 1;
         deckIdxRef.current = nextIdx;
         if (nextIdx >= deckRef.current.length) {
+          setCorrectCount(correctCountRef.current);
+          setWrongCount(wrongCountRef.current);
+          setBestStreak(bestStreakRef.current);
+          setMissedItems([...missedItemsRef.current]);
+          setNegCorrect(negCorrectRef.current);
+          setPosCorrect(posCorrectRef.current);
           setPhase("done");
           if (timerRef.current) clearInterval(timerRef.current!);
         }
@@ -672,12 +720,32 @@ export function SortTowerGame({ visible, entries, onClose }: SortTowerGameProps)
             <View style={styles.doneBox}>
               <Text style={styles.doneLabel}>TOWER BUILT</Text>
               <Text style={styles.doneScore}>{score}</Text>
-              <View style={styles.doneFloorRow}>
-                <Text style={styles.doneFloorNum}>{floors.length}</Text>
-                <Text style={styles.doneFloorUnit}>
-                  floor{floors.length !== 1 ? "s" : ""}
+              <View style={styles.doneSummary}>
+                <Text style={styles.doneStat}>
+                  {correctCount}/{correctCount + wrongCount} correct ({correctCount + wrongCount > 0 ? Math.round((correctCount / (correctCount + wrongCount)) * 100) : 0}%)
                 </Text>
+                <Text style={styles.doneStat}>
+                  Best streak: {bestStreak}
+                </Text>
+                <Text style={styles.doneStat}>
+                  Floors built: {floors.length}
+                </Text>
+                {(negCorrect > 0 || posCorrect > 0) && (
+                  <Text style={styles.doneStat}>
+                    Most sorted: {negCorrect >= posCorrect ? `negative (${negCorrect})` : `positive (${posCorrect})`}
+                  </Text>
+                )}
               </View>
+              {missedItems.length > 0 && (
+                <View style={styles.doneMissed}>
+                  <Text style={styles.doneMissedLabel}>WORDS TO REVIEW</Text>
+                  {missedItems.map((item, i) => (
+                    <Text key={i} style={styles.doneMissedItem}>
+                      "{item.word}" → {item.correctLabel}
+                    </Text>
+                  ))}
+                </View>
+              )}
               <View style={styles.doneBtnRow}>
                 <Pressable style={styles.playAgainBtn} onPress={startGame}>
                   <Text style={styles.playAgainText}>Play Again</Text>
@@ -981,6 +1049,7 @@ const styles = StyleSheet.create({
   doneBox: {
     alignItems: "center",
     gap: 4,
+    paddingHorizontal: 16,
   },
   doneLabel: {
     color: TEXT_MID,
@@ -991,28 +1060,39 @@ const styles = StyleSheet.create({
   },
   doneScore: {
     color: TEXT_DARK,
-    fontSize: 72,
+    fontSize: 64,
     fontFamily: "Inter_700Bold",
-    lineHeight: 78,
+    lineHeight: 70,
     letterSpacing: -3,
   },
-  doneFloorRow: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    gap: 5,
-    marginBottom: 4,
+  doneSummary: {
+    alignItems: "center",
+    gap: 3,
+    marginTop: 2,
   },
-  doneFloorNum: {
-    color: "#fff",
-    fontSize: 22,
-    fontFamily: "Inter_700Bold",
-    letterSpacing: -0.5,
-  },
-  doneFloorUnit: {
+  doneStat: {
     color: TEXT_MID,
     fontSize: 13,
     fontFamily: "Inter_400Regular",
-    letterSpacing: 0.3,
+    textAlign: "center",
+  },
+  doneMissed: {
+    marginTop: 6,
+    alignItems: "center",
+    gap: 3,
+  },
+  doneMissedLabel: {
+    color: TEXT_MID,
+    fontSize: 9,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 2,
+    marginBottom: 2,
+  },
+  doneMissedItem: {
+    color: "#fff",
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
   },
   doneBtnRow: {
     flexDirection: "row",

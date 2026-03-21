@@ -508,6 +508,17 @@ export function RewordGame({
   const [showHint, setShowHint] = useState(false);
   const [trailResults, setTrailResults] = useState<Array<"correct" | "wrong">>([]);
 
+  const [correctCount, setCorrectCount] = useState(0);
+  const [wrongCount, setWrongCount] = useState(0);
+  const [bestStreak, setBestStreak] = useState(0);
+  const [missedItems, setMissedItems] = useState<{ distorted: string; chosen: string; correct: string }[]>([]);
+
+  const correctCountRef = useRef(0);
+  const wrongCountRef = useRef(0);
+  const streakRef2 = useRef(0);
+  const bestStreakRef = useRef(0);
+  const missedItemsRef = useRef<{ distorted: string; chosen: string; correct: string }[]>([]);
+
   const phaseRef = useRef<Phase>("idle");
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timeRef = useRef(GAME_SEC);
@@ -547,6 +558,10 @@ export function RewordGame({
         stopTimer();
         clearHintTimer();
         if (phaseRef.current === "playing") {
+          setCorrectCount(correctCountRef.current);
+          setWrongCount(wrongCountRef.current);
+          setBestStreak(bestStreakRef.current);
+          setMissedItems([...missedItemsRef.current]);
           phaseRef.current = "done";
           setPhase("done");
         }
@@ -571,6 +586,10 @@ export function RewordGame({
       const next = idx + 1;
       if (next >= rounds.length) {
         clearHintTimer();
+        setCorrectCount(correctCountRef.current);
+        setWrongCount(wrongCountRef.current);
+        setBestStreak(bestStreakRef.current);
+        setMissedItems([...missedItemsRef.current]);
         phaseRef.current = "done";
         setPhase("done");
         stopTimer();
@@ -603,17 +622,30 @@ export function RewordGame({
       setNodeStates(states);
 
       if (correct) {
-        const ns = streak + 1;
+        correctCountRef.current += 1;
+        const ns = streakRef2.current + 1;
+        streakRef2.current = ns;
+        if (ns > bestStreakRef.current) bestStreakRef.current = ns;
         setStreak(ns);
         const multi = ns >= 3 ? 3 : ns >= 2 ? 2 : 1;
         setScore((s) => s + 200 * multi);
         setTimeout(() => nextRound(rIdx, "correct"), 900);
       } else {
+        wrongCountRef.current += 1;
+        streakRef2.current = 0;
         setStreak(0);
+        if (missedItemsRef.current.length < 3) {
+          const correctWord = round.options[round.correctIdx];
+          const chosenWord = round.options[i];
+          missedItemsRef.current = [
+            ...missedItemsRef.current,
+            { distorted: round.distorted, chosen: chosenWord, correct: correctWord },
+          ];
+        }
         setExplanation(round.explanation);
       }
     },
-    [rounds, rIdx, streak, selectedIdx, nextRound, clearHintTimer]
+    [rounds, rIdx, selectedIdx, nextRound, clearHintTimer]
   );
 
   const handleExplanationTap = useCallback(() => {
@@ -636,6 +668,15 @@ export function RewordGame({
     resetNodes();
     phaseRef.current = "playing";
     setPhase("playing");
+    correctCountRef.current = 0;
+    wrongCountRef.current = 0;
+    streakRef2.current = 0;
+    bestStreakRef.current = 0;
+    missedItemsRef.current = [];
+    setCorrectCount(0);
+    setWrongCount(0);
+    setBestStreak(0);
+    setMissedItems([]);
     startTimer();
     startHintTimer();
   }, [entries, resetNodes, startTimer, startHintTimer]);
@@ -767,7 +808,28 @@ export function RewordGame({
             <View style={styles.overlayCard}>
               <Text style={styles.doneLabel}>SESSION COMPLETE</Text>
               <Text style={styles.doneScore}>{score}</Text>
-              <Text style={styles.donePts}>points</Text>
+              <View style={styles.doneSummary}>
+                <Text style={styles.doneStat}>
+                  {correctCount}/{correctCount + wrongCount} correct ({correctCount + wrongCount > 0 ? Math.round((correctCount / (correctCount + wrongCount)) * 100) : 0}%)
+                </Text>
+                <Text style={styles.doneStat}>Best streak: {bestStreak}</Text>
+                <Text style={styles.doneStat}>
+                  Rounds: {correctCount + wrongCount}/{rounds.length}
+                </Text>
+              </View>
+              {missedItems.length > 0 && (
+                <View style={styles.doneMissed}>
+                  <Text style={styles.doneMissedLabel}>WORDS TO REVIEW</Text>
+                  {missedItems.map((item, i) => (
+                    <Text key={i} style={styles.doneMissedItem}>
+                      {item.distorted}:{" "}
+                      <Text style={styles.doneChosen}>{item.chosen}</Text>
+                      {"  →  "}
+                      <Text style={styles.doneCorrect}>{item.correct}</Text>
+                    </Text>
+                  ))}
+                </View>
+              )}
               <View style={styles.doneBtns}>
                 <Pressable style={styles.actionBtn} onPress={startGame}>
                   <Text style={styles.actionBtnTxt}>Play Again</Text>
@@ -1001,6 +1063,45 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.45)",
     fontSize: 14,
     fontFamily: "Inter_400Regular",
+  },
+  doneSummary: {
+    alignItems: "center",
+    gap: 3,
+    marginTop: 4,
+  },
+  doneStat: {
+    color: "rgba(255,255,255,0.55)",
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+  },
+  doneMissed: {
+    marginTop: 8,
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+  },
+  doneMissedLabel: {
+    color: "rgba(255,255,255,0.45)",
+    fontSize: 9,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 2,
+    marginBottom: 2,
+  },
+  doneMissedItem: {
+    color: "#fff",
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+  },
+  doneChosen: {
+    color: "#FF4060",
+    textDecorationLine: "line-through",
+    fontFamily: "Inter_400Regular",
+  },
+  doneCorrect: {
+    color: "#00E5CC",
+    fontFamily: "Inter_700Bold",
   },
   doneBtns: {
     flexDirection: "row",

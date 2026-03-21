@@ -420,6 +420,21 @@ export function RocketGame({
   const [bonusText, setBonusText] = useState<string | null>(null);
   const [revealAnswer, setRevealAnswer] = useState<string | null>(null);
 
+  const [correctCount, setCorrectCount] = useState(0);
+  const [wrongCount, setWrongCount] = useState(0);
+  const [bestStreak, setBestStreak] = useState(0);
+  const [missedItems, setMissedItems] = useState<{ prompt: string; correct: string }[]>([]);
+  const [peakAltitudePct, setPeakAltitudePct] = useState(0);
+  const [timeoutCount, setTimeoutCount] = useState(0);
+
+  const correctCountRef = useRef(0);
+  const wrongCountRef = useRef(0);
+  const streakRef = useRef(0);
+  const bestStreakRef = useRef(0);
+  const missedItemsRef = useRef<{ prompt: string; correct: string }[]>([]);
+  const peakRocketTopRef = useRef(R_START);
+  const timeoutCountRef = useRef(0);
+
   // Animated values
   const rocketTop = useRef(new Animated.Value(R_START)).current;
   const feedbackOpacity = useRef(new Animated.Value(0)).current;
@@ -449,6 +464,7 @@ export function RocketGame({
   useEffect(() => {
     const id1 = rocketTop.addListener(({ value }) => {
       rocketTopVal.current = value;
+      if (value < peakRocketTopRef.current) peakRocketTopRef.current = value;
     });
     const id2 = timerAnim.addListener(({ value }) => {
       timerVal.current = value;
@@ -604,6 +620,15 @@ export function RocketGame({
   const nextQuestion = useCallback(() => {
     const nextIdx = qIdxRef.current + 1;
     if (nextIdx >= questionsRef.current.length) {
+      const pct = Math.round(
+        ((R_BOT - peakRocketTopRef.current) / (R_BOT - R_TOP)) * 100
+      );
+      setCorrectCount(correctCountRef.current);
+      setWrongCount(wrongCountRef.current);
+      setBestStreak(bestStreakRef.current);
+      setMissedItems([...missedItemsRef.current]);
+      setPeakAltitudePct(Math.min(100, Math.max(0, pct)));
+      setTimeoutCount(timeoutCountRef.current);
       phaseRef.current = "done";
       setPhase("done");
       driftAnimRef.current?.stop();
@@ -631,6 +656,18 @@ export function RocketGame({
     });
   }, [timerAnim]);
 
+  const captureDoneStats = useCallback(() => {
+    const pct = Math.round(
+      ((R_BOT - peakRocketTopRef.current) / (R_BOT - R_TOP)) * 100
+    );
+    setCorrectCount(correctCountRef.current);
+    setWrongCount(wrongCountRef.current);
+    setBestStreak(bestStreakRef.current);
+    setMissedItems([...missedItemsRef.current]);
+    setPeakAltitudePct(Math.min(100, Math.max(0, pct)));
+    setTimeoutCount(timeoutCountRef.current);
+  }, []);
+
   // ── Timeout handler (ref-stable to avoid stale closure in timer callback) ──
   const handleTimeoutRef = useRef(() => {});
   handleTimeoutRef.current = () => {
@@ -639,6 +676,15 @@ export function RocketGame({
     setAnswered(true);
     showFeedback("wrong");
 
+    const q = questionsRef.current[qIdxRef.current];
+    wrongCountRef.current += 1;
+    timeoutCountRef.current += 1;
+    streakRef.current = 0;
+    if (q && missedItemsRef.current.length < 3) {
+      const correctOpt = q.opts[q.correctIdx];
+      missedItemsRef.current = [...missedItemsRef.current, { prompt: q.prompt, correct: correctOpt }];
+    }
+
     const newLives = livesRef.current - 1;
     livesRef.current = newLives;
     setLives(newLives);
@@ -646,6 +692,7 @@ export function RocketGame({
     if (newLives <= 0) {
       setTimeout(() => {
         phaseRef.current = "done";
+        captureDoneStats();
         setPhase("done");
         driftAnimRef.current?.stop();
       }, 600);
@@ -676,10 +723,21 @@ export function RocketGame({
         const newTime = Math.max(MIN_TIME, timePerQRef.current - TIME_DEC);
         timePerQRef.current = newTime;
 
+        correctCountRef.current += 1;
+        const ns = streakRef.current + 1;
+        streakRef.current = ns;
+        if (ns > bestStreakRef.current) bestStreakRef.current = ns;
+
         boostRocket();
         setTimeout(() => nextQuestion(), 480);
       } else {
         setRevealAnswer(q.opts[q.correctIdx]);
+        wrongCountRef.current += 1;
+        streakRef.current = 0;
+        if (missedItemsRef.current.length < 3) {
+          const correctOpt = q.opts[q.correctIdx];
+          missedItemsRef.current = [...missedItemsRef.current, { prompt: q.prompt, correct: correctOpt }];
+        }
 
         const newLives = livesRef.current - 1;
         livesRef.current = newLives;
@@ -688,6 +746,7 @@ export function RocketGame({
         if (newLives <= 0) {
           setTimeout(() => {
             phaseRef.current = "done";
+            captureDoneStats();
             setPhase("done");
             driftAnimRef.current?.stop();
           }, 650);
@@ -696,7 +755,7 @@ export function RocketGame({
         setTimeout(() => nextQuestion(), 720);
       }
     },
-    [showFeedback, showBonus, boostRocket, nextQuestion]
+    [showFeedback, showBonus, boostRocket, nextQuestion, captureDoneStats]
   );
 
   // ── Start game ──
@@ -710,6 +769,13 @@ export function RocketGame({
     livesRef.current = MAX_LIVES;
     timePerQRef.current = START_TIME;
     answeredRef.current = false;
+    correctCountRef.current = 0;
+    wrongCountRef.current = 0;
+    streakRef.current = 0;
+    bestStreakRef.current = 0;
+    missedItemsRef.current = [];
+    peakRocketTopRef.current = R_START;
+    timeoutCountRef.current = 0;
 
     setQuestions(qs);
     setQIdx(0);
@@ -718,6 +784,12 @@ export function RocketGame({
     setAnswered(false);
     setFeedback(null);
     setRevealAnswer(null);
+    setCorrectCount(0);
+    setWrongCount(0);
+    setBestStreak(0);
+    setMissedItems([]);
+    setPeakAltitudePct(0);
+    setTimeoutCount(0);
 
     rocketTop.setValue(R_START);
     rocketTopVal.current = R_START;
@@ -943,7 +1015,26 @@ export function RocketGame({
                 {lives > 0 ? "MISSION COMPLETE" : "MISSION FAILED"}
               </Text>
               <Text style={styles.doneScore}>{score}</Text>
-              <Text style={styles.donePts}>points</Text>
+              <View style={styles.doneSummary}>
+                <Text style={styles.doneStat}>
+                  {correctCount}/{correctCount + wrongCount} correct ({correctCount + wrongCount > 0 ? Math.round((correctCount / (correctCount + wrongCount)) * 100) : 0}%)
+                </Text>
+                <Text style={styles.doneStat}>Best streak: {bestStreak}</Text>
+                <Text style={styles.doneStat}>Peak altitude: {peakAltitudePct}%</Text>
+                {timeoutCount > 0 && (
+                  <Text style={styles.doneStat}>Timeouts: {timeoutCount}</Text>
+                )}
+              </View>
+              {missedItems.length > 0 && (
+                <View style={styles.doneMissed}>
+                  <Text style={styles.doneMissedLabel}>WORDS TO REVIEW</Text>
+                  {missedItems.map((item, i) => (
+                    <Text key={i} style={styles.doneMissedItem}>
+                      "{item.prompt}" → {item.correct}
+                    </Text>
+                  ))}
+                </View>
+              )}
               <View style={styles.doneBtns}>
                 <Pressable style={styles.launchBtn} onPress={startGame}>
                   <Text style={styles.launchBtnTxt}>Relaunch</Text>
@@ -1163,6 +1254,35 @@ const styles = StyleSheet.create({
     color: C.textDim,
     fontSize: 14,
     fontFamily: "Inter_400Regular",
+  },
+  doneSummary: {
+    alignItems: "center",
+    gap: 3,
+    marginTop: 4,
+  },
+  doneStat: {
+    color: C.textDim,
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+  },
+  doneMissed: {
+    marginTop: 8,
+    alignItems: "center",
+    gap: 3,
+  },
+  doneMissedLabel: {
+    color: C.textDim,
+    fontSize: 9,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 2,
+    marginBottom: 2,
+  },
+  doneMissedItem: {
+    color: "#fff",
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
   },
   doneBtns: {
     flexDirection: "row",
