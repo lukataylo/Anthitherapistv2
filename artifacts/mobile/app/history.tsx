@@ -1,3 +1,41 @@
+/**
+ * History screen — the second tab.
+ *
+ * Displays two things:
+ *  1. A horizontal mini-game carousel at the top of the list
+ *  2. A chronological feed of past reflection entries
+ *
+ * Each entry card shows the original thought, a relative timestamp, and a
+ * progress badge indicating how many of the distorted words have been reframed.
+ * Tapping a card reloads that session in GameContext and navigates to the
+ * Reframe tab so the user can continue. Long-pressing prompts deletion.
+ *
+ * ## Mini-game dispatch
+ *
+ * Five mini-games are rendered as full-screen modals, each controlled by a
+ * separate boolean visibility state. The `handleGamePress` callback maps game
+ * ids (from GameCarousel's GAMES list) to the right visibility toggle. This
+ * keeps the game components decoupled from the carousel — they receive entries
+ * and an onClose callback, nothing else.
+ *
+ * ## Streak cards
+ *
+ * The header shows three streak/stats cards: current streak, best streak, and
+ * total reflections. The current streak card turns amber when the user has
+ * reflected today, providing immediate visual confirmation of the habit.
+ *
+ * ## ProgressBadge logic
+ *
+ * Only significant (non-neutral) words count toward the progress fraction.
+ * A reframe counts even if the user skipped (which stores the original word
+ * in reframedWords) because the CBT goal of reviewing the word has been met.
+ *
+ * ## timeAgo helper
+ *
+ * Converts a Unix timestamp to a human-readable relative string. Returns
+ * "just now" for anything under a minute to avoid displaying "0m ago".
+ */
+
 import React, { useCallback, useState } from "react";
 import {
   FlatList,
@@ -21,6 +59,7 @@ import { SailGame } from "@/components/SailGame";
 import { RewordGame } from "@/components/RewordGame";
 import { GameCarousel } from "@/components/GameCarousel";
 
+/** Converts a Unix timestamp to a short relative time string. */
 function timeAgo(ts: number): string {
   const diff = Date.now() - ts;
   const mins = Math.floor(diff / 60000);
@@ -33,6 +72,10 @@ function timeAgo(ts: number): string {
   return `${days}d ago`;
 }
 
+/**
+ * Shows a "Complete" pill when all significant words are reframed, otherwise
+ * shows the fraction (e.g. "2/5") with a subtle background.
+ */
 function ProgressBadge({
   reframed,
   total,
@@ -50,6 +93,12 @@ function ProgressBadge({
   );
 }
 
+/**
+ * A single history entry card.
+ *
+ * - `onPress`    — load the session in GameContext and navigate to Reframe
+ * - `onDelete`   — long-press handler, surfaced to the parent which shows Alert
+ */
 function EntryCard({
   entry,
   onPress,
@@ -60,6 +109,8 @@ function EntryCard({
   onDelete: () => void;
 }) {
   const sigWords = entry.words.filter((w) => w.category !== "neutral");
+  // Only count reframedWords entries that correspond to significant words —
+  // neutral words may have stale entries from earlier sessions
   const reframedCount = Object.keys(entry.reframedWords).filter((idx) => {
     const word = entry.words[Number(idx)];
     return word && word.category !== "neutral";
@@ -91,6 +142,7 @@ function EntryCard({
   );
 }
 
+/** Shown when the entries list is empty — no reflections yet. */
 function EmptyState() {
   return (
     <View style={styles.empty}>
@@ -109,12 +161,15 @@ export default function HistoryScreen() {
   const { loadSession } = useGame();
   const { currentStreak, longestStreak, reflectedToday } = useStreak();
   const router = useRouter();
+
+  // Each mini-game is a full-screen modal — visibility is toggled independently
   const [practiceVisible, setPracticeVisible] = useState(false);
   const [rocketVisible, setRocketVisible] = useState(false);
   const [thoughtCheckVisible, setThoughtCheckVisible] = useState(false);
   const [sailVisible, setSailVisible] = useState(false);
   const [rewordVisible, setRewordVisible] = useState(false);
 
+  /** Map game carousel ids to the correct modal visibility toggle. */
   const handleGamePress = useCallback(
     (id: string) => {
       if (id === "sort-tower") setPracticeVisible(true);
@@ -126,6 +181,7 @@ export default function HistoryScreen() {
     []
   );
 
+  /** Load the entry's session into GameContext and switch to the Reframe tab. */
   const handlePress = useCallback(
     (entry: HistoryEntry) => {
       loadSession(entry.thought, entry.words, entry.reframedWords);
@@ -134,6 +190,7 @@ export default function HistoryScreen() {
     [loadSession, router]
   );
 
+  /** Confirm deletion with an Alert before removing from HistoryContext. */
   const handleDelete = useCallback(
     (entry: HistoryEntry) => {
       Alert.alert("Remove reflection?", `"${entry.thought.slice(0, 60)}..."`, [
@@ -152,6 +209,7 @@ export default function HistoryScreen() {
     <View style={styles.root}>
       <StatusBar style="light" />
 
+      {/* Mini-game modals — always mounted so they can initialise state before becoming visible */}
       <SortTowerGame
         visible={practiceVisible}
         entries={entries}
@@ -190,6 +248,7 @@ export default function HistoryScreen() {
           </View>
         </View>
 
+        {/* Streak stat cards — the first card turns amber when reflectedToday */}
         <View style={styles.streakRow}>
           <View style={[styles.streakCard, reflectedToday && styles.streakCardActive]}>
             <Ionicons name="flame" size={18} color={reflectedToday ? "#FF9500" : "rgba(255,255,255,0.3)"} />
@@ -210,6 +269,7 @@ export default function HistoryScreen() {
           </View>
         </View>
       </View>
+
       <FlatList
         data={entries}
         keyExtractor={(item) => item.id}

@@ -1,3 +1,50 @@
+/**
+ * GameCarousel — horizontally scrollable row of mini-game launcher cards.
+ *
+ * Displayed at the top of the History screen, above the entry feed. Each card
+ * launches a different CBT-themed mini-game modal (managed in history.tsx).
+ *
+ * ## Game catalogue
+ *
+ * Five games are currently available. Each entry in `GAMES` describes:
+ *  - `id`          — used by the parent's `handleGamePress` to select which modal to open
+ *  - `name`        — displayed on the card
+ *  - `category`    — therapy skill category (STACKING, REFRAMING, AWARENESS, LANGUAGE)
+ *  - `icon`        — Ionicons glyph name
+ *  - `bg`          — deep dark card background (each game has a distinct hue)
+ *  - `patternColor`— the colour of the decorative background pattern
+ *  - `patternType` — which SVG-style pattern to render ("chevrons"|"arcs"|"grid"|"rings")
+ *  - `available`   — if false, an overlay "SOON" pill is shown and the card is non-interactive
+ *
+ * ## Decorative patterns
+ *
+ * Each game card has a unique low-opacity geometric background pattern to give
+ * the cards a premium "game cartridge" look without requiring image assets.
+ * All four pattern types are pure View compositions:
+ *
+ *  - **ChevronsPattern** — a 5×5 grid of 45° rotated squares (stacking metaphor)
+ *  - **ArcsPattern** — four concentric quarter-circles from the bottom-right corner
+ *    (radar/trajectory metaphor for Rocket Reframe)
+ *  - **GridPattern** — evenly spaced horizontal and vertical lines (analysis metaphor)
+ *  - **RingsPattern** — three thick rings offset from center (sonar/awareness metaphor)
+ *
+ * Patterns are clipped by the card's `overflow: "hidden"` so they extend
+ * past the card edges without escaping the rounded rectangle.
+ *
+ * ## Snap scrolling
+ *
+ * The `ScrollView` uses `snapToInterval` (card width + gap = 168 + 12 = 180 px)
+ * and `decelerationRate="fast"` so the scroll always lands with a card flush
+ * at the left edge, making it clear there are more cards to the right.
+ *
+ * ## Locked cards
+ *
+ * Setting `available: false` dims the card (60% opacity) and disables its
+ * press handler. A "SOON" pill in the top-right corner communicates intent.
+ * This is a forward-compatibility placeholder — future games can be listed
+ * here before they're implemented.
+ */
+
 import React from "react";
 import {
   Pressable,
@@ -23,6 +70,10 @@ type GameDef = {
   available: boolean;
 };
 
+/**
+ * The full catalogue of mini-games rendered in the carousel.
+ * Order here determines the visual left-to-right order in the UI.
+ */
 const GAMES: GameDef[] = [
   {
     id: "sort-tower",
@@ -76,6 +127,7 @@ const GAMES: GameDef[] = [
   },
 ];
 
+/** 5×5 grid of 45°-rotated squares, clipped by the card's overflow. */
 function ChevronsPattern({ color }: { color: string }) {
   const items = [];
   for (let row = 0; row < 5; row++) {
@@ -102,12 +154,13 @@ function ChevronsPattern({ color }: { color: string }) {
   return <>{items}</>;
 }
 
+/** Four concentric quarter-circle arcs emanating from the bottom-right corner. */
 function ArcsPattern({ color }: { color: string }) {
   const arcs = [
     { size: 280, bottom: -120, right: -120, opacity: 0.18, bw: 1.5 },
-    { size: 200, bottom: -80, right: -80, opacity: 0.28, bw: 1.5 },
-    { size: 130, bottom: -40, right: -40, opacity: 0.38, bw: 1 },
-    { size: 70,  bottom: -5,  right: -5,  opacity: 0.45, bw: 1 },
+    { size: 200, bottom: -80,  right: -80,  opacity: 0.28, bw: 1.5 },
+    { size: 130, bottom: -40,  right: -40,  opacity: 0.38, bw: 1   },
+    { size: 70,  bottom: -5,   right: -5,   opacity: 0.45, bw: 1   },
   ];
   return (
     <>
@@ -131,6 +184,7 @@ function ArcsPattern({ color }: { color: string }) {
   );
 }
 
+/** Regular grid of horizontal and vertical hairlines. */
 function GridPattern({ color }: { color: string }) {
   const lines = [];
   for (let i = 0; i < 8; i++) {
@@ -164,11 +218,12 @@ function GridPattern({ color }: { color: string }) {
   return <>{lines}</>;
 }
 
+/** Three thick concentric rings offset from the card's lower-left area. */
 function RingsPattern({ color }: { color: string }) {
   const rings = [
-    { size: 220, cx: 20, cy: 140, opacity: 0.14, bw: 10 },
-    { size: 140, cx: 60, cy: 160, opacity: 0.18, bw: 8 },
-    { size: 80,  cx: 90, cy: 170, opacity: 0.22, bw: 5 },
+    { size: 220, cx: 20,  cy: 140, opacity: 0.14, bw: 10 },
+    { size: 140, cx: 60,  cy: 160, opacity: 0.18, bw: 8  },
+    { size: 80,  cx: 90,  cy: 170, opacity: 0.22, bw: 5  },
   ];
   return (
     <>
@@ -192,6 +247,7 @@ function RingsPattern({ color }: { color: string }) {
   );
 }
 
+/** Selects the correct pattern component by `type` string. */
 function Pattern({
   type,
   color,
@@ -200,11 +256,12 @@ function Pattern({
   color: string;
 }) {
   if (type === "chevrons") return <ChevronsPattern color={color} />;
-  if (type === "arcs") return <ArcsPattern color={color} />;
-  if (type === "grid") return <GridPattern color={color} />;
+  if (type === "arcs")     return <ArcsPattern color={color} />;
+  if (type === "grid")     return <GridPattern color={color} />;
   return <RingsPattern color={color} />;
 }
 
+/** A single game card: dark background, decorative pattern, icon, name, category label. */
 function GameCard({
   game,
   onPress,
@@ -222,6 +279,7 @@ function GameCard({
         !game.available && styles.cardLocked,
       ]}
     >
+      {/* Pattern layer — pointer-events disabled so it doesn't absorb taps */}
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
         <Pattern type={game.patternType} color={game.patternColor} />
       </View>
@@ -268,6 +326,7 @@ export function GameCarousel({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
         decelerationRate="fast"
+        // Snap so each swipe reveals exactly one more card
         snapToInterval={CARD_W + 12}
         snapToAlignment="start"
       >

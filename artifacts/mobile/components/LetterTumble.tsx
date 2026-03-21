@@ -1,3 +1,43 @@
+/**
+ * LetterTumble — full-screen celebration animation for a successful reframe.
+ *
+ * Plays a three-phase animation sequence when the user successfully reframes
+ * a distorted word:
+ *
+ *  Phase 1 — "scatter": each letter of the reframed word flies in from a random
+ *    position on screen and then converges to a single line at the center.
+ *    Letters bounce, rotate, and vary in size during the scatter phase, then
+ *    snap together cleanly on convergence (after 900 ms).
+ *
+ *  Phase 2 — "burst": 18 colourful confetti particles explode outward from the
+ *    center in a radial pattern. Particles use sine-based delays to stagger the
+ *    burst effect. The burst lasts 500 ms.
+ *
+ *  Phase 3 — "reveal": each letter drops in individually from above, staggered
+ *    by 65 ms per letter, in the app's celebration colour palette. After the last
+ *    letter settles, `onComplete` is called to hand control back to GamePanel,
+ *    which then records the reframed word in GameContext.
+ *
+ * ## Rendering strategy
+ *
+ * All three phases render absolute-positioned elements within a fullscreen
+ * container (`pointerEvents="none"` so it doesn't block interaction). React's
+ * conditional rendering switches between phases based on the `phase` state,
+ * unmounting the previous phase's elements to keep the tree small.
+ *
+ * ## Letter positioning
+ *
+ * The `letterStates` memo computes each letter's scatter target and final
+ * convergence X position once per `word` change. `startX` places the
+ * converged word horizontally centered regardless of length.
+ *
+ * ## Why runOnJS?
+ *
+ * The `onDone` callback (triggered when the last letter finishes converging)
+ * must run on the JS thread to call React state setters. `runOnJS` bridges
+ * from the Reanimated worklet thread back to JS safely.
+ */
+
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Dimensions, StyleSheet, View } from "react-native";
 import Animated, {
@@ -19,6 +59,7 @@ interface LetterTumbleProps {
   onComplete: () => void;
 }
 
+/** Eight vivid celebration colours, cycled across letters and particles. */
 const CELEBRATE_COLORS = [
   "#00FFFF",
   "#FF00FF",
@@ -32,14 +73,20 @@ const CELEBRATE_COLORS = [
 
 const PARTICLE_COUNT = 18;
 
+/** Precomputed random values for a single letter's scatter/converge animation. */
 interface LetterState {
-  randX: number;
-  randY: number;
-  randSize: number;
-  randRot: number;
-  targetX: number;
+  randX: number;     // Scatter target X offset from center
+  randY: number;     // Scatter target Y offset from center
+  randSize: number;  // Scale factor during scatter (0.7–2.1)
+  randRot: number;   // Rotation in degrees during scatter
+  targetX: number;   // Final X position in the converged word
 }
 
+/**
+ * A single confetti particle that shoots outward from the center on mount.
+ * Uses a radial trajectory computed from `angle` and `distance`, with a
+ * staggered delay so particles don't all pop out simultaneously.
+ */
 function Particle({
   color,
   angle,
@@ -62,11 +109,13 @@ function Particle({
     const tx = Math.cos(angle) * distance;
     const ty = Math.sin(angle) * distance;
 
+    // Fade in quickly, stay visible during travel, then fade out
     opacity.value = withDelay(delay, withSequence(
       withTiming(1, { duration: 80 }),
       withTiming(1, { duration: 400 }),
       withTiming(0, { duration: 280 })
     ));
+    // Pop in with spring, then shrink as it travels outward
     scale.value = withDelay(delay, withSequence(
       withSpring(1, { damping: 8, stiffness: 300 }),
       withTiming(0.3, { duration: 400 })
@@ -100,6 +149,13 @@ function Particle({
   );
 }
 
+/**
+ * A single letter that scatters to a random position on screen, then
+ * converges back to its final position in the word display.
+ *
+ * `isLast` + `onDone` trigger the phase transition when the last letter
+ * completes its convergence animation.
+ */
 function AnimatedScatterLetter({
   letter,
   color,
@@ -121,16 +177,19 @@ function AnimatedScatterLetter({
 
   useEffect(() => {
     opacity.value = withTiming(1, { duration: 260 });
+    // Scatter phase: spring to random position with low damping for bounciness
     x.value = withSpring(letterState.randX, { damping: 3, stiffness: 35 });
     y.value = withSpring(letterState.randY, { damping: 3, stiffness: 35 });
     scale.value = withSpring(letterState.randSize, { damping: 3, stiffness: 35 });
     rotate.value = withTiming(letterState.randRot, { duration: 600 });
 
-    const CONVERGE = 900;
+    const CONVERGE = 900; // ms until convergence begins
 
+    // Converge phase: snap to final position with higher damping for crispness
     x.value = withDelay(CONVERGE, withSpring(letterState.targetX, { damping: 16, stiffness: 140 }));
     y.value = withDelay(CONVERGE, withSpring(0, { damping: 16, stiffness: 140 }));
     scale.value = withDelay(CONVERGE, withSpring(1.6, { damping: 16, stiffness: 140 }));
+    // Rotation callback fires onDone for the last letter only, bridging to JS thread
     rotate.value = withDelay(CONVERGE, withTiming(0, { duration: 500 }, (finished) => {
       if (finished && isLast) runOnJS(onDone)();
     }));
@@ -153,6 +212,10 @@ function AnimatedScatterLetter({
   );
 }
 
+/**
+ * A single letter in the final "reveal" phase — drops in from above
+ * with a spring bounce, staggered by `delay` ms from the previous letter.
+ */
 function FinalLetterReveal({
   letter,
   color,
@@ -188,10 +251,13 @@ export function LetterTumble({ word, onComplete }: LetterTumbleProps) {
   const letters = useMemo(() => word.toUpperCase().split(""), [word]);
   const [phase, setPhase] = useState<"scatter" | "burst" | "reveal">("scatter");
 
+  // Fixed letter width used for computing convergence X positions
   const letterWidth = 34;
   const totalWidth = letters.length * letterWidth;
+  // startX: offset for the first letter so the word is centered at x=0
   const startX = -totalWidth / 2;
 
+  // Compute scatter/convergence params once per word
   const letterStates = useMemo<LetterState[]>(
     () =>
       letters.map((_, i) => ({
@@ -204,6 +270,7 @@ export function LetterTumble({ word, onComplete }: LetterTumbleProps) {
     [word]
   );
 
+  // Compute particle positions once (not per word — particles are generic)
   const particles = useMemo(() =>
     Array.from({ length: PARTICLE_COUNT }, (_, i) => ({
       color: CELEBRATE_COLORS[i % CELEBRATE_COLORS.length],
@@ -214,10 +281,15 @@ export function LetterTumble({ word, onComplete }: LetterTumbleProps) {
     []
   );
 
+  /**
+   * Triggered by the last letter completing convergence.
+   * Transitions scatter → burst → reveal with timeouts, then calls onComplete.
+   */
   const handleConvergeDone = useCallback(() => {
     setPhase("burst");
     setTimeout(() => {
       setPhase("reveal");
+      // Wait for all letters to drop in (stagger * count + settle time)
       setTimeout(onComplete, letters.length * 70 + 600);
     }, 500);
   }, [onComplete, letters.length]);

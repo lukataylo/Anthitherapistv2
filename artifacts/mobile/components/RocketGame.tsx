@@ -1,3 +1,78 @@
+/**
+ * RocketGame — multiple-choice reframing quiz with a gravity-based rocket mechanic.
+ *
+ * Players answer reframing questions as fast as possible to boost a rocket
+ * upward. Gravity continuously pulls the rocket back down — if it touches
+ * the bottom of the screen, the game ends. They have 3 lives.
+ *
+ * ## CBT rationale
+ *
+ * Reframing (substituting distorted language with balanced alternatives) is the
+ * core skill of CBT. This game drills the association between specific distorted
+ * words and their healthy counterparts. The time pressure prevents the user from
+ * over-analysing and builds automatic recall — similar to CBT flashcard drills
+ * used in therapy homework.
+ *
+ * ## Question generation — `buildQuestions`
+ *
+ * Each question presents a distorted word (`prompt`) and two options
+ * (`opts: [string, string]`), one of which is the correct reframe. The wrong
+ * option is randomly selected from other distorted words in the deck so it
+ * contrasts clearly with the correct answer.
+ *
+ * Questions are sourced from:
+ *  1. The user's `reframedWords` — pairs of (original distorted word, chosen reframe)
+ *     from completed sessions (length ≤ 28 chars to fit the button)
+ *  2. `FALLBACK` — a curated set of 18 common CBT word pairs used when the user
+ *     has few history entries
+ *
+ * ## Rocket gravity mechanic
+ *
+ * The rocket's vertical position is controlled by a single `rocketTop` Animated.Value.
+ * Two opposing animations run alternately:
+ *
+ *  - **Drift** (gravity): `startDrift()` animates `rocketTop` from its current
+ *    position toward `R_BOT` over a duration proportional to the remaining distance.
+ *    This ensures gravity "feels" constant regardless of rocket altitude.
+ *
+ *  - **Boost** (correct answer): `boostRocket()` stops the drift, moves the rocket
+ *    up 65–95 px, then restarts drift from the new position.
+ *
+ * The rocket's visual position and the "altitude bar" on the right edge both read
+ * from `rocketTop` via interpolation.
+ *
+ * ## Question timer
+ *
+ * Each question has a per-question timer bar that shrinks from full to empty.
+ * The starting duration is `START_TIME` (5.8 s) and shrinks by `TIME_DEC` (160 ms)
+ * each correct answer down to `MIN_TIME` (2 s), creating progressive difficulty.
+ *
+ * ## Speed bonus
+ *
+ * Answering quickly gives bonus points proportional to the timer fraction remaining
+ * at the moment of the answer (`timerVal.current * 80`). The bonus is shown as a
+ * floating "+N" popup for 700 ms.
+ *
+ * ## Stale closure problem — why so many refs?
+ *
+ * The game has many animation callbacks that reference game state (phase, lives,
+ * qIdx). React Animated callbacks run asynchronously and can capture stale state
+ * values from closures. All mutable game state that animation callbacks need is
+ * mirrored into refs (`phaseRef`, `livesRef`, `qIdxRef`, `answeredRef`) that
+ * are updated synchronously alongside their state counterparts. `handleTimeoutRef`
+ * is itself a ref (a ref to a function) so the timer callback always calls the
+ * most-recently-created version.
+ *
+ * ## Starfield parallax
+ *
+ * Three star layers (S1, S2, S3) are pre-generated outside the component so they
+ * don't regenerate on re-render. Each layer scrolls at a different speed to create
+ * depth (6.2 s, 3.4 s, 1.9 s per loop). S3 uses `streak: true` to render stars as
+ * vertical streaks, mimicking hyper-speed parallax on the fastest layer.
+ * Each layer has two copies (A and B) offset by one screen height to create a
+ * seamless loop — as copy A scrolls off the bottom, copy B enters from the top.
+ */
+
 import React, {
   useCallback,
   useEffect,

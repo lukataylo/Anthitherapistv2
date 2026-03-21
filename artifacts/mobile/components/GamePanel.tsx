@@ -1,3 +1,49 @@
+/**
+ * GamePanel — the core reframing interaction, presented as a bottom-sheet modal.
+ *
+ * Displayed when `screen === "game"` in GameContext. The panel focuses the user
+ * on a single distorted word and offers four actions to work through it:
+ *
+ *  - **REFRAME** — free-text input where the user types their own alternative
+ *  - **HINT**    — reveals the AI-generated hint (e.g. "Try something like: 'sometimes'")
+ *  - **50/50**   — reveals two options (one correct, one decoy) to choose from
+ *  - **SKIP**    — moves past the word without reframing (it still counts toward
+ *                  completion so the session can finish)
+ *
+ * ## Evaluation logic
+ *
+ * `evaluateReframe()` checks the user's free-text input against the AI-provided
+ * `reframes` array using fuzzy matching (Levenshtein distance ≤ 25% of word
+ * length). This allows for minor typos without being so loose that nonsense
+ * passes. Additionally, the original distorted word itself and a curated list
+ * of absolute words are blocked even if they happen to match by edit distance.
+ *
+ * ## Timer
+ *
+ * A 45-second countdown timer is displayed as:
+ *  1. A colour-animated progress bar at the top of the panel (green → amber →
+ *     red as time runs out)
+ *  2. A numeric countdown in the header
+ *
+ * If the timer reaches zero, `handleSkip()` is called automatically. The timer
+ * is stored in a React ref (`timerRef`) rather than state to avoid excessive
+ * re-renders from the setInterval callback.
+ *
+ * ## Animation choreography
+ *
+ * When the panel becomes visible, three staggered enter animations play:
+ *  - `slideAnim`   — the whole panel slides up 20px and fades in (240 ms)
+ *  - `wordAnim`    — the distorted word enters 80 ms after the panel
+ *  - `actionsAnim` — the action buttons enter 60 ms after the word
+ *
+ * ## Wrong attempts
+ *
+ * Each failed reframe attempt is appended to `wrongAttempts` with the user's
+ * text and the AI's explainer for why that word is a distortion. This list
+ * is displayed inside the panel with strikethrough styling, building up a
+ * visual record of what didn't work and why — reinforcing learning.
+ */
+
 import React, { useEffect, useRef, useState } from "react";
 import {
   Keyboard,
@@ -26,6 +72,7 @@ import { Colors } from "@/constants/colors";
 import { useGame, WordAnalysis } from "@/context/GameContext";
 import { LetterTumble } from "@/components/LetterTumble";
 
+/** Seconds the user has to reframe a word before it is auto-skipped. */
 const TIMER_SECONDS = 45;
 
 interface WrongAttempt {
@@ -33,6 +80,10 @@ interface WrongAttempt {
   explainer: string;
 }
 
+/**
+ * Classic dynamic-programming Levenshtein distance between two strings.
+ * Used by `isCloseEnoughToReframe` to accept minor typos.
+ */
 function levenshtein(a: string, b: string): number {
   const dp: number[][] = Array.from({ length: a.length + 1 }, (_, i) =>
     Array.from({ length: b.length + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0))
@@ -49,6 +100,11 @@ function levenshtein(a: string, b: string): number {
   return dp[a.length][b.length];
 }
 
+/**
+ * Returns true if `input` is close enough to `reframe` to be accepted.
+ * Exact match always passes. Otherwise allows edit distance up to 25% of the
+ * longer string (e.g. a 12-character word tolerates up to 3 edits).
+ */
 function isCloseEnoughToReframe(input: string, reframe: string): boolean {
   const a = input.toLowerCase().trim();
   const b = reframe.toLowerCase().trim();
@@ -80,7 +136,9 @@ export function GamePanel() {
   const [celebrationWord, setCelebrationWord] = useState("");
   const [timeLeft, setTimeLeft] = useState(TIMER_SECONDS);
 
+  // Animated timer progress: 1.0 (full) → 0.0 (empty), driven by withTiming
   const timerProgress = useSharedValue(1);
+  // Panel enter animations
   const slideAnim = useSharedValue(0);
   const wordAnim = useSharedValue(0);
   const actionsAnim = useSharedValue(0);
@@ -88,6 +146,7 @@ export function GamePanel() {
 
   useEffect(() => {
     if (isVisible) {
+      // Reset all per-word state when a new word is opened
       setReframeText("");
       setShowReframeInput(false);
       setWrongAttempts([]);
@@ -97,16 +156,19 @@ export function GamePanel() {
       setTimeLeft(TIMER_SECONDS);
       timerProgress.value = 1;
 
+      // Staggered entry animations for panel, word, and action buttons
       wordAnim.value = 0;
       actionsAnim.value = 0;
       slideAnim.value = withTiming(1, { duration: 240, easing: Easing.out(Easing.cubic) });
       wordAnim.value = withDelay(80, withTiming(1, { duration: 200, easing: Easing.out(Easing.cubic) }));
       actionsAnim.value = withDelay(140, withTiming(1, { duration: 200, easing: Easing.out(Easing.cubic) }));
 
+      // Animate the timer bar from full to empty over exactly TIMER_SECONDS
       timerProgress.value = withTiming(0, {
         duration: TIMER_SECONDS * 1000,
       });
 
+      // Countdown interval that auto-skips when it reaches zero
       timerRef.current = setInterval(() => {
         setTimeLeft((t) => {
           if (t <= 1) {
@@ -118,6 +180,7 @@ export function GamePanel() {
         });
       }, 1000);
     } else {
+      // Panel closed — reset slide position and clear the interval
       slideAnim.value = 0;
       if (timerRef.current) clearInterval(timerRef.current);
     }
@@ -127,6 +190,7 @@ export function GamePanel() {
     };
   }, [isVisible, activeWordIndex]);
 
+  // Panel slides up from 20px below and fades in
   const panelStyle = useAnimatedStyle(() => ({
     transform: [
       { translateY: interpolate(slideAnim.value, [0, 1], [20, 0]) },
@@ -146,6 +210,11 @@ export function GamePanel() {
     opacity: actionsAnim.value,
   }));
 
+  /**
+   * Timer progress bar: colour transitions through three stages as time runs out.
+   * The interpolateColor call maps progress 0→0.3→1 to red→amber→green,
+   * so the bar starts green (time remaining) and ends red (time up).
+   */
   const timerFillStyle = useAnimatedStyle(() => ({
     flex: timerProgress.value,
     backgroundColor: interpolateColor(
@@ -155,6 +224,7 @@ export function GamePanel() {
     ) as string,
   }));
 
+  // The "empty" portion of the timer bar grows as the fill shrinks
   const timerSpacerStyle = useAnimatedStyle(() => ({
     flex: 1 - timerProgress.value,
   }));
@@ -166,6 +236,16 @@ export function GamePanel() {
     skipWord(activeWordIndex);
   };
 
+  /**
+   * Evaluates the user's free-text reframe against the AI-provided reframes.
+   *
+   * Rejects:
+   *  - The original distorted word itself
+   *  - Any word from the curated absolute/belief blocklist
+   *
+   * Accepts:
+   *  - Any string within edit distance 25% of a valid reframe
+   */
   const evaluateReframe = (input: string): boolean => {
     if (!activeWord) return false;
     const lower = input.toLowerCase().trim();
@@ -173,6 +253,7 @@ export function GamePanel() {
 
     if (lower === original) return false;
 
+    // Block common absolute/belief words that are themselves distorted
     const ABSOLUTE_WORDS = new Set([
       "always", "never", "everyone", "nobody", "everything", "nothing",
       "completely", "totally", "forever", "impossible", "every", "all", "none",
@@ -195,6 +276,7 @@ export function GamePanel() {
       handleSuccess(trimmed);
     } else {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      // Record the failed attempt with the AI's explainer so the user learns why
       setWrongAttempts((prev) => [
         ...prev,
         {
@@ -218,6 +300,7 @@ export function GamePanel() {
       handleSuccess(option);
     } else {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      // Wrong 50/50 pick — clear the options and record the attempt
       setWrongAttempts((prev) => [
         ...prev,
         {
@@ -230,6 +313,11 @@ export function GamePanel() {
     }
   };
 
+  /**
+   * Called when the user successfully identifies a reframe.
+   * Stops the timer, stores the word for the celebration animation, then
+   * waits for LetterTumble to finish before calling markReframed().
+   */
   const handleSuccess = (reframedWord: string) => {
     if (activeWordIndex === null) return;
     if (timerRef.current) clearInterval(timerRef.current);
@@ -238,6 +326,7 @@ export function GamePanel() {
     setShowCelebration(true);
   };
 
+  /** Called by LetterTumble when its animation sequence completes. */
   const handleCelebrationDone = () => {
     if (activeWordIndex === null) return;
     markReframed(activeWordIndex, celebrationWord);
@@ -248,6 +337,8 @@ export function GamePanel() {
 
   return (
     <Modal visible={isVisible} transparent animationType="fade">
+      {/* LetterTumble celebration overlay — rendered inside the modal so it
+          sits above the panel content but within the modal's z-stack */}
       {showCelebration && (
         <LetterTumble
           word={celebrationWord}
@@ -262,6 +353,7 @@ export function GamePanel() {
         <Pressable onPress={Keyboard.dismiss} style={{ flex: 1 }}>
           <View style={styles.overlay}>
             <Animated.View style={[styles.panel, panelStyle]}>
+              {/* Timer progress bar at the very top of the panel */}
               <View style={styles.timerBar}>
                 <Animated.View style={[styles.timerFill, timerFillStyle]} />
                 <Animated.View style={timerSpacerStyle} />
@@ -274,6 +366,7 @@ export function GamePanel() {
                 </Pressable>
               </View>
 
+              {/* Word display: shown large in uppercase with the distortion category badge */}
               <Animated.View style={[styles.wordArea, wordEnterStyle]}>
                 <Text style={styles.distortedWord}>
                   {activeWord.word.toUpperCase()}
@@ -315,6 +408,7 @@ export function GamePanel() {
                 </View>
               )}
 
+              {/* Scrollable area for wrong attempt history */}
               <ScrollView
                 style={styles.wrongArea}
                 contentContainerStyle={{ gap: 8 }}
@@ -330,6 +424,7 @@ export function GamePanel() {
                 ))}
               </ScrollView>
 
+              {/* 50/50 option buttons — rendered when the user activates this power-up */}
               {fiftyFiftyOptions && (
                 <View style={styles.fiftyArea}>
                   <Text style={styles.fiftyLabel}>Pick the better reframe:</Text>
@@ -350,6 +445,7 @@ export function GamePanel() {
                 </View>
               )}
 
+              {/* Free-text reframe input — toggled by the REFRAME button */}
               {showReframeInput ? (
                 <View style={styles.inputRow}>
                   <TextInput
@@ -374,6 +470,7 @@ export function GamePanel() {
                 </View>
               ) : null}
 
+              {/* Action buttons */}
               <Animated.View style={[styles.actionRow, actionsEnterStyle]}>
                 <Pressable
                   style={({ pressed }) => [
@@ -383,6 +480,7 @@ export function GamePanel() {
                   onPress={() => {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                     setShowReframeInput((v) => !v);
+                    // Opening REFRAME dismisses 50/50 and vice versa — mutually exclusive
                     setFiftyFiftyOptions(null);
                   }}
                 >
@@ -411,6 +509,8 @@ export function GamePanel() {
                   onPress={() => {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                     setShowReframeInput(false);
+                    // Use the AI-provided 50/50 pair if available; otherwise construct
+                    // a fallback from the hint and the original word
                     const opts =
                       activeWord.fiftyFifty?.length >= 2
                         ? [...activeWord.fiftyFifty].sort(() => Math.random() - 0.5)

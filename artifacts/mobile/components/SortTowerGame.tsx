@@ -1,3 +1,57 @@
+/**
+ * SortTowerGame — swipe-to-classify word sorting game.
+ *
+ * Players swipe a card LEFT (negative/distorted) or RIGHT (positive/reframe)
+ * to classify words drawn from their history. Each correct classification adds
+ * a colourful floor to a growing pixel-art tower. The game lasts 30 seconds.
+ *
+ * ## CBT rationale
+ *
+ * Sorting practises categorical recognition — the ability to quickly label a
+ * word as either a cognitive distortion or a healthy alternative. This is the
+ * same skill trained in CBT "thought records", where the therapist asks the
+ * client to categorise automatic thoughts. The speed constraint prevents
+ * overthinking and trains rapid pattern recognition.
+ *
+ * ## Deck building — `buildDeck`
+ *
+ * Both distorted words and their AI-provided reframes are extracted from
+ * `HistoryEntry.words`. The deck is deduplicated (case-insensitive) to prevent
+ * the same word appearing twice. Distorted words have `isNegative: true`;
+ * reframes have `isNegative: false`. The deck is shuffled so categories don't
+ * cluster together.
+ *
+ * ## Swipe gesture
+ *
+ * `WordCard` uses `react-native-gesture-handler`'s `Gesture.Pan()` on the
+ * Reanimated worklet thread for 60 fps tracking:
+ *  - While dragging: card rotates ±8° and a left/right label fades in
+ *  - On release past `SWIPE_THRESHOLD` (27% of screen width): card flies off-screen
+ *    and `onSwipe` is called via `runOnJS`
+ *  - On release below threshold: card springs back to center
+ *
+ * ## Tower building
+ *
+ * `makeFloor` creates a new `Floor` object each time the user swipes correctly.
+ * Each floor has a colour (cycling through `FLOOR_PALETTE`) and an arch window
+ * count that increases as the tower grows. The tower tapers: each floor is
+ * `TAPER_PX` narrower than the one below it, capped at `FLOOR_MIN_W`.
+ * When the tower reaches 8 floors, an animated spire appears.
+ *
+ * ## Score and combo multiplier
+ *
+ * Base score per correct swipe: 100 pts.
+ * Consecutive correct swipes (combo) increase the multiplier:
+ *   ≥ 3 correct → 2×, ≥ 5 → 3×, ≥ 8 → 4×
+ * A ComboFlash indicator pops in when the multiplier first activates.
+ *
+ * ## Timer pulse
+ *
+ * When 10 seconds remain, the timer text starts pulsing (scale 1 → 1.06)
+ * via `withRepeat` to create urgency. This is a common game design pattern
+ * for time pressure.
+ */
+
 import React, {
   useCallback,
   useEffect,

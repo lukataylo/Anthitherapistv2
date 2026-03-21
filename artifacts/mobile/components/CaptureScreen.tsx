@@ -1,3 +1,50 @@
+/**
+ * CaptureScreen — the primary interaction surface of the app.
+ *
+ * This component renders two full-screen layers stacked with `absoluteFill`:
+ *
+ * 1. **Input layer** — the thought capture UI (text input + mic/send buttons).
+ *    Visible when `screen === "capture"`, pointer events disabled when reviewing.
+ *
+ * 2. **Review layer** — the annotated thought view with `AnnotatedThought` and
+ *    the reframe progress indicator. Visible when `screen === "cloud" | "game"`,
+ *    pointer events disabled when capturing.
+ *
+ * The layers cross-fade via `reviewProgress` (an animated 0→1 value) rather
+ * than conditional mounting. This keeps the input layer alive while reviewing
+ * (so it doesn't reset its scroll state) and makes the transition smooth.
+ *
+ * A third piece — `GamePanel` — is always rendered but only becomes visible
+ * when `screen === "game"`. Because GamePanel is a modal it manages its own
+ * visibility internally.
+ *
+ * ## Streak nudge
+ *
+ * When the user has a streak but hasn't reflected today, a subtle orange line
+ * fades in below the text card reminding them. The message cycles through
+ * three variants based on the streak length (using modulo) to avoid repetition.
+ *
+ * ## Send button state machine
+ *
+ * `sendActive` (0 or 1) drives two animated properties on the send button:
+ *  - Opacity: 0.35 when disabled → 1.0 when enabled
+ *  - Background colour: dark grey (#3A3A3A) → white (#FFFFFF)
+ * The colour change makes it immediately obvious when a thought is ready to send.
+ *
+ * ## Mic button (UI only)
+ *
+ * The mic button UI (pulse animation, red background on "recording") is
+ * implemented but does not connect to any speech-to-text service — it is
+ * a placeholder for future voice input. The `isRecording` state toggles
+ * purely visual feedback.
+ *
+ * ## Loading state
+ *
+ * When `isLoading` is true (the API request is in-flight), the component
+ * renders only the `ThinkingAnimation` centred on screen, replacing the
+ * layered UI entirely.
+ */
+
 import React, { useEffect, useRef } from "react";
 import {
   Keyboard,
@@ -34,6 +81,7 @@ import { GamePanel } from "@/components/GamePanel";
 interface CaptureScreenProps {
   onSubmit: (thought: string) => void;
   isLoading: boolean;
+  /** True for 1.5 s immediately after a successful API response — triggers the StreakBadge animation. */
   streakJustIncremented?: boolean;
 }
 
@@ -62,18 +110,21 @@ export function CaptureScreen({
 
   const isReviewing = screen === "cloud" || screen === "game";
 
+  // Mic recording UI state — purely visual, not wired to speech-to-text
   const [isRecording, setIsRecording] = React.useState(false);
 
-  const sendScale = useSharedValue(1);
-  const sendActive = useSharedValue(0);
-  const nudgeOpacity = useSharedValue(0);
-  const reviewProgress = useSharedValue(0);
-  const micBg = useSharedValue(0);
-  const micPulse = useSharedValue(1);
+  // Animated values for various interactive elements
+  const sendScale = useSharedValue(1);      // Bounce scale on send button press
+  const sendActive = useSharedValue(0);     // 0 = disabled, 1 = enabled
+  const nudgeOpacity = useSharedValue(0);   // Streak reminder visibility
+  const reviewProgress = useSharedValue(0); // Cross-fade between input/review layers
+  const micBg = useSharedValue(0);          // Mic background: 0=dark, 1=red
+  const micPulse = useSharedValue(1);       // Mic pulse scale when recording
 
   const canSend = thought.trim().length > 0 && !isLoading;
   const showNudge = currentStreak > 0 && !reflectedToday;
 
+  // Cycle through three streak nudge messages based on streak number
   const nudgeMessages = [
     `${currentStreak} day streak — keep it going`,
     `${currentStreak} days strong — don't stop now`,
@@ -81,14 +132,17 @@ export function CaptureScreen({
   ];
   const nudgeText = nudgeMessages[currentStreak % nudgeMessages.length];
 
+  // Animate send button enabled state
   useEffect(() => {
     sendActive.value = withTiming(canSend ? 1 : 0, { duration: 200 });
   }, [canSend]);
 
+  // Fade streak nudge in/out
   useEffect(() => {
     nudgeOpacity.value = withTiming(showNudge ? 1 : 0, { duration: 300 });
   }, [showNudge]);
 
+  // Cross-fade between input and review layers using cubic easing for smoothness
   useEffect(() => {
     reviewProgress.value = withTiming(isReviewing ? 1 : 0, {
       duration: 260,
@@ -96,9 +150,11 @@ export function CaptureScreen({
     });
   }, [isReviewing]);
 
+  // Animate mic button on record/stop
   useEffect(() => {
     if (isRecording) {
       micBg.value = withTiming(1, { duration: 200 });
+      // Continuous slow pulse to indicate active recording
       micPulse.value = withRepeat(
         withSequence(
           withTiming(1.14, { duration: 480 }),
@@ -112,6 +168,7 @@ export function CaptureScreen({
     }
   }, [isRecording]);
 
+  // Send button: opacity and colour react to canSend
   const sendBtnStyle = useAnimatedStyle(() => ({
     transform: [{ scale: sendScale.value }],
     opacity: 0.35 + sendActive.value * 0.65,
@@ -122,6 +179,7 @@ export function CaptureScreen({
     ),
   }));
 
+  // Mic button: colour transitions red when recording, pulses when active
   const micBtnStyle = useAnimatedStyle(() => ({
     transform: [{ scale: micPulse.value }],
     backgroundColor: interpolateColor(
@@ -131,6 +189,7 @@ export function CaptureScreen({
     ),
   }));
 
+  // Soft glow halo behind mic button that expands when recording
   const micGlowStyle = useAnimatedStyle(() => ({
     opacity: micBg.value * 0.3,
     transform: [{ scale: 1 + micBg.value * 0.25 + (micPulse.value - 1) * 1.4 }],
@@ -140,10 +199,12 @@ export function CaptureScreen({
     opacity: nudgeOpacity.value,
   }));
 
+  // Input layer fades out as reviewProgress increases
   const inputLayerStyle = useAnimatedStyle(() => ({
     opacity: 1 - reviewProgress.value,
   }));
 
+  // Review layer fades in as reviewProgress increases
   const reviewLayerStyle = useAnimatedStyle(() => ({
     opacity: reviewProgress.value,
   }));
@@ -152,6 +213,7 @@ export function CaptureScreen({
     if (!canSend) return;
     Keyboard.dismiss();
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    // Bouncy scale feedback on send button tap
     sendScale.value = withSpring(0.9, { damping: 6 }, () => {
       sendScale.value = withSpring(1, { damping: 8 });
     });
@@ -163,16 +225,19 @@ export function CaptureScreen({
     setIsRecording((r) => !r);
   };
 
+  /** Return to the capture input and clear the current session. */
   const handleBack = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     goToCapture();
   };
 
+  /** Open the GamePanel for the tapped distorted word. */
   const handleWordPress = (idx: number) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     openGame(idx);
   };
 
+  // Full-screen loading state — replaces the entire layered UI
   if (isLoading) {
     return (
       <View style={[styles.loadingContainer, { paddingTop: insets.top }]}>
@@ -183,7 +248,7 @@ export function CaptureScreen({
 
   return (
     <View style={{ flex: 1 }}>
-      {/* Capture input layer */}
+      {/* Input layer — pointer events disabled while reviewing so taps reach the review layer */}
       <Animated.View
         style={[
           StyleSheet.absoluteFill,
@@ -226,7 +291,7 @@ export function CaptureScreen({
               />
 
               <View style={styles.toolbar}>
-                {/* Mic button */}
+                {/* Mic button with animated glow and pulse */}
                 <View style={styles.micWrap}>
                   <Animated.View style={[styles.micGlow, micGlowStyle]} />
                   <Pressable
@@ -240,7 +305,7 @@ export function CaptureScreen({
                   </Pressable>
                 </View>
 
-                {/* Send button — paper plane */}
+                {/* Send button — icon colour inverts with the background */}
                 <Pressable
                   onPress={handleSubmit}
                   disabled={!canSend}
@@ -268,7 +333,7 @@ export function CaptureScreen({
         </KeyboardAvoidingView>
       </Animated.View>
 
-      {/* Review annotation layer */}
+      {/* Review layer — pointer events disabled while in capture mode */}
       <Animated.View
         style={[
           StyleSheet.absoluteFill,
@@ -285,7 +350,7 @@ export function CaptureScreen({
             },
           ]}
         >
-          {/* Review top bar */}
+          {/* Review top bar: back button + progress counter */}
           <View style={styles.reviewTopBar}>
             <Pressable
               onPress={handleBack}
@@ -307,7 +372,7 @@ export function CaptureScreen({
             )}
           </View>
 
-          {/* Annotated card */}
+          {/* Annotated card: scrollable so long thoughts don't clip */}
           <View style={styles.card}>
             <ScrollView
               style={{ flex: 1 }}
@@ -321,6 +386,7 @@ export function CaptureScreen({
                 onWordPress={handleWordPress}
               />
 
+              {/* "All reframed" banner appears once every significant word is done */}
               {allDone && totalSignificant > 0 && (
                 <View style={styles.doneBanner}>
                   <Ionicons name="sparkles" size={13} color={Colors.success} />
@@ -332,7 +398,8 @@ export function CaptureScreen({
         </View>
       </Animated.View>
 
-      {/* Game panel modal — always rendered so it can respond to screen === "game" */}
+      {/* GamePanel is always rendered so its modal can react to screen state changes
+          without being unmounted during the review→game transition */}
       <GamePanel />
     </View>
   );

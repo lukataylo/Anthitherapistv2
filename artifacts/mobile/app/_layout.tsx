@@ -1,3 +1,35 @@
+/**
+ * Root layout — the single app shell that wraps every screen.
+ *
+ * Expo Router renders this file once for the lifetime of the app. Its
+ * responsibilities are:
+ *
+ * 1. **Font loading** — Inter (400/500/600/700 weights) is loaded
+ *    asynchronously via expo-google-fonts. The splash screen is held open
+ *    until fonts are ready (or have failed to load), preventing a flash of
+ *    unstyled text on first render.
+ *
+ * 2. **Provider nesting** — React context providers are ordered carefully:
+ *
+ *      SafeAreaProvider
+ *        ErrorBoundary         ← catches any render crash and shows a fallback
+ *          QueryClientProvider ← React Query — owns the API mutation cache
+ *            GestureHandlerRootView ← required for react-native-gesture-handler
+ *              HistoryProvider ← outermost data provider (no dependencies)
+ *                StreakProvider ← reads history-independent streak data
+ *                  GameProvider ← innermost — can read history/streak if needed
+ *                    Tabs + TabBar
+ *
+ * 3. **API base URL** — `setBaseUrl()` is called at module load time (before
+ *    any component mounts) so the React Query hooks can construct correct URLs
+ *    immediately. `EXPO_PUBLIC_DOMAIN` is set by the Replit workspace.
+ *
+ * 4. **Tab navigation** — the two tabs (Reframe / History) share this layout.
+ *    `headerShown: false` gives each screen full control over its header area.
+ *    The custom `TabBar` component replaces Expo Router's default tab bar with
+ *    the glassmorphic design that matches the app's dark aesthetic.
+ */
+
 import {
   Inter_400Regular,
   Inter_500Medium,
@@ -21,11 +53,15 @@ import { TabBar } from "@/components/TabBar";
 import { StreakProvider } from "@/context/StreakContext";
 import { seedIfEmpty } from "@/utils/seedData";
 
+// Configure the API client before any hooks can run
 setBaseUrl(`https://${process.env.EXPO_PUBLIC_DOMAIN}`);
 
+// Keep the native splash screen up while fonts load
 SplashScreen.preventAutoHideAsync();
 seedIfEmpty();
 
+// A single QueryClient instance for the app lifetime — React Query manages
+// caching, deduplication, and background refetching for API calls
 const queryClient = new QueryClient();
 
 export default function RootLayout() {
@@ -37,11 +73,16 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
+    // Hide the splash screen once fonts are loaded or have definitively failed.
+    // Waiting for fontError too avoids an infinite splash screen if the CDN
+    // is unavailable; the app will render with system fonts instead.
     if (fontsLoaded || fontError) {
       SplashScreen.hideAsync();
     }
   }, [fontsLoaded, fontError]);
 
+  // Show a solid black view while fonts are still loading to prevent a
+  // flicker of unstyled content before the splash screen hides
   if (!fontsLoaded && !fontError) {
     return <View style={{ flex: 1, backgroundColor: "#000" }} />;
   }

@@ -1,3 +1,61 @@
+/**
+ * ThoughtCheckGame — "is this thought distorted?" binary awareness game.
+ *
+ * Players are shown thoughts one at a time and must decide whether each one
+ * contains distorted thinking (DISTORTED button) or not (HEALTHY button).
+ * Missed answers reveal an explanation of the distortion so the user learns.
+ *
+ * ## CBT rationale
+ *
+ * This game trains the recognition phase of Cognitive Behavioural Therapy —
+ * a critical first step before any reframing can occur. A patient who cannot
+ * notice cognitive distortions in the wild cannot apply reframes. By replaying
+ * their own historical thoughts alongside curated examples, users practise
+ * spotting the same patterns they produce themselves.
+ *
+ * ## Round generation — `buildRounds`
+ *
+ * Each game session creates a 10-round deck mixing:
+ *  - Up to 6 distorted rounds from the user's own history (words whose
+ *    category is not neutral are extracted and their category is used to
+ *    generate a contextual explanation)
+ *  - Fallback distorted rounds (from `DISTORTED_FALLBACK`) if the user has
+ *    fewer than 6 history entries with significant words
+ *  - 4 healthy rounds drawn from `HEALTHY_THOUGHTS` (the user must not mark
+ *    these as distorted — a false-positive is still a wrong answer)
+ *
+ * The deck is shuffled so patterns aren't memorised by position.
+ *
+ * ## Phase state machine
+ *
+ *   idle → playing → explain → playing (loop)
+ *                  ↘ done (all rounds exhausted or lives = 0)
+ *
+ * - `"explain"` is only entered when the user wrongly marks a distorted thought
+ *   as healthy — they see the highlighted distorted words and an explanation.
+ *   False positives (marking a healthy thought as distorted) skip the explain
+ *   phase and move directly to the next round.
+ *
+ * ## DroppingText animation
+ *
+ * Each new round re-animates the thought words dropping in from above,
+ * staggered by 38 ms per word. This is triggered by incrementing `triggerKey`,
+ * which is passed to `DroppingText` and used as a `useEffect` dependency to
+ * restart the animation fresh — without unmounting and remounting the component.
+ *
+ * ## Feedback flash
+ *
+ * A 60 ms teal/red full-screen flash provides immediate right/wrong feedback
+ * before the explanation appears. The colour also changes the Background glow
+ * from green to crimson on a wrong answer, sustaining the negative-feedback
+ * signal while the explanation is shown.
+ *
+ * ## Lives
+ *
+ * Players start with 4 lives (hearts). Each wrong answer costs one. At zero
+ * the game ends. This prevents grinding through distorted thoughts by guessing.
+ */
+
 import React, {
   useCallback,
   useEffect,

@@ -1,3 +1,64 @@
+/**
+ * RewordGame — branching-tree word substitution game.
+ *
+ * Players are shown a distorted word at the center of a tree and must choose
+ * the best reframe from three options arranged at the bottom as nodes. Lines
+ * connect the root to each node; selecting the correct node turns it green and
+ * advances the round. An incorrect selection turns the node red and shows
+ * why that word is still distorted.
+ *
+ * ## CBT rationale
+ *
+ * This game reinforces the substitution phase of cognitive restructuring —
+ * choosing the right word to replace a distorted one. The three-option tree
+ * design is intentional: both wrong options are plausible alternatives (not
+ * obviously wrong) but are still distorted words. This trains nuanced
+ * word selection: users must distinguish between "reducing intensity" (correct)
+ * versus "replacing one absolute with another" (wrong).
+ *
+ * For example:
+ *   - distorted: "always"
+ *   - correct: "sometimes"
+ *   - wrong: ["never", "constantly"]
+ * Both wrong options are absolutes. The correct one is a nuanced qualifier.
+ *
+ * ## Tree geometry
+ *
+ * The tree is rendered as absolute-positioned `View`s:
+ *  - Root dot at `(DOT_X, DOT_Y)` — horizontal center, 40% down
+ *  - Horizontal bar at `BAR_Y` — connects the three branches
+ *  - Three node circles at `NODE_XS` (16%, 50%, 84% of screen width) at `NODE_Y`
+ *  - Lines drawn with SVG-equivalent View transforms (absolute positioning +
+ *    rotation + height = line length)
+ *
+ * Line length and angle are computed in `buildLines` from the geometry constants
+ * and only recalculated if screen dimensions change (stable across renders).
+ *
+ * ## Line animation
+ *
+ * Each line animates from the distorted-word dot down to its node using an
+ * Animated.Value (`lineAnims[i]`) that goes 0→1. The line's `height` is
+ * interpolated from 0 to the full line length, growing downward. Staggered
+ * delays (i × 120 ms) make the three lines appear to grow in sequence.
+ *
+ * ## Node selection feedback
+ *
+ * After selection, the three nodes are styled based on result:
+ *  - Correct node: `nodeCorrect` (green)
+ *  - Selected-wrong node: `nodeWrong` (red)
+ *  - Other nodes: dimmed with `nodeWrongOther` opacity
+ *
+ * An explanation text appears below the nodes. After 1.4 s, the game
+ * auto-advances to the next round.
+ *
+ * ## Scoring and timer
+ *
+ * - 90-second session timer (same as SailGame)
+ * - Base 100 points per correct answer
+ * - Combo multiplier: 2× at 3+, 3× at 6+ consecutive correct answers
+ * - Wrong answers break the combo but don't deduct points or lives
+ */
+
 import React, {
   useCallback,
   useEffect,

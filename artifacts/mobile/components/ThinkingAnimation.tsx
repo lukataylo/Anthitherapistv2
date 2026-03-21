@@ -1,3 +1,53 @@
+/**
+ * ThinkingAnimation — orbital loading state during AI analysis.
+ *
+ * Displayed while the POST /api/reframe request is in-flight (typically
+ * 2–5 seconds for Claude to process the thought and stream a response).
+ *
+ * ## Visual composition
+ *
+ * Three layers work together to suggest "the app is thinking":
+ *
+ *  1. **PulseRings** — three concentric rings that expand outward from the
+ *     center and fade out simultaneously. Each ring begins at a different
+ *     scale offset (`phaseScale`) so they appear to emanate in succession
+ *     even though they loop simultaneously. This mimics a sonar/ripple effect.
+ *
+ *  2. **OrbCore** — a small glowing white sphere at the center that breathes
+ *     (scales up/down on a 1.6 s cycle). A larger, softer glow disc behind it
+ *     expands at 2.2× the core's scale to create a volumetric glow feel.
+ *
+ *  3. **OrbitalDots** — three coloured dots orbiting at different radii and
+ *     speeds. They never share the same angular velocity, so the composition
+ *     never repeats within a reasonable time window, keeping the animation
+ *     feeling alive rather than mechanical.
+ *
+ * ## CyclingLabel
+ *
+ * The text below cycles through four messages every 2.2 seconds with a
+ * 280 ms cross-fade (opacity 1→0→1). This is achieved with:
+ *  - A `setInterval` that triggers the fade animation and schedules the text
+ *    state change for 280 ms in (mid-fade), so the text swaps while it's
+ *    invisible — the classic cross-fade trick.
+ *  - Reanimated shared values for the opacity animation (runs off the JS
+ *    thread for smooth results even when the JS thread is busy with the
+ *    API request).
+ *
+ * ## Distortion category colours
+ *
+ * The three orbital dots and pulse rings use the four distortion category
+ * colours (`Colors.fear`, `Colors.absolute`, `Colors.belief`). This is a
+ * subtle thematic choice — the swirling categories represent the patterns
+ * the AI is searching for in the user's thought.
+ *
+ * ## Why not a spinner?
+ *
+ * A spinner has an implied meaning of "making measurable progress toward a
+ * known end". The AI response time is non-deterministic, so a spinner creates
+ * false expectations. The orbital/pulse motif is perceived as "processing" or
+ * "thinking" without implying a known duration.
+ */
+
 import React, { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import Animated, {
@@ -17,6 +67,11 @@ const MESSAGES = [
   "Almost there...",
 ];
 
+/**
+ * A concentric ring that expands outward and fades out repeatedly.
+ * `phaseScale` staggers the starting scale so multiple rings appear to
+ * emanate in sequence even when their loops are synchronised.
+ */
 function PulseRing({
   phaseScale,
   phaseOpacity,
@@ -37,6 +92,7 @@ function PulseRing({
       -1,
       false
     );
+    // Opacity: snap back to `phaseOpacity` at start of each loop then fade out
     opacity.value = withRepeat(
       withSequence(
         withTiming(phaseOpacity, { duration: 0 }),
@@ -63,6 +119,12 @@ function PulseRing({
   );
 }
 
+/**
+ * A dot orbiting the center at a fixed `radius` and `speed`.
+ * The animation converts an ever-increasing angle value to X/Y coordinates
+ * on the worklet thread (no JS involvement per frame), so the orbit runs
+ * smoothly even when the JS thread is handling API callbacks.
+ */
 function OrbitalDot({
   radius,
   speed,
@@ -79,6 +141,7 @@ function OrbitalDot({
   const angle = useSharedValue(angleOffset);
 
   useEffect(() => {
+    // Increment angle by 360° (one full revolution) per `speed` ms, looping forever
     angle.value = withRepeat(
       withTiming(angleOffset + 360, { duration: speed, easing: Easing.linear }),
       -1,
@@ -86,6 +149,7 @@ function OrbitalDot({
     );
   }, []);
 
+  // Convert degrees to radians on the worklet thread to compute X/Y translation
   const style = useAnimatedStyle(() => {
     const rad = (angle.value * Math.PI) / 180;
     return {
@@ -112,6 +176,11 @@ function OrbitalDot({
   );
 }
 
+/**
+ * The central breathing orb. Breathes on a 1.6 s cycle (scale 1 → 1.18 → 0.92).
+ * A separate glow disc scales at 2.2× the core scale and stays behind it,
+ * creating a soft volumetric halo without requiring a shadow or blur effect.
+ */
 function OrbCore() {
   const scale = useSharedValue(1);
 
@@ -143,12 +212,17 @@ function OrbCore() {
   );
 }
 
+/**
+ * Text below the orb that cycles through MESSAGES every 2.2 s.
+ * The swap happens during a 280 ms fade-out so the text change is invisible.
+ */
 function CyclingLabel() {
   const [idx, setIdx] = useState(0);
   const opacity = useSharedValue(1);
 
   useEffect(() => {
     const interval = setInterval(() => {
+      // Start the fade-out, swap text at the midpoint, then fade back in
       opacity.value = withSequence(
         withTiming(0, { duration: 280 }),
         withTiming(1, { duration: 280 })
@@ -169,15 +243,17 @@ export function ThinkingAnimation() {
   return (
     <View style={styles.container}>
       <View style={styles.orbitArea}>
+        {/* Three phase-staggered rings that expand outward from the center */}
         <PulseRing phaseScale={0.38} phaseOpacity={0.55} color={Colors.fear} size={88} />
         <PulseRing phaseScale={0.82} phaseOpacity={0.35} color={Colors.absolute} size={88} />
         <PulseRing phaseScale={1.28} phaseOpacity={0.18} color={Colors.belief} size={88} />
 
         <OrbCore />
 
-        <OrbitalDot radius={52} speed={2800} angleOffset={0} color={Colors.fear} size={8} />
+        {/* Three dots at different radii and speeds — composition never repeats exactly */}
+        <OrbitalDot radius={52} speed={2800} angleOffset={0}   color={Colors.fear}     size={8} />
         <OrbitalDot radius={38} speed={2000} angleOffset={120} color={Colors.absolute} size={6} />
-        <OrbitalDot radius={62} speed={3800} angleOffset={240} color={Colors.belief} size={5} />
+        <OrbitalDot radius={62} speed={3800} angleOffset={240} color={Colors.belief}   size={5} />
       </View>
 
       <CyclingLabel />

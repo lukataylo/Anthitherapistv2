@@ -1,3 +1,67 @@
+/**
+ * SailGame (Mind Voyage) — word-level distortion classification game.
+ *
+ * Players see a thought with one word highlighted and must decide whether that
+ * specific word represents distorted thinking (× ERROR) or is valid (✓ VALID).
+ * Each correct answer advances a sailboat across a moonlit sea. The game ends
+ * when the boat reaches the far shore, all rounds are exhausted, or time runs out.
+ *
+ * ## CBT rationale
+ *
+ * Unlike ThoughtCheckGame (whole-thought awareness), SailGame targets
+ * word-level precision — training users to pinpoint exactly which word in a
+ * thought is distorted, not just whether the overall thought is problematic.
+ * This mirrors the CBT technique of "thought deconstruction", where the
+ * therapist helps the client identify the precise distorted language rather
+ * than dismissing the thought wholesale.
+ *
+ * ## Round generation — `buildRounds`
+ *
+ * Each round highlights a single word from a thought. Rounds are sourced from:
+ *  1. The user's history — for each entry, the first significant (non-neutral)
+ *     word is highlighted from the original thought. The category's explanation
+ *     from `EXPLAIN` is used for the feedback card. Limited to 7 history rounds.
+ *  2. `DISTORTED_FALLBACK` — curated fallback rounds when history is sparse.
+ *  3. `HEALTHY` — 4 healthy thoughts where the highlighted word is deliberately
+ *     not distorted (testing false-positive avoidance).
+ *
+ * Final deck: up to 12 rounds, shuffled.
+ *
+ * ## Sailboat progress mechanic
+ *
+ * The boat's X position (`boatX`) starts at `BOAT_START` (16 px from left) and
+ * advances `STEP` pixels per correct answer, targeting `BOAT_END`. `STEP` is
+ * computed so 11 correct answers sail the full width. When `boatX` reaches
+ * `BOAT_END`, the game transitions to "done" 500 ms later.
+ *
+ * A `ProgressTrack` bar below the scene interpolates `boatX` to a percentage
+ * fill, giving a secondary progress indicator for players looking down at
+ * the answer buttons.
+ *
+ * ## Explanation flow
+ *
+ * When a player answers incorrectly, `explanation` state is set (the text of
+ * why the highlighted word is or isn't distorted). The thought card is replaced
+ * by an explanation card. The player taps to dismiss and advance to the next
+ * round. This ensures wrong answers teach rather than just penalise.
+ *
+ * ## CrescentMoon rendering
+ *
+ * The crescent shape is achieved by compositing two circles: a full `MOON`-
+ * coloured circle and a slightly smaller `SKY`-coloured circle offset to the
+ * upper-right. CSS/SVG would use `clip-path` or `border-radius` tricks, but
+ * React Native View composition is the equivalent here without requiring an
+ * SVG library.
+ *
+ * ## Timer
+ *
+ * A 90-second countdown (displayed as "1:30", "1:29", etc.) drives urgency.
+ * The timer is managed via `setInterval` in a ref to avoid stale closure bugs
+ * that would occur if it captured `timeLeft` state directly. `timeLeftRef`
+ * holds the mutable countdown value; `setTimeLeft` syncs it to React state for
+ * display.
+ */
+
 import React, {
   useCallback,
   useEffect,
