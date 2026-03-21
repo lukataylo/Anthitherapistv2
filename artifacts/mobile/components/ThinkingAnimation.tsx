@@ -118,8 +118,8 @@ function OrbCore() {
   useEffect(() => {
     scale.value = withRepeat(
       withSequence(
-        withTiming(1.18, { duration: 1600, easing: Easing.inOut(Easing.sine) }),
-        withTiming(0.92, { duration: 1600, easing: Easing.inOut(Easing.sine) })
+        withTiming(1.18, { duration: 1600, easing: Easing.inOut(Easing.sin) }),
+        withTiming(0.92, { duration: 1600, easing: Easing.inOut(Easing.sin) })
       ),
       -1,
       false
