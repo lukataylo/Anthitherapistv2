@@ -481,6 +481,7 @@ export function SortTowerGame({ visible, entries, onClose }: SortTowerGameProps)
   const timerPulse = useSharedValue(1);
 
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [toastIsHealthy, setToastIsHealthy] = useState(false);
   const toastOpacity = useSharedValue(0);
 
   const startGame = useCallback(() => {
@@ -560,9 +561,10 @@ export function SortTowerGame({ visible, entries, onClose }: SortTowerGameProps)
   }, []);
 
   const showToast = useCallback(
-    (word: string, explainer: string) => {
+    (word: string, explainer: string, isHealthy: boolean) => {
       toastOpacity.value = 0;
       setToastMsg(`${word} — ${explainer}`);
+      setToastIsHealthy(isHealthy);
       toastOpacity.value = withTiming(1, { duration: 150 }, () => {
         toastOpacity.value = withDelay(
           1300,
@@ -606,7 +608,7 @@ export function SortTowerGame({ visible, entries, onClose }: SortTowerGameProps)
       } else {
         streakRef.current = 0;
         setStreak(0);
-        showToast(current.text, current.explainer);
+        showToast(current.text, current.explainer, !current.isNegative);
         wrongCountRef.current += 1;
         if (missedItemsRef.current.length < 3) {
           missedItemsRef.current = [
@@ -760,9 +762,18 @@ export function SortTowerGame({ visible, entries, onClose }: SortTowerGameProps)
         {toastMsg !== null && (
           <Animated.View
             pointerEvents="none"
-            style={[styles.toastPill, toastAnimStyle]}
+            style={[
+              styles.toastPill,
+              toastIsHealthy && styles.toastPillHealthy,
+              toastAnimStyle,
+            ]}
           >
-            <Text style={styles.toastText} numberOfLines={2}>{toastMsg}</Text>
+            <Text
+              style={[styles.toastText, toastIsHealthy && styles.toastTextHealthy]}
+              numberOfLines={2}
+            >
+              {toastMsg}
+            </Text>
           </Animated.View>
         )}
 
@@ -1018,6 +1029,14 @@ const styles = StyleSheet.create({
     textAlign: "center",
     letterSpacing: -0.1,
     lineHeight: 18,
+  },
+  toastPillHealthy: {
+    backgroundColor: "transparent",
+    borderWidth: 0,
+    borderColor: "transparent",
+  },
+  toastTextHealthy: {
+    color: "#888",
   },
   feedbackPill: {
     position: "absolute",
