@@ -408,7 +408,8 @@ export function CaptureScreen({
                   </View>
                 </Pressable>
 
-                {/* Discuss (Socratic chat) button */}
+                {/* Discuss (Socratic chat) button — temporarily hidden */}
+                {false && (
                 <Pressable
                   onPress={() => router.push("/discuss")}
                   hitSlop={8}
@@ -425,6 +426,7 @@ export function CaptureScreen({
                     />
                   </View>
                 </Pressable>
+                )}
 
                 {/* Send button — icon colour inverts with the background */}
                 <Pressable
