@@ -98,17 +98,6 @@ const TABS: TabDef[] = [
       />
     ),
   },
-  {
-    name: "discuss",
-    label: "Discuss",
-    renderIcon: (focused) => (
-      <Ionicons
-        name={focused ? "chatbubble-ellipses" : "chatbubble-ellipses-outline"}
-        size={23}
-        color={focused ? "#fff" : "rgba(255,255,255,0.38)"}
-      />
-    ),
-  },
 ];
 
 /**

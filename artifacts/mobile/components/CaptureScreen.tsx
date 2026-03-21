@@ -408,6 +408,24 @@ export function CaptureScreen({
                   </View>
                 </Pressable>
 
+                {/* Discuss (Socratic chat) button */}
+                <Pressable
+                  onPress={() => router.push("/discuss")}
+                  hitSlop={8}
+                  style={({ pressed }) => ({ opacity: pressed ? 0.75 : 1 })}
+                  accessibilityLabel="Discuss"
+                  accessibilityRole="button"
+                  accessibilityHint="Open Socratic coaching chat"
+                >
+                  <View style={styles.discussBtn}>
+                    <Ionicons
+                      name="chatbubble-ellipses"
+                      size={18}
+                      color="#fff"
+                    />
+                  </View>
+                </Pressable>
+
                 {/* Send button — icon colour inverts with the background */}
                 <Pressable
                   onPress={handleSubmit}
@@ -647,6 +665,14 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     alignItems: "center",
     justifyContent: "center",
+  },
+  discussBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#2C2C2C",
   },
   nudgeRow: {
     paddingTop: 12,

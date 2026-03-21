@@ -113,7 +113,7 @@ export default function RootLayout() {
                   >
                     <Tabs.Screen name="index" options={{ title: "Reframe" }} />
                     <Tabs.Screen name="history" options={{ title: "History" }} />
-                    <Tabs.Screen name="discuss" options={{ title: "Discuss" }} />
+                    <Tabs.Screen name="discuss" options={{ title: "Discuss", href: null }} />
                   </Tabs>
                 </GameProvider>
               </StreakProvider>
