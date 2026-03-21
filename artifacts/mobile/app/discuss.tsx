@@ -8,9 +8,12 @@
  *
  * ## Conversation lifecycle
  *
- * Conversation state is local to this screen. It resets whenever the screen
- * mounts (i.e. on app restart or when the user hard-navigates away and back).
- * There is no persistence across sessions — this is intentional per spec.
+ * Each session is persisted server-side via the /api/discuss endpoint which
+ * returns a conversationId. The ID is tracked in component state and passed
+ * back on every subsequent request so all turns are appended to the same
+ * conversation in the database. On screen unmount the conversationId is stored
+ * in AsyncStorage so the session reference is preserved across navigations
+ * (even if the UI does not yet surface a resume flow).
  *
  * The conversation opens with a single welcome message from Claude generated
  * via the API on mount. Subsequent exchanges append to the `messages` array
@@ -47,10 +50,13 @@ import Animated, {
 import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 import * as Haptics from "expo-haptics";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useDiscuss } from "@workspace/api-client-react";
 import type { DiscussMessage } from "@workspace/api-client-react";
 import { Colors } from "@/constants/colors";
+
+const CONVERSATION_ID_KEY = "discuss_last_conversation_id";
 
 type ChatMessage = {
   id: string;
@@ -131,6 +137,7 @@ export default function DiscussScreen() {
   const [inputText, setInputText] = useState("");
   const [isWaiting, setIsWaiting] = useState(false);
   const sessionRef = useRef<number>(0);
+  const conversationIdRef = useRef<number | undefined>(undefined);
 
   const sendActive = useSharedValue(0);
   const mutation = useDiscuss();
@@ -150,8 +157,20 @@ export default function DiscussScreen() {
     ),
   }));
 
-  const appendReply = (reply: string, forSession: number) => {
+  useEffect(() => {
+    return () => {
+      if (conversationIdRef.current !== undefined) {
+        AsyncStorage.setItem(
+          CONVERSATION_ID_KEY,
+          String(conversationIdRef.current)
+        ).catch(() => {});
+      }
+    };
+  }, []);
+
+  const appendReply = (reply: string, conversationId: number, forSession: number) => {
     if (forSession !== sessionRef.current) return;
+    conversationIdRef.current = conversationId;
     const assistantMsg: ChatMessage = {
       id: nextId(),
       role: "assistant",
@@ -184,10 +203,15 @@ export default function DiscussScreen() {
       content: m.content,
     }));
     mutation.mutate(
-      { data: { messages: apiMessages } },
+      {
+        data: {
+          messages: apiMessages,
+          conversationId: conversationIdRef.current,
+        },
+      },
       {
         onSuccess(data) {
-          appendReply(data.reply, forSession);
+          appendReply(data.reply, data.conversationId, forSession);
         },
         onError(err) {
           console.error("Discuss error:", err);
@@ -198,6 +222,7 @@ export default function DiscussScreen() {
   };
 
   const startNewSession = (apiMessages: DiscussMessage[]) => {
+    conversationIdRef.current = undefined;
     sessionRef.current = nextSessionId();
     const forSession = sessionRef.current;
     setIsWaiting(true);
@@ -205,7 +230,7 @@ export default function DiscussScreen() {
       { data: { messages: apiMessages } },
       {
         onSuccess(data) {
-          appendReply(data.reply, forSession);
+          appendReply(data.reply, data.conversationId, forSession);
         },
         onError(err) {
           console.error("Discuss error:", err);

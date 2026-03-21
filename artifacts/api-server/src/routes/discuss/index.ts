@@ -5,7 +5,8 @@
  *
  * Accepts a conversation history (array of {role, content} messages) and
  * returns Claude's next Socratic question designed to guide the user toward
- * their own insight about a thinking pattern.
+ * their own insight about a thinking pattern. Each exchange is persisted to
+ * the `conversations` and `messages` tables via Drizzle/PostgreSQL.
  *
  * ## Prompt engineering
  *
@@ -24,7 +25,9 @@
 
 import { Router, type IRouter } from "express";
 import { z } from "zod";
+import { eq, desc } from "drizzle-orm";
 import { anthropic } from "@workspace/integrations-anthropic-ai";
+import { db, conversations, messages } from "@workspace/db";
 
 const router: IRouter = Router();
 
@@ -47,6 +50,7 @@ const messageSchema = z.object({
 
 const discussRequestSchema = z.object({
   messages: z.array(messageSchema).min(1),
+  conversationId: z.number().int().positive().optional(),
 });
 
 router.post("/discuss", async (req, res) => {
@@ -57,14 +61,14 @@ router.post("/discuss", async (req, res) => {
     return;
   }
 
-  const { messages } = parsed.data;
+  const { messages: msgHistory, conversationId: incomingConversationId } = parsed.data;
 
   try {
     const message = await anthropic.messages.create({
       model: "claude-sonnet-4-6",
       max_tokens: 512,
       system: SYSTEM_PROMPT,
-      messages,
+      messages: msgHistory,
     });
 
     const block = message.content[0];
@@ -73,9 +77,87 @@ router.post("/discuss", async (req, res) => {
       return;
     }
 
-    res.json({ reply: block.text.trim() });
+    const reply = block.text.trim();
+
+    let conversationId = incomingConversationId;
+
+    if (!conversationId) {
+      const firstUserMsg = msgHistory.find((m) => m.role === "user");
+      const title = firstUserMsg
+        ? firstUserMsg.content.slice(0, 60)
+        : "Discuss session";
+      const [newConversation] = await db
+        .insert(conversations)
+        .values({ title })
+        .returning({ id: conversations.id });
+      conversationId = newConversation.id;
+    } else {
+      const existing = await db
+        .select({ id: conversations.id })
+        .from(conversations)
+        .where(eq(conversations.id, conversationId))
+        .limit(1);
+      if (existing.length === 0) {
+        res.status(404).json({ error: "Conversation not found" });
+        return;
+      }
+    }
+
+    const lastUserMsg = msgHistory[msgHistory.length - 1];
+    if (lastUserMsg && lastUserMsg.role === "user") {
+      await db.insert(messages).values({
+        conversationId,
+        role: "user",
+        content: lastUserMsg.content,
+      });
+    }
+
+    await db.insert(messages).values({
+      conversationId,
+      role: "assistant",
+      content: reply,
+    });
+
+    res.json({ reply, conversationId });
   } catch (err) {
     req.log.error({ err }, "Discuss API error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/conversations", async (req, res) => {
+  try {
+    const rows = await db
+      .select({
+        id: conversations.id,
+        title: conversations.title,
+        createdAt: conversations.createdAt,
+      })
+      .from(conversations)
+      .orderBy(desc(conversations.createdAt));
+    res.json({ conversations: rows });
+  } catch (err) {
+    req.log.error({ err }, "GET /conversations error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/conversations/:id/messages", async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    res.status(400).json({ error: "Invalid conversation id" });
+    return;
+  }
+
+  try {
+    const rows = await db
+      .select()
+      .from(messages)
+      .where(eq(messages.conversationId, id))
+      .orderBy(messages.createdAt);
+    res.json({ messages: rows });
+  } catch (err) {
+    req.log.error({ err }, "GET /conversations/:id/messages error");
     res.status(500).json({ error: "Internal server error" });
   }
 });

@@ -6,10 +6,12 @@
  * importing its router here rather than touching the app factory.
  *
  * Current routes (all prefixed with /api by the parent):
- *   GET  /api/healthz  — liveness probe
- *   POST /api/reframe  — AI-powered cognitive distortion analysis
- *   POST /api/discuss  — Socratic dialogue coaching
- *   POST /api/reflect  — LLM-generated narrative insight for a reframing session
+ *   GET  /api/healthz                        — liveness probe
+ *   POST /api/reframe                        — AI-powered cognitive distortion analysis
+ *   POST /api/discuss                        — Socratic dialogue coaching (persists to DB)
+ *   POST /api/reflect                        — LLM-generated narrative insight for a reframing session
+ *   GET  /api/conversations                  — list past Discuss conversations
+ *   GET  /api/conversations/:id/messages     — full message history for one conversation
  */
 
 import { Router, type IRouter } from "express";

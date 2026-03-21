@@ -77,8 +77,32 @@ export interface DiscussMessage {
 
 export interface DiscussRequest {
   messages: DiscussMessage[];
+  conversationId?: number;
 }
 
 export interface DiscussResponse {
   reply: string;
+  conversationId: number;
+}
+
+export interface ConversationSummary {
+  id: number;
+  title: string;
+  createdAt: string;
+}
+
+export interface ConversationsListResponse {
+  conversations: ConversationSummary[];
+}
+
+export interface ConversationMessage {
+  id: number;
+  conversationId: number;
+  role: string;
+  content: string;
+  createdAt: string;
+}
+
+export interface ConversationMessagesResponse {
+  messages: ConversationMessage[];
 }
