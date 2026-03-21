@@ -70,6 +70,25 @@ export interface ErrorResponse {
   error: string;
 }
 
+export type PatternsRequestCategoryCounts = { [key: string]: number };
+
+export interface PatternsRequestThoughtSamplesItem {
+  thought: string;
+  dominantCategory: "belief" | "fear" | "absolute" | "self_judgment";
+}
+
+export interface PatternsRequest {
+  /** Map of distortion category to total word count across all entries */
+  categoryCounts: PatternsRequestCategoryCounts;
+  /** Sample thoughts (up to 10) with their dominant distortion category */
+  thoughtSamples: PatternsRequestThoughtSamplesItem[];
+}
+
+export interface PatternsResponse {
+  /** 2-3 natural-language pattern observations */
+  patterns: string[];
+}
+
 export interface DiscussMessage {
   role: "user" | "assistant";
   content: string;

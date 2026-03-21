@@ -57,6 +57,7 @@ import { ThoughtCheckGame } from "@/components/ThoughtCheckGame";
 import { SailGame } from "@/components/SailGame";
 import { RewordGame } from "@/components/RewordGame";
 import { GameCarousel } from "@/components/GameCarousel";
+import { InsightsSection } from "@/components/InsightsSection";
 
 /** Converts a Unix timestamp to a short relative time string. */
 function timeAgo(ts: number): string {
@@ -275,7 +276,10 @@ export default function HistoryScreen() {
           { paddingBottom: insets.bottom + 20 },
         ]}
         ListHeaderComponent={
-          <GameCarousel onGamePress={handleGamePress} />
+          <>
+            <InsightsSection entries={entries} />
+            <GameCarousel onGamePress={handleGamePress} />
+          </>
         }
         ListEmptyComponent={EmptyState}
         renderItem={({ item }) => (

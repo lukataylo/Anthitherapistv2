@@ -90,6 +90,37 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /patterns:
+    post:
+      operationId: getPatterns
+      tags: [patterns]
+      summary: Generate AI pattern observations from history
+      description: Accepts a category distribution summary and thought samples, then returns 2-3 natural-language pattern observations
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatternsRequest"
+      responses:
+        "200":
+          description: Successful pattern generation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PatternsResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   schemas:
     HealthStatus:
@@ -177,6 +208,41 @@ components:
           description: LLM-generated narrative insight paragraph for the session
       required:
         - insight
+    PatternsRequest:
+      type: object
+      properties:
+        categoryCounts:
+          type: object
+          description: Map of distortion category to total word count across all entries
+          additionalProperties:
+            type: number
+        thoughtSamples:
+          type: array
+          description: Sample thoughts (up to 10) with their dominant distortion category
+          items:
+            type: object
+            properties:
+              thought:
+                type: string
+              dominantCategory:
+                type: string
+                enum: [belief, fear, absolute, self_judgment]
+            required:
+              - thought
+              - dominantCategory
+      required:
+        - categoryCounts
+        - thoughtSamples
+    PatternsResponse:
+      type: object
+      properties:
+        patterns:
+          type: array
+          items:
+            type: string
+          description: 2-3 natural-language pattern observations
+      required:
+        - patterns
     ErrorResponse:
       type: object
       properties:

@@ -40,7 +40,72 @@ export interface WordAnalysis {
 export interface ReframeResponse {
     words: WordAnalysis[];
 }
+/**
+ * Map of word index (as string key) to chosen reframe
+ */
+export type ReflectRequestReframedWords = {
+    [key: string]: string;
+};
+export interface ReflectRequest {
+    /** The original thought text */
+    thought: string;
+    /** Full word analysis from the reframe session */
+    words: WordAnalysis[];
+    /** Map of word index (as string key) to chosen reframe */
+    reframedWords: ReflectRequestReframedWords;
+}
+export interface ReflectResponse {
+    /** LLM-generated narrative insight paragraph for the session */
+    insight: string;
+}
 export interface ErrorResponse {
     error: string;
+}
+export type PatternsRequestCategoryCounts = {
+    [key: string]: number;
+};
+export interface PatternsRequestThoughtSamplesItem {
+    thought: string;
+    dominantCategory: "belief" | "fear" | "absolute" | "self_judgment";
+}
+export interface PatternsRequest {
+    /** Map of distortion category to total word count across all entries */
+    categoryCounts: PatternsRequestCategoryCounts;
+    /** Sample thoughts (up to 10) with their dominant distortion category */
+    thoughtSamples: PatternsRequestThoughtSamplesItem[];
+}
+export interface PatternsResponse {
+    /** 2-3 natural-language pattern observations */
+    patterns: string[];
+}
+export interface DiscussMessage {
+    role: "user" | "assistant";
+    content: string;
+}
+export interface DiscussRequest {
+    messages: DiscussMessage[];
+    conversationId?: number;
+}
+export interface DiscussResponse {
+    reply: string;
+    conversationId: number;
+}
+export interface ConversationSummary {
+    id: number;
+    title: string;
+    createdAt: string;
+}
+export interface ConversationsListResponse {
+    conversations: ConversationSummary[];
+}
+export interface ConversationMessage {
+    id: number;
+    conversationId: number;
+    role: string;
+    content: string;
+    createdAt: string;
+}
+export interface ConversationMessagesResponse {
+    messages: ConversationMessage[];
 }
 //# sourceMappingURL=api.schemas.d.ts.map

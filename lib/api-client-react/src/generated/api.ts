@@ -23,6 +23,8 @@ import type {
   DiscussResponse,
   ErrorResponse,
   HealthStatus,
+  PatternsRequest,
+  PatternsResponse,
   ReflectRequest,
   ReflectResponse,
   ReframeRequest,
@@ -517,3 +519,88 @@ export function useGetConversationMessages<
   };
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * Accepts a category distribution summary and thought samples, then returns
+ * 2-3 natural-language pattern observations
+ * @summary Generate AI pattern observations from history
+ */
+export const getPatternsUrl = () => {
+  return `/api/patterns`;
+};
+
+export const getPatterns = async (
+  patternsRequest: PatternsRequest,
+  options?: RequestInit,
+): Promise<PatternsResponse> => {
+  return customFetch<PatternsResponse>(getPatternsUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(patternsRequest),
+  });
+};
+
+export const getGetPatternsMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof getPatterns>>,
+    TError,
+    { data: BodyType<PatternsRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof getPatterns>>,
+  TError,
+  { data: BodyType<PatternsRequest> },
+  TContext
+> => {
+  const mutationKey = ["getPatterns"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof getPatterns>>,
+    { data: BodyType<PatternsRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+    return getPatterns(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type GetPatternsMutationResult = NonNullable<Awaited<ReturnType<typeof getPatterns>>>;
+export type GetPatternsMutationBody = BodyType<PatternsRequest>;
+export type GetPatternsMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Generate AI pattern observations from history
+ */
+export const useGetPatterns = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof getPatterns>>,
+    TError,
+    { data: BodyType<PatternsRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof getPatterns>>,
+  TError,
+  { data: BodyType<PatternsRequest> },
+  TContext
+> => {
+  return useMutation(getGetPatternsMutationOptions(options));
+};

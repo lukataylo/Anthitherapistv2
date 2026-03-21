@@ -12,6 +12,7 @@
  *   POST /api/reflect                        — LLM-generated narrative insight for a reframing session
  *   GET  /api/conversations                  — list past Discuss conversations
  *   GET  /api/conversations/:id/messages     — full message history for one conversation
+ *   POST /api/patterns                       — AI-generated pattern observations from history
  */
 
 import { Router, type IRouter } from "express";
@@ -19,6 +20,7 @@ import healthRouter from "./health";
 import reframeRouter from "./reframe";
 import discussRouter from "./discuss";
 import reflectRouter from "./reflect";
+import patternsRouter from "./patterns";
 
 const router: IRouter = Router();
 
@@ -26,5 +28,6 @@ router.use(healthRouter);
 router.use(reframeRouter);
 router.use(discussRouter);
 router.use(reflectRouter);
+router.use(patternsRouter);
 
 export default router;
