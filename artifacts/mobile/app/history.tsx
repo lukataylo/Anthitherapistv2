@@ -17,6 +17,7 @@ import { useStreak } from "@/context/StreakContext";
 import { SortTowerGame } from "@/components/SortTowerGame";
 import { RocketGame } from "@/components/RocketGame";
 import { ThoughtCheckGame } from "@/components/ThoughtCheckGame";
+import { SailGame } from "@/components/SailGame";
 import { GameCarousel } from "@/components/GameCarousel";
 
 function timeAgo(ts: number): string {
@@ -110,12 +111,14 @@ export default function HistoryScreen() {
   const [practiceVisible, setPracticeVisible] = useState(false);
   const [rocketVisible, setRocketVisible] = useState(false);
   const [thoughtCheckVisible, setThoughtCheckVisible] = useState(false);
+  const [sailVisible, setSailVisible] = useState(false);
 
   const handleGamePress = useCallback(
     (id: string) => {
       if (id === "sort-tower") setPracticeVisible(true);
       if (id === "rocket-reframe") setRocketVisible(true);
       if (id === "thought-check") setThoughtCheckVisible(true);
+      if (id === "mind-voyage") setSailVisible(true);
     },
     []
   );
@@ -160,6 +163,11 @@ export default function HistoryScreen() {
         visible={thoughtCheckVisible}
         entries={entries}
         onClose={() => setThoughtCheckVisible(false)}
+      />
+      <SailGame
+        visible={sailVisible}
+        entries={entries}
+        onClose={() => setSailVisible(false)}
       />
 
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>

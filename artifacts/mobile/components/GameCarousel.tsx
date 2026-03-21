@@ -55,14 +55,14 @@ const GAMES: GameDef[] = [
     available: true,
   },
   {
-    id: "pattern-break",
-    name: "Pattern Break",
+    id: "mind-voyage",
+    name: "Mind Voyage",
     category: "AWARENESS",
-    icon: "infinite-outline",
-    bg: "#1F1208",
-    patternColor: "#6E3A10",
+    icon: "boat-outline",
+    bg: "#002E2A",
+    patternColor: "#00B5AA",
     patternType: "rings",
-    available: false,
+    available: true,
   },
 ];
 
