@@ -181,6 +181,23 @@ function ProgressBadge({
  * - `onPress`    — load the session in GameContext and navigate to Reframe
  * - `onDelete`   — long-press handler, surfaced to the parent which shows Alert
  */
+/**
+ * Reconstructs the thought sentence with reframed words substituted in.
+ * Iterates over `entry.words`, replaces index `i` with `reframedWords[i]`
+ * when present, and joins to produce the display string.
+ * Falls back to the original `thought` if `reframedWords` is empty.
+ */
+function buildReframedThought(entry: HistoryEntry): string {
+  if (Object.keys(entry.reframedWords).length === 0) {
+    return entry.thought;
+  }
+  return entry.words
+    .map((w, i) =>
+      entry.reframedWords[i] !== undefined ? entry.reframedWords[i] : w.word
+    )
+    .join(" ");
+}
+
 function EntryCard({
   entry,
   onPress,
@@ -206,7 +223,7 @@ function EntryCard({
     >
       <View style={styles.cardTop}>
         <Text style={styles.cardThought} numberOfLines={2}>
-          {entry.thought}
+          {buildReframedThought(entry)}
         </Text>
         <Ionicons
           name="chevron-forward"
