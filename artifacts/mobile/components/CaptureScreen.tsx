@@ -3,7 +3,7 @@
  *
  * This component renders two full-screen layers stacked with `absoluteFill`:
  *
- * 1. **Input layer** — the thought capture UI (text input + send button).
+ * 1. **Input layer** — the thought capture UI (text input + mic/send buttons).
  *    Visible when `screen === "capture"`, pointer events disabled when reviewing.
  *
  * 2. **Review layer** — the annotated thought view with `AnnotatedThought` and
@@ -31,6 +31,13 @@
  *  - Background colour: dark grey (#3A3A3A) → white (#FFFFFF)
  * The colour change makes it immediately obvious when a thought is ready to send.
  *
+ * ## Mic button
+ *
+ * Uses expo-speech-recognition for real device speech-to-text. Tapping the mic
+ * starts a recognition session; speech is appended to any existing thought text.
+ * The button pulses red while listening. On web (where the API may be absent)
+ * the button is gracefully hidden.
+ *
  * ## Loading state
  *
  * When `isLoading` is true (the API request is in-flight), the component
@@ -38,7 +45,7 @@
  * layered UI entirely.
  */
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Keyboard,
   KeyboardAvoidingView,
@@ -55,9 +62,15 @@ import Animated, {
   interpolateColor,
   useAnimatedStyle,
   useSharedValue,
+  withRepeat,
+  withSequence,
   withSpring,
   withTiming,
 } from "react-native-reanimated";
+import {
+  ExpoSpeechRecognitionModule,
+  useSpeechRecognitionEvent,
+} from "expo-speech-recognition";
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -101,11 +114,58 @@ export function CaptureScreen({
 
   const isReviewing = screen === "cloud" || screen === "game";
 
+  // Voice recording state
+  const [isRecording, setIsRecording] = useState(false);
+  // Interim (in-progress) transcript shown while the user is speaking
+  const [interimText, setInterimText] = useState("");
+  // Ref so the speech event handler always reads the latest thought value
+  const thoughtRef = useRef(thought);
+  useEffect(() => { thoughtRef.current = thought; }, [thought]);
+
   // Animated values for various interactive elements
   const sendScale = useSharedValue(1);      // Bounce scale on send button press
   const sendActive = useSharedValue(0);     // 0 = disabled, 1 = enabled
   const nudgeOpacity = useSharedValue(0);   // Streak reminder visibility
   const reviewProgress = useSharedValue(0); // Cross-fade between input/review layers
+  const micBg = useSharedValue(0);          // Mic background: 0=dark, 1=red
+  const micPulse = useSharedValue(1);       // Mic pulse scale while recording
+
+  // Speech recognition: capture interim results while the user speaks
+  useSpeechRecognitionEvent("result", (event) => {
+    if (event.isFinal) {
+      const transcript = event.results[0]?.transcript ?? "";
+      if (transcript) {
+        const base = thoughtRef.current.trim();
+        setThought(base ? `${base} ${transcript}` : transcript);
+      }
+      setInterimText("");
+    } else {
+      setInterimText(event.results[0]?.transcript ?? "");
+    }
+  });
+
+  // When recognition ends, update UI state
+  useSpeechRecognitionEvent("end", () => {
+    setIsRecording(false);
+    setInterimText("");
+  });
+
+  // Animate mic button whenever recording state changes
+  useEffect(() => {
+    if (isRecording) {
+      micBg.value = withTiming(1, { duration: 200 });
+      micPulse.value = withRepeat(
+        withSequence(
+          withTiming(1.14, { duration: 480 }),
+          withTiming(1.0, { duration: 480 })
+        ),
+        -1
+      );
+    } else {
+      micBg.value = withTiming(0, { duration: 180 });
+      micPulse.value = withTiming(1, { duration: 200 });
+    }
+  }, [isRecording]);
 
   const canSend = thought.trim().length > 0 && !isLoading;
   const showNudge = currentStreak > 0 && !reflectedToday;
@@ -147,6 +207,22 @@ export function CaptureScreen({
     ),
   }));
 
+  // Mic button: pulses and turns red while recording
+  const micBtnStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: micPulse.value }],
+    backgroundColor: interpolateColor(
+      micBg.value,
+      [0, 1],
+      ["#2C2C2C", "#E03030"]
+    ),
+  }));
+
+  // Soft glow halo that expands behind the mic when recording
+  const micGlowStyle = useAnimatedStyle(() => ({
+    opacity: micBg.value * 0.35,
+    transform: [{ scale: 1 + micBg.value * 0.25 + (micPulse.value - 1) * 1.4 }],
+  }));
+
   const nudgeStyle = useAnimatedStyle(() => ({
     opacity: nudgeOpacity.value,
   }));
@@ -170,6 +246,23 @@ export function CaptureScreen({
       sendScale.value = withSpring(1, { damping: 8 });
     });
     onSubmit(thought.trim());
+  };
+
+  /** Toggle the microphone: request permission, start/stop speech recognition. */
+  const handleMicPress = async () => {
+    if (isRecording) {
+      ExpoSpeechRecognitionModule.stop();
+      return;
+    }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const { granted } = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+    if (!granted) return;
+    setIsRecording(true);
+    ExpoSpeechRecognitionModule.start({
+      lang: "en-US",
+      interimResults: true,
+      continuous: false,
+    });
   };
 
   /** Return to the capture input and clear the current session. */
@@ -237,7 +330,29 @@ export function CaptureScreen({
                 scrollEnabled
               />
 
+              {/* Interim transcript preview while speaking */}
+              {interimText.length > 0 && (
+                <Text style={styles.interimText} numberOfLines={2}>
+                  {interimText}
+                </Text>
+              )}
+
               <View style={styles.toolbar}>
+                {/* Mic button — real speech-to-text, pulses red while recording */}
+                <Pressable onPress={handleMicPress} hitSlop={8}>
+                  <View style={styles.micWrap}>
+                    {/* Glow halo behind the button */}
+                    <Animated.View style={[styles.micGlow, micGlowStyle]} />
+                    <Animated.View style={[styles.micBtn, micBtnStyle]}>
+                      <Ionicons
+                        name={isRecording ? "stop" : "mic"}
+                        size={18}
+                        color="#fff"
+                      />
+                    </Animated.View>
+                  </View>
+                </Pressable>
+
                 {/* Send button — icon colour inverts with the background */}
                 <Pressable
                   onPress={handleSubmit}
@@ -407,12 +522,41 @@ const styles = StyleSheet.create({
     outlineWidth: 0,
     outlineStyle: "none",
   },
+  interimText: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    color: "rgba(255,255,255,0.35)",
+    fontStyle: "italic",
+    paddingHorizontal: 2,
+    paddingTop: 8,
+    lineHeight: 20,
+  },
   toolbar: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "flex-end",
     paddingTop: 14,
     gap: 10,
+  },
+  micWrap: {
+    width: 48,
+    height: 48,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  micGlow: {
+    position: "absolute",
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#E03030",
+  },
+  micBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
   },
   sendBtn: {
     width: 48,

@@ -33,7 +33,14 @@
         }
       ],
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Allow Reframe to use your microphone to capture thoughts by voice.",
+          "speechRecognitionPermission": "Allow Reframe to transcribe your spoken thoughts."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
