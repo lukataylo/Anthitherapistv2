@@ -1,0 +1,121 @@
+/**
+ * Root layout — the single app shell that wraps every screen.
+ *
+ * Expo Router renders this file once for the lifetime of the app. Its
+ * responsibilities are:
+ *
+ * 1. **Font loading** — Inter (400/500/600/700 weights) is loaded
+ *    asynchronously via expo-google-fonts. The splash screen is held open
+ *    until fonts are ready (or have failed to load), preventing a flash of
+ *    unstyled text on first render.
+ *
+ * 2. **Provider nesting** — React context providers are ordered carefully:
+ *
+ *      SafeAreaProvider
+ *        ErrorBoundary         ← catches any render crash and shows a fallback
+ *          QueryClientProvider ← React Query — owns the API mutation cache
+ *            GestureHandlerRootView ← required for react-native-gesture-handler
+ *              HistoryProvider ← outermost data provider (no dependencies)
+ *                StreakProvider ← reads history-independent streak data
+ *                  GameProvider ← innermost — can read history/streak if needed
+ *                    Tabs + TabBar
+ *
+ * 3. **API base URL** — `setBaseUrl()` is called at module load time (before
+ *    any component mounts) so the React Query hooks can construct correct URLs
+ *    immediately. `EXPO_PUBLIC_DOMAIN` is set by the Replit workspace.
+ *
+ * 4. **Tab navigation** — the two tabs (Reframe / History) share this layout.
+ *    `headerShown: false` gives each screen full control over its header area.
+ *    The custom `TabBar` component replaces Expo Router's default tab bar with
+ *    the glassmorphic design that matches the app's dark aesthetic.
+ */
+
+import {
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_600SemiBold,
+  Inter_700Bold,
+  useFonts,
+} from "@expo-google-fonts/inter";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Tabs } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
+import React, { useEffect } from "react";
+import { View } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import { setBaseUrl } from "@workspace/api-client-react";
+
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { GameProvider } from "@/context/GameContext";
+import { HistoryProvider } from "@/context/HistoryContext";
+import { TabBar } from "@/components/TabBar";
+import { StreakProvider } from "@/context/StreakContext";
+import { seedIfEmpty } from "@/utils/seedData";
+
+// Configure the API client before any hooks can run
+const domain = process.env.EXPO_PUBLIC_DOMAIN;
+if (!domain) {
+  console.warn(
+    "EXPO_PUBLIC_DOMAIN is not set — API calls will fail. " +
+    "Set this environment variable to the domain where the API server is reachable.",
+  );
+}
+setBaseUrl(domain ? `https://${domain}` : "");
+
+// Keep the native splash screen up while fonts load
+SplashScreen.preventAutoHideAsync();
+seedIfEmpty();
+
+// A single QueryClient instance for the app lifetime — React Query manages
+// caching, deduplication, and background refetching for API calls
+const queryClient = new QueryClient();
+
+export default function RootLayout() {
+  const [fontsLoaded, fontError] = useFonts({
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    Inter_700Bold,
+  });
+
+  useEffect(() => {
+    // Hide the splash screen once fonts are loaded or have definitively failed.
+    // Waiting for fontError too avoids an infinite splash screen if the CDN
+    // is unavailable; the app will render with system fonts instead.
+    if (fontsLoaded || fontError) {
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded, fontError]);
+
+  // Show a solid black view while fonts are still loading to prevent a
+  // flicker of unstyled content before the splash screen hides
+  if (!fontsLoaded && !fontError) {
+    return <View style={{ flex: 1, backgroundColor: "#000" }} />;
+  }
+
+  return (
+    <SafeAreaProvider>
+      <ErrorBoundary>
+        <QueryClientProvider client={queryClient}>
+          <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#000" }}>
+            <HistoryProvider>
+              <StreakProvider>
+                <GameProvider>
+                  <Tabs
+                    tabBar={(props) => <TabBar {...props} />}
+                    screenOptions={{ headerShown: false }}
+                  >
+                    <Tabs.Screen name="index" options={{ title: "Reframe" }} />
+                    <Tabs.Screen name="history" options={{ title: "History" }} />
+                    <Tabs.Screen name="discuss" options={{ title: "Discuss" }} />
+                  </Tabs>
+                </GameProvider>
+              </StreakProvider>
+            </HistoryProvider>
+          </GestureHandlerRootView>
+        </QueryClientProvider>
+      </ErrorBoundary>
+    </SafeAreaProvider>
+  );
+}
