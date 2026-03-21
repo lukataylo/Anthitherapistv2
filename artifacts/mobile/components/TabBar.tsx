@@ -13,8 +13,8 @@ const TABS: Array<{
 }> = [
   {
     name: "index",
-    icon: "create-outline",
-    iconActive: "create",
+    icon: "aperture-outline",
+    iconActive: "aperture",
     label: "Reframe",
   },
   {
