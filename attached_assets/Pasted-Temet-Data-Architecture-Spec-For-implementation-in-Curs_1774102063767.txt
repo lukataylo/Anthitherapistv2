@@ -1,0 +1,585 @@
+Temet — Data Architecture Spec
+For implementation in Cursor. UI already built. This document covers data structures, modules, and system behaviour only.
+***Overview of data flow
+User speaks/types
+      ↓
+[INPUT LAYER] — raw text captured per turn
+      ↓ (immediately, client-side)
+[PATTERN MATCHER] — regex scan, flags applied to turn object
+      ↓ (async, non-blocking)
+[BACKGROUND ANALYSER] — API call to Claude, returns emotionalLoad + analysis, stored silently
+      ↓ (after each resolved analysis)
+[ARC CONTROLLER] — reads cumulative load + trajectory, manages sessionPhase,
+                   triggers check-in prompt when threshold crossed
+      ↓ (on session end or user wrap-up)
+[FEEDBACK ASSEMBLER] — merges pattern flags + analysis into feedback payload
+      ↓
+[FEEDBACK VIEW] — UI reads payload, renders highlights and reflection prompts
+***Core data types
+1. Turn
+A single user message within a session. The atomic unit of all data.
+type Turn = {
+  id: string;                    // uuid
+  sessionId: string;             // foreign key → Session
+  index: number;                 // turn number within session (0-based)
+  timestamp: number;             // unix ms
+  inputMode: 'text' | 'voice';
+  rawText: string;               // exactly as received, unmodified
+  flags: PatternFlag[];          // populated synchronously by Pattern Matcher
+  analysisId: string | null;     // foreign key → Analysis, null until API returns
+}
+2. PatternFlag
+A single pattern match within a turn. One turn can have multiple flags.
+type PatternFlag = {
+  matchedText: string;           // the exact substring that matched, e.g. "I always"
+  startIndex: number;            // char index in rawText
+  endIndex: number;              // char index in rawText
+  patternId: string;             // foreign key → Pattern (from the hardcoded pattern library)
+  severity: 'high' | 'med' | 'low';
+  category: PatternCategory;
+}
+type PatternCategory =
+  | 'identity_fusion'
+  | 'temporal_universalising'
+  | 'social_universalising'
+  | 'capability_foreclosure'
+  | 'fixed_nature'
+  | 'should_statement'
+  | 'external_causation'
+  | 'mind_reading'
+  | 'fortune_telling'
+  | 'minimisation'
+  | 'self_dismissal'
+  | 'unfavourable_comparison'
+  | 'catastrophising';
+3. Analysis
+The result of one background API call. One Analysis per turn (called async after each turn is stored).
+type Analysis = {
+  id: string;                    // uuid
+  turnId: string;                // foreign key → Turn
+  sessionId: string;
+  createdAt: number;             // unix ms, when API responded
+  
+  // What the AI extracted
+  dominantEmotion: string | null;        // e.g. "frustration", "grief", "numbness"
+  underlyingNeed: string | null;         // e.g. "recognition", "safety", "belonging"
+  beliefDetected: string | null;         // the implicit belief, stated plainly, e.g. "I am not lovable"
+  distortionType: string | null;         // clinical label if present, e.g. "overgeneralisation"
+  noteworthy: boolean;                   // true if AI flagged something worth surfacing in feedback
+  reflectionQuestion: string | null;     // AI-generated question to show user in feedback view
+  emotionalLoad: 0 | 1 | 2 | 3;         // 0 = neutral/positive, 1 = mild, 2 = strong, 3 = acute
+  rawAnalysis: string;                   // full API response, stored for debugging
+}
+4. Session
+One complete journaling session.
+type Session = {
+  id: string;                    // uuid
+  createdAt: number;             // unix ms, session start
+  completedAt: number | null;    // null if abandoned
+  moodOnOpen: 'good' | 'low';   // from the emoji check-in on screen 1
+  turnCount: number;             // total turns in session
+  status: 'active' | 'complete' | 'abandoned';
+  feedbackPayload: FeedbackPayload | null;  // null until session wraps
+  // Session arc fields — managed by Arc Controller
+  sessionPhase: 'descent' | 'ascent';      // starts as 'descent', one-way transition
+  checkInState: 'none' | 'pending' | 'shown' | 'continuing' | 'wrapping';
+  // 'none'       — check-in not yet triggered
+  // 'pending'    — threshold crossed, check-in queued for next turn boundary
+  // 'shown'      — check-in prompt currently displayed to user
+  // 'continuing' — user chose to keep going; ascent phase active
+  // 'wrapping'   — user chose to ease off; session moving to wrap-up
+}
+5. FeedbackPayload
+Assembled at session end. This is what the Feedback View reads. Computed once, stored, not recomputed.
+type FeedbackPayload = {
+  sessionId: string;
+  assembledAt: number;
+  
+  // Pattern-based highlights — sourced from PatternFlags across all turns
+  highlights: HighlightItem[];
+  
+  // AI-sourced reflection prompts — sourced from Analysis objects where noteworthy = true
+  reflectionPrompts: string[];
+  
+  // Summary stats (for potential future display)
+  totalFlags: number;
+  flagsBySeverity: { high: number; med: number; low: number };
+  flagsByCategory: Partial<Record<PatternCategory, number>>;
+  dominantEmotions: string[];    // deduplicated list across all analyses
+}
+type HighlightItem = {
+  turnId: string;
+  quote: string;                 // rawText of the turn (or relevant substring)
+  matchedText: string;           // the flagged phrase within the quote
+  startIndex: number;
+  endIndex: number;
+  severity: 'high' | 'med' | 'low';
+  category: PatternCategory;
+  categoryLabel: string;         // human-readable version of category, e.g. "universalising"
+  reframeHint: string;           // hardcoded per category (see Pattern Library module)
+}
+***Modules to implement
+Each module below should be created as a separate file. They have no UI dependencies.
+***MODULE 1: patternLibrary.ts
+Role: Single source of truth for all hardcoded language patterns. Imported by the Pattern Matcher and the Feedback Assembler.
+// Shape of each entry in the library
+type Pattern = {
+  id: string;                    // e.g. "temporal_universalising_01"
+  category: PatternCategory;
+  severity: 'high' | 'med' | 'low';
+  regex: RegExp;                 // case-insensitive, global flag set
+  categoryLabel: string;         // display string, e.g. "universalising"
+  reframeHint: string;           // the question shown beneath the flagged quote in feedback
+  examples: string[];            // for documentation/testing only, not used at runtime
+}
+export const PATTERNS: Pattern[] = [
+  // ── IDENTITY FUSION ─────────────────────────────────────────────────────
+  {
+    id: 'identity_fusion_emotion',
+    category: 'identity_fusion',
+    severity: 'high',
+    regex: /\bI am (sad|broken|anxious|a failure|worthless|lost|alone|hopeless|empty)\b/gi,
+    categoryLabel: 'identity fusion',
+    reframeHint: 'What if it were: "I\'ve been feeling…" rather than "I am…"?',
+    examples: ['I am broken', 'I am anxious']
+  },
+  {
+    id: 'identity_fusion_trait',
+    category: 'identity_fusion',
+    severity: 'high',
+    regex: /\bI am (stupid|lazy|boring|difficult|too much|not enough|a mess|a burden|useless)\b/gi,
+    categoryLabel: 'identity fusion',
+    reframeHint: 'Is this a permanent trait, or a behaviour in a specific situation?',
+    examples: ['I am stupid', 'I am too much']
+  },
+  // ── TEMPORAL UNIVERSALISING ──────────────────────────────────────────────
+  {
+    id: 'temporal_universalising_always',
+    category: 'temporal_universalising',
+    severity: 'high',
+    regex: /\bI always\b/gi,
+    categoryLabel: 'universalising',
+    reframeHint: 'Does "always" hold up? Can you think of one time it wasn\'t true?',
+    examples: ['I always end up doing everything']
+  },
+  {
+    id: 'temporal_universalising_never',
+    category: 'temporal_universalising',
+    severity: 'high',
+    regex: /\bI never\b/gi,
+    categoryLabel: 'universalising',
+    reframeHint: 'Has there ever been a single exception to "never"?',
+    examples: ['I never get it right']
+  },
+  {
+    id: 'temporal_universalising_sweep',
+    category: 'temporal_universalising',
+    severity: 'med',
+    regex: /\b(all the time|none of it|nothing ever works|nothing ever changes)\b/gi,
+    categoryLabel: 'universalising',
+    reframeHint: 'What would it look like to say "sometimes" instead?',
+    examples: ['it happens all the time']
+  },
+  // ── SOCIAL UNIVERSALISING ────────────────────────────────────────────────
+  {
+    id: 'social_universalising_everyone',
+    category: 'social_universalising',
+    severity: 'high',
+    regex: /\b(everyone thinks|everyone can see|everyone knows)\b/gi,
+    categoryLabel: 'universalising',
+    reframeHint: 'Who specifically? Is this a fact or a feeling?',
+    examples: ['everyone thinks I\'m difficult']
+  },
+  {
+    id: 'social_universalising_nobody',
+    category: 'social_universalising',
+    severity: 'high',
+    regex: /\b(nobody cares|no one ever|nobody likes|no one notices)\b/gi,
+    categoryLabel: 'universalising',
+    reframeHint: 'Is there one person who does care, even a little?',
+    examples: ['nobody cares what I think']
+  },
+  // ── CAPABILITY FORECLOSURE ───────────────────────────────────────────────
+  {
+    id: 'capability_foreclosure_cant',
+    category: 'capability_foreclosure',
+    severity: 'high',
+    regex: /\b(I can't|I could never|I will never be able to|I'm not capable)\b/gi,
+    categoryLabel: 'foreclosure',
+    reframeHint: '"Can\'t" or "haven\'t yet"? What\'s the difference here?',
+    examples: ['I can\'t do this']
+  },
+  {
+    id: 'capability_foreclosure_pointless',
+    category: 'capability_foreclosure',
+    severity: 'high',
+    regex: /\b(there's no point|it won't work|it's impossible|it's hopeless)\b/gi,
+    categoryLabel: 'foreclosure',
+    reframeHint: 'What evidence would change this conclusion?',
+    examples: ['there\'s no point trying']
+  },
+  // ── FIXED NATURE ─────────────────────────────────────────────────────────
+  {
+    id: 'fixed_nature',
+    category: 'fixed_nature',
+    severity: 'high',
+    regex: /\b(it's just how I am|I've always been like this|that's just me|I was born this way|I can't change)\b/gi,
+    categoryLabel: 'fixed nature',
+    reframeHint: 'If this were a learned pattern rather than a fixed trait — what would that open up?',
+    examples: ['it\'s just how I am']
+  },
+  // ── SHOULD STATEMENTS ────────────────────────────────────────────────────
+  {
+    id: 'should_statement',
+    category: 'should_statement',
+    severity: 'med',
+    regex: /\b(I should|I shouldn't|I have to|I must|I'm supposed to|I ought to)\b/gi,
+    categoryLabel: 'obligation',
+    reframeHint: 'Whose rule is this? Is it yours, or someone else\'s?',
+    examples: ['I should be further along by now']
+  },
+  // ── EXTERNAL CAUSATION ───────────────────────────────────────────────────
+  {
+    id: 'external_causation',
+    category: 'external_causation',
+    severity: 'med',
+    regex: /\b(they made me feel|it made me feel|you make me|he made me|she made me|that always makes me)\b/gi,
+    categoryLabel: 'external causation',
+    reframeHint: 'What did you feel? Can you name it separately from what they did?',
+    examples: ['they made me feel worthless']
+  },
+  // ── MIND READING ─────────────────────────────────────────────────────────
+  {
+    id: 'mind_reading',
+    category: 'mind_reading',
+    severity: 'med',
+    regex: /\b(they think I'm|they must think|she knows I|he can see that|they all noticed|they think I)\b/gi,
+    categoryLabel: 'mind reading',
+    reframeHint: 'Is this something they said, or something you\'re assuming?',
+    examples: ['they must think I\'m incompetent']
+  },
+  // ── FORTUNE TELLING ──────────────────────────────────────────────────────
+  {
+    id: 'fortune_telling',
+    category: 'fortune_telling',
+    severity: 'med',
+    regex: /\b(it will never get better|I know it won't work|there's no chance|I knew this would happen)\b/gi,
+    categoryLabel: 'fortune telling',
+    reframeHint: 'Is this a prediction or a fear? What\'s the difference?',
+    examples: ['I know it won\'t work out']
+  },
+  // ── CATASTROPHISING ──────────────────────────────────────────────────────
+  {
+    id: 'catastrophising',
+    category: 'catastrophising',
+    severity: 'high',
+    regex: /\b(it's ruined|it's over|everything fell apart|I've destroyed|it's all wrong|nothing left)\b/gi,
+    categoryLabel: 'catastrophising',
+    reframeHint: 'In a month\'s time, will this feel the same size it does right now?',
+    examples: ['it\'s completely ruined']
+  },
+  // ── MINIMISATION ─────────────────────────────────────────────────────────
+  {
+    id: 'minimisation',
+    category: 'minimisation',
+    severity: 'low',
+    regex: /\b(it's fine|it doesn't matter|I don't care|I'm fine|it's not a big deal|never mind)\b/gi,
+    categoryLabel: 'minimisation',
+    reframeHint: 'You mentioned this. What if it does matter?',
+    examples: ['it\'s fine, it doesn\'t matter']
+  },
+  // ── SELF DISMISSAL ───────────────────────────────────────────────────────
+  {
+    id: 'self_dismissal',
+    category: 'self_dismissal',
+    severity: 'low',
+    regex: /\b(I guess|I suppose|maybe I just|probably nothing|it's stupid but|this is silly but|ignore this but)\b/gi,
+    categoryLabel: 'self-dismissal',
+    reframeHint: 'What comes after "but"? That\'s the part worth paying attention to.',
+    examples: ['it\'s stupid but I felt really hurt']
+  },
+  // ── UNFAVOURABLE COMPARISON ──────────────────────────────────────────────
+  {
+    id: 'unfavourable_comparison',
+    category: 'unfavourable_comparison',
+    severity: 'med',
+    regex: /\b(not as good as|unlike me|normal people|everyone else can|they can but I|better than me at)\b/gi,
+    categoryLabel: 'comparison',
+    reframeHint: 'You\'re comparing your inside to their outside. What do you actually know about their experience?',
+    examples: ['everyone else seems to manage, unlike me']
+  }
+];
+***MODULE 2: patternMatcher.ts
+Role: Takes a raw text string, runs all patterns from patternLibrary.ts against it, returns an array of PatternFlag objects. Called immediately after a turn is submitted.
+Constraints Cursor must respect — implementation is otherwise free:
+Must be fully synchronous. No async, no API calls, no promises.
+Must complete in under 10ms for any input under 1000 characters.
+RegExp objects must be re-instantiated on every call. Do NOT reuse stateful RegExp with the g flag across calls — lastIndex persists between calls and causes missed matches.
+Returns an empty array (not null) if no patterns match.
+Has no dependency on any module other than patternLibrary.ts and types/index.ts.
+***MODULE 3: backgroundAnalyser.ts
+Role: Called async after each turn is stored. Sends turn text to Claude API with a therapeutic analysis system prompt. Stores the result as an Analysis object. Never blocks the UI. Failures are silent — flagged in logs only.
+// ── SYSTEM PROMPT (hardcoded) ───────────────────────────────────────────────
+// Cursor: store this as a constant in this file
+const ANALYSIS_SYSTEM_PROMPT = `
+You are a silent therapeutic analysis engine. You will receive a short piece of text that a person has written in a private journaling app. Your job is to analyse it with the lens of a skilled therapist and return a structured JSON object.
+You are NOT a chatbot. You will NEVER respond conversationally. You output ONLY valid JSON, nothing else.
+Analyse the text for:
+1. The dominant emotional tone (one word if possible, e.g. "grief", "frustration", "numbness", "shame", "fear", "longing")
+2. The underlying unmet need being expressed (e.g. "recognition", "safety", "belonging", "love", "autonomy", "clarity")
+3. Any implicit limiting belief present in the text, stated plainly (e.g. "I am not lovable", "I will always be abandoned", "I am fundamentally flawed")
+4. A clinical distortion label if one clearly applies (overgeneralisation, catastrophising, mind reading, fortune telling, emotional reasoning, personalisation, black-and-white thinking, should statements) — null if none clearly applies
+5. Whether this turn is noteworthy enough to surface in end-of-session feedback (true/false) — true if there is a strong emotional signal, a clear implicit belief, or something the person seems to be avoiding
+6. If noteworthy is true: a single open-ended reflection question to offer the user at the end of the session. This question must be:
+   - Warm, not clinical
+   - Non-leading (do not assume the answer)
+   - Short (one sentence)
+   - Anchored in what they actually said, without quoting them back verbatim
+   - Examples: "What did you need that you didn't get?", "What would it feel like to say that differently?", "Whose voice does that sound like?"
+7. An emotional load score from 0 to 3, representing the intensity of distress or emotional weight in this specific turn:
+   - 0 = neutral or positive — no distress signal, routine reflection, or upbeat content
+   - 1 = mild — some emotional weight present but the person appears regulated and processing well
+   - 2 = strong — clear distress signal, significant emotional content, identity-level language, loss, or shame present
+   - 3 = acute — expressions of hopelessness, self-worth collapse, acute grief, despair, or feeling overwhelmed or unable to cope
+Return ONLY this JSON object:
+{
+  "dominantEmotion": string | null,
+  "underlyingNeed": string | null,
+  "beliefDetected": string | null,
+  "distortionType": string | null,
+  "noteworthy": boolean,
+  "reflectionQuestion": string | null,
+  "emotionalLoad": 0 | 1 | 2 | 3
+}
+`;
+// ── FUNCTION ────────────────────────────────────────────────────────────────
+export async function analyseTurn(turn: Turn): Promise<Analysis | null> {
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 300,
+        system: ANALYSIS_SYSTEM_PROMPT,
+        messages: [{ role: 'user', content: turn.rawText }]
+      })
+    });
+    const data = await response.json();
+    const raw = data.content?.[0]?.text ?? '';
+    const parsed = JSON.parse(raw);
+    const analysis: Analysis = {
+      id: crypto.randomUUID(),
+      turnId: turn.id,
+      sessionId: turn.sessionId,
+      createdAt: Date.now(),
+      dominantEmotion: parsed.dominantEmotion ?? null,
+      underlyingNeed: parsed.underlyingNeed ?? null,
+      beliefDetected: parsed.beliefDetected ?? null,
+      distortionType: parsed.distortionType ?? null,
+      noteworthy: parsed.noteworthy ?? false,
+      reflectionQuestion: parsed.reflectionQuestion ?? null,
+      rawAnalysis: raw
+    };
+    return analysis;
+  } catch (err) {
+    console.error('[backgroundAnalyser] failed for turn', turn.id, err);
+    return null;
+  }
+}
+Constraints Cursor must respect — the fetch implementation above is the reference, but internal structure is otherwise free:
+Called with fire-and-forget only. Never awaited at the call site. Pattern: analyseTurn(turn).then(storeAnalysis).
+On any failure (network, parse error, API error), return null silently. The session must be unaffected.
+The noteworthy field must default to false if missing or unparseable — never leave it undefined.
+API key via environment variable only. Never hardcoded.
+Send only turn.rawText to the API — no session context, no prior turns, no user metadata.
+***MODULE 4: feedbackAssembler.ts
+Role: Called once when a session ends. Reads all turns and analyses for the session, assembles the FeedbackPayload. This is the only place where pattern flags and AI analysis are combined.
+Constraints Cursor must respect — implementation is otherwise free:
+Called exactly once per session, at wrap-up. Never called mid-session.
+Produces an immutable FeedbackPayload. Once returned, it is never mutated.
+Deduplicates repeated pattern matches: if the same matched phrase appears more than twice across the session, surface only the first two instances in highlights[].
+Sorts highlights by severity: high first, then med, then low.
+Caps reflectionPrompts[] at 3 items, drawn from analyses where noteworthy = true.
+Uses whatever analyses have resolved at the moment it is called — does not wait for pending API calls.
+Imports from patternLibrary.ts to resolve categoryLabel and reframeHint from patternId.
+***MODULE 5: sessionStore.ts
+Role: Manages all state for the active session. Persists to localStorage after each mutation so the session survives page refresh. On app open, checks for an incomplete session and offers to resume.
+Constraints Cursor must respect — implementation is otherwise free:
+Use whichever state management pattern fits the existing stack (Zustand, Jotai, React context, plain object with event emitter).
+Must expose at minimum: startSession, addTurn, storeAnalysis, wrapSession, clearSession, loadFromStorage.
+Persist after every addTurn and storeAnalysis call — not batched.
+Completed sessions move to a separate history store on wrapSession. Active session storage is then cleared.
+History store key: temet_session_history. Active session keys: implementation choice.
+wrapSession calls assembleFeedback from module 4, attaches the payload to the session, moves it to history, clears active state.
+***MODULE 6: promptRotator.ts
+Role: Returns the follow-up prompt to show the user after each turn. Purely mechanical — driven by turn count only. Has no dependency on pattern flags, analysis results, or session content of any kind.
+This is the complete and correct implementation. Do not add analysis-awareness to this module.
+const EXPANSION_PROMPTS = [
+  "Tell me more about that.",
+  "What else comes up when you think about this?",
+  "Keep going.",
+  "What's the first thing that comes to mind?",
+  "Is there more to this than you've written?"
+];
+const FEELING_PROMPTS = [
+  "What does that feel like in your body?",
+  "What emotion is closest to what you're describing?",
+  "How long have you been carrying this?"
+];
+const DEPTH_PROMPTS = [
+  "When did you first feel this way?",
+  "Does this remind you of anything from earlier in your life?",
+  "What did you need in that moment?",
+  "What were you trying to protect yourself from?",
+  "Whose voice does that sound like to you?"
+];
+export function getNextPrompt(turnIndex: number, lastAnalysisNoteworthy: boolean): string {
+  if (lastAnalysisNoteworthy) {
+    return DEPTH_PROMPTS[turnIndex % DEPTH_PROMPTS.length];
+  }
+  if (turnIndex % 6 === 5) {
+    return DEPTH_PROMPTS[Math.floor(turnIndex / 6) % DEPTH_PROMPTS.length];
+  }
+  if (turnIndex % 3 === 2) {
+    return FEELING_PROMPTS[Math.floor(turnIndex / 3) % FEELING_PROMPTS.length];
+  }
+  return EXPANSION_PROMPTS[turnIndex % EXPANSION_PROMPTS.length];
+}
+How this covers all cases:
+Neutral turn, early in session → expansion prompt. Always fires.
+Neutral turn, every 3rd → feeling prompt. Always fires.
+Neutral turn, every 6th → depth prompt. Always fires.
+Any turn where analysis returned noteworthy = true → depth prompt pulled forward regardless of position in rotation.
+Analysis pending or failed → lastAnalysisNoteworthy defaults to false, rotation continues on schedule unchanged.
+The prompt tier is what responds to content. The prompt itself always appears. There is no path through this function that returns nothing.
+***Session arc and termination logic
+Overview
+Sessions follow a U-shaped arc: a descent phase where the conversation deepens freely, followed — when needed — by a check-in that gives the user agency, then either an ascent phase or continuation, before wrap-up. The arc is managed by the Arc Controller, which runs after each analysis resolves.
+The user can always tap "Wrap up" and end the session themselves at any point. Everything below governs system-initiated behaviour only.
+***Arc Controller — arcController.ts
+Add as MODULE 7. Runs after each storeAnalysis() call in the session store. Reads the session's analysis history, computes current load state, and updates sessionPhase and checkInState on the session object. Has no UI dependency — it writes to store state, which the UI reads reactively.
+Constraints Cursor must respect — implementation is otherwise free:
+Stateless function: takes current session + all resolved analyses, returns updated arc state.
+Called only when a new analysis resolves. Not called on a timer.
+Phase transition (descent → ascent) is one-way and irreversible within a session.
+Check-in can only be triggered once per session. If checkInState is anything other than 'none', do not re-evaluate thresholds.
+emotionalLoad defaults to 0 for any turn whose analysis has not yet resolved.
+***Trigger conditions
+The Arc Controller evaluates two independent triggers after each resolved analysis. Either trigger alone is sufficient to set checkInState to 'pending'.
+Trigger 1 — Rapid descent (content-based)
+Examine the emotionalLoad scores of the 3 most recently resolved analyses in chronological order. If the scores show a net increase of 3 or more points across those 3 turns, the descent is steep enough to warrant a check-in.
+Examples that trigger:
+[0, 1, 3] — net change +3 ✓
+[1, 2, 3] — net change +2, but peak is 3 (acute) ✓ (see note below)
+[0, 0, 3] — net change +3 ✓
+Examples that do not trigger:
+[1, 2, 2] — net change +1, no acute score
+[2, 2, 2] — steady state, no trajectory change
+[3, 2, 1] — descending load, user is surfacing
+Special case: if any single turn scores emotionalLoad: 3 (acute), trigger immediately regardless of trajectory. A single acute turn is sufficient.
+Trigger 2 — Session duration (time-based)
+If the session has been active for 20 minutes or more (measured from session.createdAt) and checkInState is still 'none', trigger regardless of emotional load. This catches long sessions where the user may be circling without resolution, even if individual turns appear mild.
+The 20-minute threshold is a named constant — SESSION_CHECKIN_MINUTES = 20 — so it can be adjusted without touching logic.
+***Check-in prompt
+When checkInState transitions to 'pending', the UI should display the check-in prompt at the next natural turn boundary (i.e., after the user's next send, in place of the regular follow-up prompt).
+The check-in is not a system message or a modal. It appears in the same position and the same visual style as regular follow-up prompts. It feels like the conversation checking in, not the app intervening.
+The check-in prompt is hardcoded. It does not vary by emotional content or load score. One of the following, selected randomly:
+const CHECKIN_PROMPTS = [
+  "You've shared quite a lot — how are you feeling right now? We can keep going, or take a breath and reflect on what's come up.",
+  "That's a lot to hold. Do you want to stay with this, or would it feel good to start finding your way out of it?",
+  "We've gone somewhere real today. Do you want to keep exploring, or shall we start to bring this home?",
+  "You've done some heavy lifting. Want to continue, or are you ready to ease off and see what you've uncovered?"
+];
+These prompts always offer two directions without naming which is "right". The user's response is not parsed — they simply tap one of two buttons rendered beneath the prompt:
+[ Keep going ]     [ Let's ease off ]
+checkInState transitions:
+On "Keep going" → 'continuing'. Session phase transitions to 'ascent'. Arc Controller no longer evaluates thresholds.
+On "Let's ease off" → 'wrapping'. Session moves directly to wrapSession().
+***Ascent phase prompt pool
+When sessionPhase === 'ascent' (i.e., after the user chooses "Keep going"), the promptRotator draws exclusively from the ascent pool instead of its normal rotation. The ascent pool contains only grounding, agency-restoring, forward-facing prompts. No depth prompts. No "when did you first feel this way?" questions.
+const ASCENT_PROMPTS = [
+  "What's something you know about yourself that this situation doesn't change?",
+  "What would feel like a small act of care for yourself today?",
+  "If a close friend described what you've just shared, what would you want them to know?",
+  "What's one thing that still feels solid or true for you right now?",
+  "Is there anything from today's conversation you want to carry with you?",
+  "What does a good next few hours look like for you?",
+  "What's the smallest thing that might help right now?"
+];
+The ascent phase has a soft turn limit: after 3 ascent turns, the system surfaces the "Wrap up" affordance more prominently in the UI (exact visual treatment is a UI decision). The user is never forced to stop — they can keep writing — but the invitation becomes clearer.
+Add ASCENT_PROMPTS to promptRotator.ts. Update getNextPrompt to accept sessionPhase as a second parameter alongside lastAnalysisNoteworthy:
+export function getNextPrompt(
+  turnIndex: number,
+  lastAnalysisNoteworthy: boolean,
+  sessionPhase: 'descent' | 'ascent'
+): string {
+  if (sessionPhase === 'ascent') {
+    return ASCENT_PROMPTS[turnIndex % ASCENT_PROMPTS.length];
+  }
+  if (lastAnalysisNoteworthy) {
+    return DEPTH_PROMPTS[turnIndex % DEPTH_PROMPTS.length];
+  }
+  if (turnIndex % 6 === 5) {
+    return DEPTH_PROMPTS[Math.floor(turnIndex / 6) % DEPTH_PROMPTS.length];
+  }
+  if (turnIndex % 3 === 2) {
+    return FEELING_PROMPTS[Math.floor(turnIndex / 3) % FEELING_PROMPTS.length];
+  }
+  return EXPANSION_PROMPTS[turnIndex % EXPANSION_PROMPTS.length];
+}
+***wrapSession() — unchanged in structure
+Both user-initiated and system-initiated wrap-up call the same function. It marks the session complete, calls assembleFeedback() with whatever analyses have resolved (does not wait for pending calls), attaches the payload to the session, moves it to history, and clears active session state.
+***Arc state reference
+| sessionPhase | checkInState | What is happening |
+|---|---|---|
+| descent | none | Normal session, thresholds not yet crossed |
+| descent | pending | Threshold crossed, check-in queued |
+| descent | shown | Check-in prompt visible to user |
+| ascent | continuing | User chose to keep going, ascent prompts active |
+| ascent | wrapping | User chose to ease off, moving to wrap-up |
+| either | — | User tapped "Wrap up" manually at any point |
+***What the Feedback View receives
+The UI reads a single FeedbackPayload object. It needs to handle:
+highlights[] — iterate, render each quote with the matched substring visually differentiated by severity colour (high/med/low), show categoryLabel as a tag, show reframeHint beneath
+reflectionPrompts[] — render as a separate section, max 3
+dominantEmotions[] — optional display, e.g. "Today's session touched on: frustration, longing"
+Empty states — if highlights.length === 0, show a positive message; if reflectionPrompts.length === 0, omit the section
+***File structure
+/src
+  /modules
+    patternLibrary.ts       ← MODULE 1: hardcoded patterns, single source of truth
+    patternMatcher.ts       ← MODULE 2: synchronous regex scan, runs client-side
+    backgroundAnalyser.ts   ← MODULE 3: async API call per turn, stores Analysis
+    feedbackAssembler.ts    ← MODULE 4: assembles FeedbackPayload at session end
+    sessionStore.ts         ← MODULE 5: state + localStorage persistence
+    promptRotator.ts        ← MODULE 6: selects follow-up prompt per turn
+    arcController.ts        ← MODULE 7: manages session arc, load scoring, check-in logic
+  /types
+    index.ts                ← all TypeScript types defined in this document
+  /views                    ← UI ALREADY BUILT — not part of this spec
+    ReframeView             ← reads FeedbackPayload
+    HistoryView             ← reads session history from sessionStore
+***Implementation order
+Build in this sequence — each module is independently testable before the next:
+types/index.ts
+patternLibrary.ts
+patternMatcher.ts — test against example sentences before proceeding
+promptRotator.ts
+sessionStore.ts
+backgroundAnalyser.ts — test with a hardcoded turn before wiring up
+feedbackAssembler.ts — test with mock session data
+arcController.ts — test with mock analysis sequences covering all trigger cases
+Wire into existing UI
+***Non-negotiable constraints
+patternLibrary.ts is the single source of truth for all patterns. Never define patterns inline elsewhere.
+patternMatcher.ts is synchronous. Any async logic in this file is a bug.
+backgroundAnalyser.ts is fire-and-forget. Any await on its result in the UI layer is a bug.
+promptRotator.ts takes turnIndex, lastAnalysisNoteworthy, and sessionPhase. No other parameters.
+arcController.ts is stateless. It reads, computes, and returns — it does not mutate session state directly.
+The check-in prompt can be triggered at most once per session. arcController.ts must guard against re-triggering.
+emotionalLoad must default to 0 if the analysis has not resolved. Never block on a pending analysis.
+SESSION_CHECKIN_MINUTES is a named constant. Never hardcode the value 20 in logic.
+FeedbackPayload is immutable once assembled. Never mutate after assembleFeedback() returns.
+API key via environment variable only. A hardcoded key anywhere in the codebase is a critical error.
+No user text leaves the device except the single turn sent to the Anthropic API in module 3.
