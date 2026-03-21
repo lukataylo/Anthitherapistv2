@@ -77,6 +77,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import type { HistoryEntry } from "@/context/HistoryContext";
 
 const { width: SW, height: SH } = Dimensions.get("window");
@@ -292,42 +293,64 @@ function AnimatedWord({ word }: { word: string }) {
 // ─── Background ───────────────────────────────────────────────────────────────
 
 function SceneBg() {
+  const cx = SW * 0.5;
+  const cy = SH * 0.38;
+  const outerR = SH * 0.38;
+  const innerR = SH * 0.24;
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
-      {/* Deep outer glow ring */}
-      <View
+      {/* Outer glow — two orthogonal linear gradients layered to simulate radial */}
+      <LinearGradient
+        colors={["transparent", C.glowB, "transparent"]}
+        start={{ x: 0, y: 0.5 }}
+        end={{ x: 1, y: 0.5 }}
         style={{
           position: "absolute",
-          top: SH * 0.14,
-          left: SW * 0.5 - SH * 0.38,
-          width: SH * 0.76,
-          height: SH * 0.76,
-          borderRadius: SH * 0.38,
-          backgroundColor: C.glowB,
+          top: cy - outerR,
+          left: cx - outerR,
+          width: outerR * 2,
+          height: outerR * 2,
+          borderRadius: outerR,
         }}
       />
-      {/* Inner brighter glow */}
-      <View
+      <LinearGradient
+        colors={["transparent", C.glowB, "transparent"]}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
         style={{
           position: "absolute",
-          top: SH * 0.24,
-          left: SW * 0.5 - SH * 0.24,
-          width: SH * 0.48,
-          height: SH * 0.48,
-          borderRadius: SH * 0.24,
-          backgroundColor: C.glowA,
+          top: cy - outerR,
+          left: cx - outerR,
+          width: outerR * 2,
+          height: outerR * 2,
+          borderRadius: outerR,
         }}
       />
-      {/* Hot center */}
-      <View
+      {/* Inner glow — two orthogonal linear gradients layered to simulate radial */}
+      <LinearGradient
+        colors={["transparent", C.glowA, "transparent"]}
+        start={{ x: 0, y: 0.5 }}
+        end={{ x: 1, y: 0.5 }}
         style={{
           position: "absolute",
-          top: SH * 0.33,
-          left: SW * 0.5 - SH * 0.09,
-          width: SH * 0.18,
-          height: SH * 0.18,
-          borderRadius: SH * 0.09,
-          backgroundColor: "rgba(220, 60, 110, 0.35)",
+          top: cy - innerR,
+          left: cx - innerR,
+          width: innerR * 2,
+          height: innerR * 2,
+          borderRadius: innerR,
+        }}
+      />
+      <LinearGradient
+        colors={["transparent", C.glowA, "transparent"]}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+        style={{
+          position: "absolute",
+          top: cy - innerR,
+          left: cx - innerR,
+          width: innerR * 2,
+          height: innerR * 2,
+          borderRadius: innerR,
         }}
       />
     </View>
