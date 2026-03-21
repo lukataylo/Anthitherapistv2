@@ -449,6 +449,10 @@ export function SortTowerGame({ visible, entries, onClose }: SortTowerGameProps)
   const [streak, setStreak] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  const deckRef = useRef<SortWord[]>([]);
+  const deckIdxRef = useRef(0);
+  const streakRef = useRef(0);
+
   const feedbackOpacity = useSharedValue(0);
   const [feedbackCorrect, setFeedbackCorrect] = useState(true);
   const swipeHintOpacity = useSharedValue(1);
@@ -456,6 +460,9 @@ export function SortTowerGame({ visible, entries, onClose }: SortTowerGameProps)
 
   const startGame = useCallback(() => {
     const d = buildDeck(entries);
+    deckRef.current = d;
+    deckIdxRef.current = 0;
+    streakRef.current = 0;
     setDeck(d);
     setDeckIdx(0);
     setCardKey((k) => k + 1);
@@ -510,8 +517,10 @@ export function SortTowerGame({ visible, entries, onClose }: SortTowerGameProps)
   const handleSwipe = useCallback(
     (swipedNegative: boolean) => {
       swipeHintOpacity.value = withTiming(0, { duration: 180 });
-      if (deckIdx >= deck.length) return;
-      const current = deck[deckIdx];
+      const currentDeck = deckRef.current;
+      const currentIdx = deckIdxRef.current;
+      if (currentIdx >= currentDeck.length) return;
+      const current = currentDeck[currentIdx];
       if (!current) return;
 
       const correct = swipedNegative === current.isNegative;
@@ -522,30 +531,31 @@ export function SortTowerGame({ visible, entries, onClose }: SortTowerGameProps)
       );
 
       if (correct) {
-        const newStreak = streak + 1;
+        const newStreak = streakRef.current + 1;
+        streakRef.current = newStreak;
         setStreak(newStreak);
         const multiplier =
           newStreak >= 8 ? 4 : newStreak >= 5 ? 3 : newStreak >= 3 ? 2 : 1;
         setScore((s) => s + 100 * multiplier);
         setFloors((prev) => [...prev, makeFloor(prev.length)]);
       } else {
+        streakRef.current = 0;
         setStreak(0);
       }
       showFeedback(correct);
 
       setTimeout(() => {
-        setDeckIdx((i) => {
-          const next = i + 1;
-          if (next >= deck.length) {
-            setPhase("done");
-            if (timerRef.current) clearInterval(timerRef.current!);
-          }
-          return next;
-        });
+        const nextIdx = deckIdxRef.current + 1;
+        deckIdxRef.current = nextIdx;
+        if (nextIdx >= deckRef.current.length) {
+          setPhase("done");
+          if (timerRef.current) clearInterval(timerRef.current!);
+        }
+        setDeckIdx(nextIdx);
         setCardKey((k) => k + 1);
       }, 280);
     },
-    [deck, deckIdx, showFeedback, streak]
+    [showFeedback]
   );
 
   const timerPct = timeLeft / GAME_SECONDS;

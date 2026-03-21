@@ -51,3 +51,52 @@ export const ReframeThoughtResponse = zod.object({
     }),
   ),
 });
+
+/**
+ * Accepts the original thought, word analysis, and chosen reframes, then returns a narrative insight paragraph synthesising the session
+ * @summary Generate an LLM insight for a completed reframing session
+ */
+export const ReflectOnSessionBody = zod.object({
+  thought: zod.string().describe("The original thought text"),
+  words: zod
+    .array(
+      zod.object({
+        word: zod.string().describe("The original word"),
+        category: zod
+          .enum(["neutral", "belief", "fear", "absolute", "self_judgment"])
+          .describe("Cognitive category of the word"),
+        reframes: zod
+          .array(zod.string())
+          .describe(
+            "Possible reframe suggestions (only for significant words)",
+          ),
+        hint: zod
+          .string()
+          .nullish()
+          .describe(
+            "A softened hint for the word (only for significant words)",
+          ),
+        fiftyFifty: zod
+          .array(zod.string())
+          .describe(
+            "Two options for 50\/50 — one correct reframe and one decoy (only for significant words)",
+          ),
+        explainer: zod
+          .string()
+          .nullish()
+          .describe(
+            "Brief explanation of why this word is cognitively distorted",
+          ),
+      }),
+    )
+    .describe("Full word analysis from the reframe session"),
+  reframedWords: zod
+    .record(zod.string(), zod.string())
+    .describe("Map of word index (as string key) to chosen reframe"),
+});
+
+export const ReflectOnSessionResponse = zod.object({
+  insight: zod
+    .string()
+    .describe("LLM-generated narrative insight paragraph for the session"),
+});

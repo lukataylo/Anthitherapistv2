@@ -47,6 +47,25 @@ export interface ReframeResponse {
   words: WordAnalysis[];
 }
 
+/**
+ * Map of word index (as string key) to chosen reframe
+ */
+export type ReflectRequestReframedWords = { [key: string]: string };
+
+export interface ReflectRequest {
+  /** The original thought text */
+  thought: string;
+  /** Full word analysis from the reframe session */
+  words: WordAnalysis[];
+  /** Map of word index (as string key) to chosen reframe */
+  reframedWords: ReflectRequestReframedWords;
+}
+
+export interface ReflectResponse {
+  /** LLM-generated narrative insight paragraph for the session */
+  insight: string;
+}
+
 export interface ErrorResponse {
   error: string;
 }

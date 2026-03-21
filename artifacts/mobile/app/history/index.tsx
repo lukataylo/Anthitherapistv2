@@ -50,7 +50,6 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useHistory, type HistoryEntry } from "@/context/HistoryContext";
-import { useGame } from "@/context/GameContext";
 import { useStreak } from "@/context/StreakContext";
 import { SortTowerGame } from "@/components/SortTowerGame";
 import { RocketGame } from "@/components/RocketGame";
@@ -158,7 +157,6 @@ function EmptyState() {
 export default function HistoryScreen() {
   const insets = useSafeAreaInsets();
   const { entries, removeEntry } = useHistory();
-  const { loadSession } = useGame();
   const { currentStreak, longestStreak, reflectedToday } = useStreak();
   const router = useRouter();
 
@@ -181,13 +179,12 @@ export default function HistoryScreen() {
     []
   );
 
-  /** Load the entry's session into GameContext and switch to the Reframe tab. */
+  /** Navigate to the detail screen for this history entry. */
   const handlePress = useCallback(
     (entry: HistoryEntry) => {
-      loadSession(entry.thought, entry.words, entry.reframedWords);
-      router.push("/");
+      router.push(`/history/${entry.id}`);
     },
-    [loadSession, router]
+    [router]
   );
 
   /** Confirm deletion with an Alert before removing from HistoryContext. */
