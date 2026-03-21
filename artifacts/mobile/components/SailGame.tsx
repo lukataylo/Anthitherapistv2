@@ -406,6 +406,50 @@ function CrescentMoon() {
 }
 
 function Sailboat({ xAnim }: { xAnim: Animated.Value }) {
+  const SailsAndHull = () => (
+    <View style={{ alignItems: "flex-start", flexDirection: "column" }}>
+      {/* Two sails side by side */}
+      <View style={{ flexDirection: "row", alignItems: "flex-end" }}>
+        {/* Left sail — tall */}
+        <View
+          style={{
+            width: 0,
+            height: 0,
+            borderLeftWidth: 9,
+            borderRightWidth: 9,
+            borderBottomWidth: 28,
+            borderLeftColor: "transparent",
+            borderRightColor: "transparent",
+            borderBottomColor: BOAT_COL,
+            marginRight: 2,
+          }}
+        />
+        {/* Right sail — shorter */}
+        <View
+          style={{
+            width: 0,
+            height: 0,
+            borderLeftWidth: 7,
+            borderRightWidth: 7,
+            borderBottomWidth: 18,
+            borderLeftColor: "transparent",
+            borderRightColor: "transparent",
+            borderBottomColor: BOAT_COL,
+          }}
+        />
+      </View>
+      {/* Hull — flat bar spanning full width of both sails */}
+      <View
+        style={{
+          width: 36,
+          height: 6,
+          backgroundColor: BOAT_COL,
+          marginTop: -1,
+        }}
+      />
+    </View>
+  );
+
   return (
     <>
       {/* Boat */}
@@ -416,31 +460,7 @@ function Sailboat({ xAnim }: { xAnim: Animated.Value }) {
           transform: [{ translateX: xAnim }],
         }}
       >
-        <View style={{ alignItems: "center" }}>
-          {/* Sail */}
-          <View
-            style={{
-              width: 0,
-              height: 0,
-              borderLeftWidth: 7,
-              borderRightWidth: 7,
-              borderBottomWidth: 24,
-              borderLeftColor: "transparent",
-              borderRightColor: "transparent",
-              borderBottomColor: BOAT_COL,
-            }}
-          />
-          {/* Hull */}
-          <View
-            style={{
-              width: 24,
-              height: 6,
-              backgroundColor: BOAT_COL,
-              borderRadius: 3,
-              marginTop: -1,
-            }}
-          />
-        </View>
+        <SailsAndHull />
       </Animated.View>
       {/* Reflection */}
       <Animated.View
@@ -451,27 +471,8 @@ function Sailboat({ xAnim }: { xAnim: Animated.Value }) {
           opacity: 0.22,
         }}
       >
-        <View style={{ alignItems: "center", transform: [{ scaleY: -0.45 }] }}>
-          <View
-            style={{
-              width: 0,
-              height: 0,
-              borderLeftWidth: 7,
-              borderRightWidth: 7,
-              borderBottomWidth: 24,
-              borderLeftColor: "transparent",
-              borderRightColor: "transparent",
-              borderBottomColor: BOAT_COL,
-            }}
-          />
-          <View
-            style={{
-              width: 24,
-              height: 6,
-              backgroundColor: BOAT_COL,
-              borderRadius: 3,
-            }}
-          />
+        <View style={{ transform: [{ scaleY: -0.45 }] }}>
+          <SailsAndHull />
         </View>
       </Animated.View>
     </>
