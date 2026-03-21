@@ -44,14 +44,16 @@ const CARD_BG = "#1A1A1A";
 const FOUNDATION_COLOR = "#DCDCDC";
 
 const FLOOR_PALETTE = [
-  "#FFFFFF",
-  "#E8E8E8",
-  "#D0D0D0",
-  "#B8B8B8",
-  "#F0F0F0",
-  "#C8C8C8",
-  "#A0A0A0",
-  "#ECECEC",
+  "#FF6B6B",
+  "#FF9F43",
+  "#FECA57",
+  "#48DBFB",
+  "#FF9FF3",
+  "#54A0FF",
+  "#5F27CD",
+  "#00D2D3",
+  "#1DD1A1",
+  "#C8D6E5",
 ];
 
 const FLOOR_H = 28;
@@ -543,15 +545,20 @@ export function SortTowerGame({ visible, entries, onClose }: SortTowerGameProps)
             <View style={styles.doneBox}>
               <Text style={styles.doneLabel}>TOWER BUILT</Text>
               <Text style={styles.doneScore}>{score}</Text>
-              <Text style={styles.donePts}>
-                {floors.length} floor{floors.length !== 1 ? "s" : ""}
-              </Text>
-              <Pressable style={styles.playAgainBtn} onPress={startGame}>
-                <Text style={styles.playAgainText}>Play Again</Text>
-              </Pressable>
-              <Pressable onPress={onClose} style={styles.closeTextBtn}>
-                <Text style={styles.closeText}>Close</Text>
-              </Pressable>
+              <View style={styles.doneFloorRow}>
+                <Text style={styles.doneFloorNum}>{floors.length}</Text>
+                <Text style={styles.doneFloorUnit}>
+                  floor{floors.length !== 1 ? "s" : ""}
+                </Text>
+              </View>
+              <View style={styles.doneBtnRow}>
+                <Pressable style={styles.playAgainBtn} onPress={startGame}>
+                  <Text style={styles.playAgainText}>Play Again</Text>
+                </Pressable>
+                <Pressable onPress={onClose} style={styles.closeIconBtn}>
+                  <Ionicons name="close" size={18} color="rgba(255,255,255,0.5)" />
+                </Pressable>
+              </View>
             </View>
           ) : null}
         </View>
@@ -788,46 +795,64 @@ const styles = StyleSheet.create({
   },
   doneBox: {
     alignItems: "center",
-    gap: 6,
+    gap: 4,
   },
   doneLabel: {
     color: TEXT_MID,
-    fontSize: 11,
+    fontSize: 10,
     fontFamily: "Inter_700Bold",
-    letterSpacing: 2.5,
+    letterSpacing: 3,
+    marginBottom: 2,
   },
   doneScore: {
     color: TEXT_DARK,
-    fontSize: 68,
+    fontSize: 72,
     fontFamily: "Inter_700Bold",
-    lineHeight: 76,
-    letterSpacing: -2,
+    lineHeight: 78,
+    letterSpacing: -3,
   },
-  donePts: {
+  doneFloorRow: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: 5,
+    marginBottom: 4,
+  },
+  doneFloorNum: {
+    color: "#fff",
+    fontSize: 22,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: -0.5,
+  },
+  doneFloorUnit: {
     color: TEXT_MID,
     fontSize: 13,
     fontFamily: "Inter_400Regular",
-    letterSpacing: 0.4,
+    letterSpacing: 0.3,
+  },
+  doneBtnRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginTop: 18,
   },
   playAgainBtn: {
-    marginTop: 20,
-    backgroundColor: FOUNDATION_COLOR,
-    paddingHorizontal: 32,
-    paddingVertical: 14,
+    backgroundColor: "#fff",
+    paddingHorizontal: 28,
+    paddingVertical: 13,
     borderRadius: 100,
   },
   playAgainText: {
-    color: "#fff",
+    color: "#000",
     fontSize: 15,
     fontFamily: "Inter_700Bold",
+    letterSpacing: -0.2,
   },
-  closeTextBtn: {
-    marginTop: 8,
-    padding: 8,
-  },
-  closeText: {
-    color: TEXT_MID,
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
+  closeIconBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    alignItems: "center",
+    justifyContent: "center",
   },
 });
