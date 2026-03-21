@@ -294,67 +294,14 @@ function AnimatedWord({ word }: { word: string }) {
 // ─── Background ───────────────────────────────────────────────────────────────
 
 function SceneBg() {
-  const cx = SW * 0.5;
-  const cy = SH * 0.38;
-  const outerR = SH * 0.38;
-  const innerR = SH * 0.24;
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="none">
-      {/* Outer glow — two orthogonal linear gradients layered to simulate radial */}
-      <LinearGradient
-        colors={["transparent", C.glowB, "transparent"]}
-        start={{ x: 0, y: 0.5 }}
-        end={{ x: 1, y: 0.5 }}
-        style={{
-          position: "absolute",
-          top: cy - outerR,
-          left: cx - outerR,
-          width: outerR * 2,
-          height: outerR * 2,
-          borderRadius: outerR,
-        }}
-      />
-      <LinearGradient
-        colors={["transparent", C.glowB, "transparent"]}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-        style={{
-          position: "absolute",
-          top: cy - outerR,
-          left: cx - outerR,
-          width: outerR * 2,
-          height: outerR * 2,
-          borderRadius: outerR,
-        }}
-      />
-      {/* Inner glow — two orthogonal linear gradients layered to simulate radial */}
-      <LinearGradient
-        colors={["transparent", C.glowA, "transparent"]}
-        start={{ x: 0, y: 0.5 }}
-        end={{ x: 1, y: 0.5 }}
-        style={{
-          position: "absolute",
-          top: cy - innerR,
-          left: cx - innerR,
-          width: innerR * 2,
-          height: innerR * 2,
-          borderRadius: innerR,
-        }}
-      />
-      <LinearGradient
-        colors={["transparent", C.glowA, "transparent"]}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-        style={{
-          position: "absolute",
-          top: cy - innerR,
-          left: cx - innerR,
-          width: innerR * 2,
-          height: innerR * 2,
-          borderRadius: innerR,
-        }}
-      />
-    </View>
+    <LinearGradient
+      colors={[C.bg, C.glowA, C.glowB, C.bg]}
+      start={{ x: 0.5, y: 0 }}
+      end={{ x: 0.5, y: 1 }}
+      style={StyleSheet.absoluteFill}
+      pointerEvents="none"
+    />
   );
 }
 
@@ -784,7 +731,6 @@ export function RewordGame({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: C.bg,
   },
   hud: {
     flexDirection: "row",
