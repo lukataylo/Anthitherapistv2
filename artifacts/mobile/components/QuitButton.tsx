@@ -33,7 +33,9 @@ export function QuitButton({
 
   const handleConfirmQuit = () => {
     setSheetVisible(false);
-    onQuit();
+    setTimeout(() => {
+      onQuit();
+    }, 200);
   };
 
   const handleKeepPlaying = () => {
