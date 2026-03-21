@@ -69,9 +69,32 @@ function EmptyState() {
 
 function FlipCard({ card }: { card: FlashCard }) {
   const [flipped, setFlipped] = useState(false);
+  const [cooldown, setCooldown] = useState(9);
+  const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const flipAnim = useRef(new Animated.Value(0)).current;
 
+  useEffect(() => {
+    setCooldown(9);
+    setFlipped(false);
+    flipAnim.setValue(0);
+    cooldownRef.current = setInterval(() => {
+      setCooldown((prev) => {
+        if (prev <= 1) {
+          if (cooldownRef.current) clearInterval(cooldownRef.current);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => {
+      if (cooldownRef.current) clearInterval(cooldownRef.current);
+    };
+  }, [card.id]);
+
+  const canFlip = cooldown === 0;
+
   const flip = () => {
+    if (!canFlip) return;
     Animated.spring(flipAnim, {
       toValue: flipped ? 0 : 1,
       tension: 80,
@@ -100,15 +123,23 @@ function FlipCard({ card }: { card: FlashCard }) {
             { transform: [{ rotateY: frontRotate }] },
           ]}
         >
-          <CardTypeTag type={card.type} />
+          <View style={styles.tagAbsolute}>
+            <CardTypeTag type={card.type} />
+          </View>
           <Text style={styles.cardFrontText}>{card.front}</Text>
-          <View style={styles.tapHint}>
-            <Ionicons
-              name="refresh-outline"
-              size={14}
-              color="rgba(255,255,255,0.25)"
-            />
-            <Text style={styles.tapHintText}>Tap to flip</Text>
+          <View style={styles.tapHintAbsolute}>
+            {canFlip ? (
+              <>
+                <Ionicons
+                  name="refresh-outline"
+                  size={14}
+                  color="rgba(255,255,255,0.5)"
+                />
+                <Text style={styles.flipReadyText}>Tap to flip</Text>
+              </>
+            ) : (
+              <Text style={styles.cooldownText}>{cooldown}</Text>
+            )}
           </View>
         </Animated.View>
 
@@ -119,9 +150,18 @@ function FlipCard({ card }: { card: FlashCard }) {
             { transform: [{ rotateY: backRotate }] },
           ]}
         >
-          <CardTypeTag type={card.type} />
+          <View style={styles.tagAbsolute}>
+            <CardTypeTag type={card.type} />
+          </View>
           <View style={styles.backContent}>
-            <Text style={styles.cardBackText}>{card.back}</Text>
+            {card.back
+              .split("\n")
+              .filter((line) => line.trim().length > 0)
+              .map((line, idx) => (
+                <Text key={idx} style={styles.cardBackText}>
+                  {line}
+                </Text>
+              ))}
           </View>
         </Animated.View>
       </View>
@@ -328,7 +368,6 @@ const styles = StyleSheet.create({
     backfaceVisibility: "hidden",
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: "rgba(255,255,255,0.1)",
-    gap: 12,
   },
   cardFront: {
     backgroundColor: "#141416",
@@ -339,6 +378,11 @@ const styles = StyleSheet.create({
     backgroundColor: "#1A1A1E",
     justifyContent: "center",
     alignItems: "center",
+  },
+  tagAbsolute: {
+    position: "absolute",
+    top: 20,
+    left: 20,
   },
   tag: {
     paddingHorizontal: 10,
@@ -353,17 +397,21 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   cardFrontText: {
-    fontSize: 24,
+    fontSize: 30,
     fontFamily: "Inter_700Bold",
     color: "#fff",
     textAlign: "center",
-    lineHeight: 28,
-    flex: 1,
-    textAlignVertical: "center",
+    lineHeight: 36,
+    paddingHorizontal: 8,
   },
-  tapHint: {
+  tapHintAbsolute: {
+    position: "absolute",
+    bottom: 20,
+    left: 0,
+    right: 0,
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     gap: 4,
   },
   tapHintText: {
@@ -371,19 +419,30 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     color: "rgba(255,255,255,0.25)",
   },
+  cooldownText: {
+    fontSize: 20,
+    fontFamily: "Inter_700Bold",
+    color: "rgba(255,255,255,0.3)",
+  },
+  flipReadyText: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    color: "rgba(255,255,255,0.5)",
+  },
   backContent: {
     flex: 1,
     justifyContent: "center",
-    alignItems: "center",
-    gap: 12,
+    alignItems: "flex-start",
     width: "100%",
+    gap: 12,
+    paddingHorizontal: 4,
   },
   cardBackText: {
-    fontSize: 20,
+    fontSize: 24,
     fontFamily: "Inter_600SemiBold",
     color: "#fff",
-    textAlign: "center",
-    lineHeight: 26,
+    textAlign: "left",
+    lineHeight: 32,
   },
   actionRow: {
     flexDirection: "row",
