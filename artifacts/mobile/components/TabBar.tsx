@@ -42,6 +42,7 @@ import {
   Platform,
   Pressable,
   StyleSheet,
+  Text,
   View,
 } from "react-native";
 import { BlurView } from "expo-blur";
@@ -157,6 +158,10 @@ function TabItem({
           {/* Orange dot — visible when streak needs attention */}
           {hasBadge && <View style={styles.badge} />}
         </View>
+
+        <Text style={[styles.label, isFocused && styles.labelFocused]}>
+          {tab.label}
+        </Text>
 
       </Animated.View>
     </Pressable>
@@ -329,5 +334,14 @@ const styles = StyleSheet.create({
     backgroundColor: "#FF9500",
     borderWidth: 1.5,
     borderColor: "#000",
+  },
+  label: {
+    fontSize: 10,
+    letterSpacing: 0.3,
+    color: "rgba(255,255,255,0.38)",
+    marginTop: 3,
+  },
+  labelFocused: {
+    color: "#fff",
   },
 });
