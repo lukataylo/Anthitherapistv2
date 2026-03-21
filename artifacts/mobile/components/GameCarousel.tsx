@@ -76,16 +76,6 @@ type GameDef = {
  */
 const GAMES: GameDef[] = [
   {
-    id: "sort-tower",
-    name: "Sort Tower",
-    category: "STACKING",
-    icon: "layers",
-    bg: "#0C1E2E",
-    patternColor: "#1E4A6E",
-    patternType: "chevrons",
-    available: true,
-  },
-  {
     id: "rocket-reframe",
     name: "Rocket Reframe",
     category: "REFRAMING",
@@ -122,6 +112,16 @@ const GAMES: GameDef[] = [
     icon: "swap-horizontal-outline",
     bg: "#160A1C",
     patternColor: "#8A2050",
+    patternType: "chevrons",
+    available: true,
+  },
+  {
+    id: "sort-tower",
+    name: "Sort Tower",
+    category: "STACKING",
+    icon: "layers",
+    bg: "#0C1E2E",
+    patternColor: "#1E4A6E",
     patternType: "chevrons",
     available: true,
   },
