@@ -86,7 +86,7 @@ function extractPairs(entries: HistoryEntry[]): Pair[] {
       if (e.words[i].category !== "neutral") {
         const r = e.reframedWords?.[String(i)];
         if (r && r.length <= 28)
-          pairs.push({ original: e.words[i].text, better: r });
+          pairs.push({ original: e.words[i].word, better: r });
       }
     }
   }
