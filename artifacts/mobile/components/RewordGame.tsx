@@ -87,9 +87,9 @@ const { width: SW, height: SH } = Dimensions.get("window");
 // ─── Colors ──────────────────────────────────────────────────────────────────
 
 const C = {
-  bg: "#160A1C",
-  glowA: "rgba(185, 40, 90, 0.45)",
-  glowB: "rgba(120, 20, 60, 0.25)",
+  bg: "#080810",
+  glowA: "rgba(30,15,50,0.6)",
+  glowB: "rgba(10,5,20,0.4)",
   line: "rgba(200, 70, 120, 0.55)",
   lineActive: "rgba(255, 130, 175, 0.9)",
   lineWrong: "rgba(255, 80, 100, 0.5)",
@@ -327,7 +327,7 @@ function TreeDiagram({
   useEffect(() => {
     nodeStates.forEach((state, i) => {
       const targetGlow = state === "selected-correct" ? 1 : state === "selected-wrong" ? 0.7 : 0;
-      const targetScale = state === "selected-correct" ? 1.25 : state === "selected-wrong" ? 0.9 : 1;
+      const targetScale = state === "selected-correct" ? 1.0 : state === "selected-wrong" ? 0.9 : 1;
 
       Animated.parallel([
         Animated.spring(nodeScales[i], {
@@ -435,20 +435,6 @@ function TreeDiagram({
               disabled={selectedIdx !== null}
               style={{ alignItems: "center" }}
             >
-              {/* Glow ring */}
-              <Animated.View
-                style={{
-                  position: "absolute",
-                  top: -NODE_R * 0.7,
-                  left: 50 - NODE_R * 1.7,
-                  width: NODE_R * 3.4,
-                  height: NODE_R * 3.4,
-                  borderRadius: NODE_R * 1.7,
-                  backgroundColor: isCorrect ? C.nodeCorrect : C.nodeGlow,
-                  opacity: nodeGlows[i],
-                }}
-              />
-
               {/* Node circle */}
               <Animated.View
                 style={[
