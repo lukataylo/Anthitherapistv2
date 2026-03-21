@@ -178,6 +178,8 @@ function Spire({ visible }: { visible: boolean }) {
   );
 }
 
+const TARGET_BOTTOM = 8 + MAX_VISIBLE_FLOORS * (FLOOR_H + 2);
+
 function TowerDisplay({ floors }: { floors: Floor[] }) {
   const visibleFloors = floors.slice(-MAX_VISIBLE_FLOORS);
   const hasSpire = floors.length >= 8;
@@ -185,6 +187,12 @@ function TowerDisplay({ floors }: { floors: Floor[] }) {
 
   return (
     <View style={styles.towerArea}>
+      {/* Target line */}
+      <View style={[styles.targetLineWrap, { bottom: TARGET_BOTTOM }]}>
+        <View style={styles.targetLine} />
+        <Text style={styles.targetLabel}>GOAL</Text>
+      </View>
+
       <View style={styles.towerColumn}>
         <Spire visible={hasSpire} />
         {visibleFloors.map((floor, i) => (
@@ -666,6 +674,28 @@ const styles = StyleSheet.create({
     height: 8,
     backgroundColor: FOUNDATION_COLOR,
     borderRadius: 1,
+  },
+  targetLineWrap: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  targetLine: {
+    flex: 1,
+    height: 0,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255,255,255,0.18)",
+    borderStyle: "dashed",
+  },
+  targetLabel: {
+    color: "rgba(255,255,255,0.22)",
+    fontSize: 8,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 1.5,
+    marginLeft: 6,
+    marginRight: 8,
   },
   divider: {
     height: StyleSheet.hairlineWidth,
