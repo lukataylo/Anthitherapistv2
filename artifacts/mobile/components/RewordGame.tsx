@@ -400,10 +400,9 @@ function TreeDiagram({
 
   const getLineColor = (i: number): string => {
     if (selectedIdx === null) return C.line;
-    if (i === selectedIdx) {
-      const st = nodeStates[i];
-      return st === "selected-correct" ? C.nodeCorrect : C.lineWrong;
-    }
+    const st = nodeStates[i];
+    if (st === "selected-correct") return C.nodeCorrect;
+    if (st === "selected-wrong") return C.lineWrong;
     return "rgba(130,60,220,0.2)";
   };
 
@@ -437,15 +436,26 @@ function TreeDiagram({
         }}
       />
 
-      {/* Horizontal bar */}
+      {/* Horizontal bar - left half (node 0 to center) */}
       <View
         style={{
           position: "absolute",
           left: NODE_XS[0],
           top: BAR_Y,
-          width: NODE_XS[2] - NODE_XS[0],
+          width: NODE_XS[1] - NODE_XS[0],
           height: LINE_W,
-          backgroundColor: selectedIdx === null ? C.line : "rgba(130,60,220,0.25)",
+          backgroundColor: getLineColor(0),
+        }}
+      />
+      {/* Horizontal bar - right half (center to node 2) */}
+      <View
+        style={{
+          position: "absolute",
+          left: NODE_XS[1],
+          top: BAR_Y,
+          width: NODE_XS[2] - NODE_XS[1],
+          height: LINE_W,
+          backgroundColor: getLineColor(2),
         }}
       />
 
