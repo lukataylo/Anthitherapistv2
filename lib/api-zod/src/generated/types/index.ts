@@ -8,6 +8,9 @@
 
 export * from "./errorResponse";
 export * from "./healthStatus";
+export * from "./reflectRequest";
+export * from "./reflectRequestReframedWords";
+export * from "./reflectResponse";
 export * from "./reframeRequest";
 export * from "./reframeResponse";
 export * from "./wordAnalysis";

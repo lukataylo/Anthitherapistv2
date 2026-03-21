@@ -21,6 +21,8 @@ import type {
   DiscussResponse,
   ErrorResponse,
   HealthStatus,
+  ReflectRequest,
+  ReflectResponse,
   ReframeRequest,
   ReframeResponse,
 } from "./api.schemas";
@@ -279,4 +281,91 @@ export const useDiscuss = <
   TContext
 > => {
   return useMutation(getDiscussMutationOptions(options));
+};
+
+/**
+ * Accepts the original thought, word analysis, and chosen reframes, then returns a narrative insight paragraph synthesising the session
+ * @summary Generate an LLM insight for a completed reframing session
+ */
+export const getReflectOnSessionUrl = () => {
+  return `/api/reflect`;
+};
+
+export const reflectOnSession = async (
+  reflectRequest: ReflectRequest,
+  options?: RequestInit,
+): Promise<ReflectResponse> => {
+  return customFetch<ReflectResponse>(getReflectOnSessionUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(reflectRequest),
+  });
+};
+
+export const getReflectOnSessionMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof reflectOnSession>>,
+    TError,
+    { data: BodyType<ReflectRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof reflectOnSession>>,
+  TError,
+  { data: BodyType<ReflectRequest> },
+  TContext
+> => {
+  const mutationKey = ["reflectOnSession"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof reflectOnSession>>,
+    { data: BodyType<ReflectRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return reflectOnSession(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ReflectOnSessionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof reflectOnSession>>
+>;
+export type ReflectOnSessionMutationBody = BodyType<ReflectRequest>;
+export type ReflectOnSessionMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Generate an LLM insight for a completed reframing session
+ */
+export const useReflectOnSession = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof reflectOnSession>>,
+    TError,
+    { data: BodyType<ReflectRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof reflectOnSession>>,
+  TError,
+  { data: BodyType<ReflectRequest> },
+  TContext
+> => {
+  return useMutation(getReflectOnSessionMutationOptions(options));
 };

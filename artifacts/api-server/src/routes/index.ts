@@ -9,17 +9,20 @@
  *   GET  /api/healthz  — liveness probe
  *   POST /api/reframe  — AI-powered cognitive distortion analysis
  *   POST /api/discuss  — Socratic dialogue coaching
+ *   POST /api/reflect  — LLM-generated narrative insight for a reframing session
  */
 
 import { Router, type IRouter } from "express";
 import healthRouter from "./health";
 import reframeRouter from "./reframe";
 import discussRouter from "./discuss";
+import reflectRouter from "./reflect";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use(reframeRouter);
 router.use(discussRouter);
+router.use(reflectRouter);
 
 export default router;
