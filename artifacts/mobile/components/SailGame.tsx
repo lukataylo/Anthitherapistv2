@@ -18,14 +18,26 @@
  * ## Round generation — `buildRounds`
  *
  * Each round highlights a single word from a thought. Rounds are sourced from:
- *  1. The user's history — for each entry, the first significant (non-neutral)
- *     word is highlighted from the original thought. The category's explanation
- *     from `EXPLAIN` is used for the feedback card. Limited to 7 history rounds.
+ *  1. The user's history — for each entry, EVERY significant (non-neutral) word
+ *     creates its own separate round. A thought with 3 distorted words produces
+ *     3 rounds. Each round carries an `allWords` array with all distorted words
+ *     from that entry (used by the annotation overlay). Capped at 8 history rounds
+ *     after expansion.
  *  2. `DISTORTED_FALLBACK` — curated fallback rounds when history is sparse.
+ *     These do not carry `allWords` (no annotation overlay shown).
  *  3. `HEALTHY` — 4 healthy thoughts where the highlighted word is deliberately
- *     not distorted (testing false-positive avoidance).
+ *     not distorted (testing false-positive avoidance). No `allWords`.
  *
  * Final deck: up to 12 rounds, shuffled.
+ *
+ * ## Full-context annotation overlay
+ *
+ * After a correct answer on a history-derived round (one with `allWords`), a
+ * 2-second overlay shows the FULL thought with every distorted word colored by
+ * its cognitive distortion category. This teaches users to see the complete
+ * distortion landscape of a thought, not just the word being tested. The overlay
+ * auto-dismisses and advances to the next round. Answer buttons and the quit
+ * button are hidden during this window to prevent accidental taps.
  *
  * ## Sailboat progress mechanic
  *
@@ -138,6 +150,21 @@ const EXPLAIN: Record<string, string> = {
   fortune_telling: "predicts a negative outcome as if it were certain.",
 };
 
+// ─── Category → highlight color map ─────────────────────────────────────────
+
+const CATEGORY_COLORS: Record<string, string> = {
+  overgeneralization: "#FF9F40",
+  catastrophizing:    "#FF6B6B",
+  black_white:        "#C77DFF",
+  mind_reading:       "#4CC9F0",
+  labeling:           "#F72585",
+  emotional_reasoning:"#FFD166",
+  magnification:      "#06D6A0",
+  personalization:    "#FF9A3C",
+  should_statements:  "#A8DADC",
+  fortune_telling:    "#B5E48C",
+};
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Round = {
@@ -145,6 +172,7 @@ type Round = {
   highlight: string;
   isError: boolean;
   explanation: string;
+  allWords?: Array<{ word: string; category: string }>;
 };
 
 type Phase = "idle" | "playing" | "done";
@@ -245,22 +273,26 @@ function buildRounds(entries: HistoryEntry[]): Round[] {
   for (const e of entries) {
     const dw = e.words.filter((w) => w.category !== "neutral");
     if (!dw.length) continue;
-    const w = dw[0];
-    const desc = EXPLAIN[w.category] ?? "reflects distorted thinking.";
-    fromHistory.push({
-      thought: e.thought,
-      highlight: w.word,
-      isError: true,
-      explanation: `"${w.word}" ${desc}`,
-    });
+    const allWords = dw.map((w) => ({ word: w.word, category: w.category }));
+    for (const w of dw) {
+      const desc = EXPLAIN[w.category] ?? "reflects distorted thinking.";
+      fromHistory.push({
+        thought: e.thought,
+        highlight: w.word,
+        isError: true,
+        explanation: `"${w.word}" ${desc}`,
+        allWords,
+      });
+    }
   }
 
+  const historySlice = fromHistory.slice(0, 8);
   const distorted = shuffle([
-    ...fromHistory.slice(0, 7),
-    ...DISTORTED_FALLBACK.slice(0, Math.max(0, 5 - fromHistory.length)),
+    ...historySlice,
+    ...DISTORTED_FALLBACK.slice(0, Math.max(0, 5 - historySlice.length)),
   ]);
 
-  return shuffle([...distorted.slice(0, 7), ...shuffle(HEALTHY).slice(0, 4)]).slice(0, 12);
+  return shuffle([...distorted.slice(0, 8), ...shuffle(HEALTHY).slice(0, 4)]).slice(0, 12);
 }
 
 // ─── Scene components ─────────────────────────────────────────────────────────
@@ -508,6 +540,51 @@ function ThoughtLine({ thought, highlight }: { thought: string; highlight: strin
   );
 }
 
+// ─── Full-context annotation thought line ─────────────────────────────────────
+
+function AnnotationThoughtLine({
+  thought,
+  allWords,
+}: {
+  thought: string;
+  allWords: Array<{ word: string; category: string }>;
+}) {
+  const wordMap: Record<string, string> = {};
+  for (const aw of allWords) {
+    const key = aw.word.toLowerCase().replace(/[^a-z]/g, "");
+    wordMap[key] = aw.category;
+  }
+
+  const words = thought.split(" ");
+  return (
+    <View style={styles.thoughtLine}>
+      {words.map((word, i) => {
+        const key = word.toLowerCase().replace(/[^a-z]/g, "");
+        const category = wordMap[key];
+        const color = category ? (CATEGORY_COLORS[category] ?? HIGHLIGHT_BG) : undefined;
+        return (
+          <View
+            key={i}
+            style={[
+              styles.wordWrap,
+              color ? { backgroundColor: color, borderRadius: 5, paddingHorizontal: 6, paddingVertical: 2 } : undefined,
+            ]}
+          >
+            <Text
+              style={[
+                styles.wordTxt,
+                color ? { color: "#002E2A" } : undefined,
+              ]}
+            >
+              {word}
+            </Text>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
 // ─── Progress bar (boat advancement) ─────────────────────────────────────────
 
 function ProgressTrack({ xAnim }: { xAnim: Animated.Value }) {
@@ -544,6 +621,7 @@ export function SailGame({
   const [timeLeft, setTimeLeft] = useState(GAME_SEC);
   const [explanation, setExplanation] = useState<string | null>(null);
   const [feedbackColor, setFeedbackColor] = useState("#00E5CC");
+  const [annotating, setAnnotating] = useState(false);
 
   const boatX = useRef(new Animated.Value(BOAT_START)).current;
   const feedbackOpacity = useRef(new Animated.Value(0)).current;
@@ -552,6 +630,8 @@ export function SailGame({
   const phaseRef = useRef<Phase>("idle");
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timeLeftRef = useRef(GAME_SEC);
+  const annotationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const annotatingRef = useRef(false);
 
   useEffect(() => {
     const id = boatX.addListener(({ value }) => {
@@ -595,7 +675,7 @@ export function SailGame({
     if (next >= BOAT_END) {
       stopTimer();
       setTimeout(() => {
-        if (phaseRef.current === "playing") {
+        if (phaseRef.current === "playing" && !annotatingRef.current) {
           phaseRef.current = "done";
           setPhase("done");
         }
@@ -639,13 +719,31 @@ export function SailGame({
         advanceBoat();
 
         const next = rIdx + 1;
-        if (next >= rounds.length) {
-          phaseRef.current = "done";
-          setPhase("done");
-          stopTimer();
+        if (round.allWords && round.allWords.length > 0) {
+          annotatingRef.current = true;
+          setAnnotating(true);
+          if (annotationTimerRef.current) clearTimeout(annotationTimerRef.current);
+          annotationTimerRef.current = setTimeout(() => {
+            annotatingRef.current = false;
+            setAnnotating(false);
+            if (next >= rounds.length || boatXVal.current >= BOAT_END) {
+              phaseRef.current = "done";
+              setPhase("done");
+              stopTimer();
+            } else {
+              setRIdx(next);
+              setExplanation(null);
+            }
+          }, 2000);
         } else {
-          setRIdx(next);
-          setExplanation(null);
+          if (next >= rounds.length) {
+            phaseRef.current = "done";
+            setPhase("done");
+            stopTimer();
+          } else {
+            setRIdx(next);
+            setExplanation(null);
+          }
         }
       } else {
         setStreak(0);
@@ -672,6 +770,12 @@ export function SailGame({
   }, [rIdx, rounds, stopTimer]);
 
   const startGame = useCallback(() => {
+    if (annotationTimerRef.current) {
+      clearTimeout(annotationTimerRef.current);
+      annotationTimerRef.current = null;
+    }
+    annotatingRef.current = false;
+    setAnnotating(false);
     const rs = buildRounds(entries);
     setRounds(rs);
     setRIdx(0);
@@ -688,10 +792,22 @@ export function SailGame({
   useEffect(() => {
     if (!visible) {
       stopTimer();
+      if (annotationTimerRef.current) {
+        clearTimeout(annotationTimerRef.current);
+        annotationTimerRef.current = null;
+      }
+      annotatingRef.current = false;
+      setAnnotating(false);
       phaseRef.current = "idle";
       setPhase("idle");
     }
   }, [visible, stopTimer]);
+
+  useEffect(() => {
+    return () => {
+      if (annotationTimerRef.current) clearTimeout(annotationTimerRef.current);
+    };
+  }, []);
 
   const currentRound = rounds[rIdx];
   const multi = streak >= 3 ? 3 : streak >= 2 ? 2 : 1;
@@ -722,7 +838,7 @@ export function SailGame({
 
         {/* ── HUD ── */}
         <View style={[styles.hud, { paddingTop: insets.top + 10 }]}>
-          <QuitButton onQuit={onClose} isPlaying={phase === "playing"} />
+          {!annotating && <QuitButton onQuit={onClose} isPlaying={phase === "playing"} />}
           <View>
             <View style={styles.scoreRow}>
               <Ionicons
@@ -753,7 +869,17 @@ export function SailGame({
               { paddingBottom: Math.max(insets.bottom + 12, 20) },
             ]}
           >
-            {explanation ? (
+            {annotating && currentRound.allWords ? (
+              <>
+                <AnnotationThoughtLine
+                  thought={currentRound.thought}
+                  allWords={currentRound.allWords}
+                />
+                <Text style={styles.annotationLbl}>
+                  ALL DISTORTIONS IN THIS THOUGHT
+                </Text>
+              </>
+            ) : explanation ? (
               <Pressable
                 style={styles.explainCard}
                 onPress={dismissExplanation}
@@ -927,6 +1053,14 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_700Bold",
     letterSpacing: 1.8,
     textAlign: "center",
+  },
+  annotationLbl: {
+    color: "rgba(255,255,255,0.55)",
+    fontSize: 9,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 1.8,
+    textAlign: "center",
+    marginTop: 4,
   },
   btnRow: {
     flexDirection: "row",
