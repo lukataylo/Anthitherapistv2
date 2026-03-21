@@ -129,6 +129,7 @@ export function GamePanel() {
     activeWordIndex !== null ? words[activeWordIndex] : null;
 
   const [reframeText, setReframeText] = useState("");
+  const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showReframeInput, setShowReframeInput] = useState(false);
   const [wrongAttempts, setWrongAttempts] = useState<WrongAttempt[]>([]);
   const [hintRevealed, setHintRevealed] = useState(false);
@@ -150,6 +151,7 @@ export function GamePanel() {
     if (isVisible) {
       // Reset all per-word state when a new word is opened
       setReframeText("");
+      setSuggestions([]);
       setShowReframeInput(false);
       setWrongAttempts([]);
       setHintRevealed(false);
@@ -192,6 +194,19 @@ export function GamePanel() {
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, [isVisible, activeWordIndex]);
+
+  // Compute live suggestions from activeWord.reframes as the user types
+  useEffect(() => {
+    const trimmed = reframeText.trim().toLowerCase();
+    if (!trimmed || !activeWord) {
+      setSuggestions([]);
+      return;
+    }
+    const matched = activeWord.reframes.filter((r) =>
+      r.toLowerCase().includes(trimmed)
+    );
+    setSuggestions(matched);
+  }, [reframeText, activeWord]);
 
   // Panel slides up from 20px below and fades in
   const panelStyle = useAnimatedStyle(() => ({
@@ -325,6 +340,8 @@ export function GamePanel() {
     if (activeWordIndex === null) return;
     if (timerRef.current) clearInterval(timerRef.current);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setReframeText("");
+    setSuggestions([]);
     setCelebrationWord(reframedWord);
     setShowCelebration(true);
   };
@@ -451,6 +468,36 @@ export function GamePanel() {
                     ))}
                   </View>
                 </View>
+              )}
+
+              {/* Live suggestion chips — shown above the input when text matches reframes */}
+              {showReframeInput && suggestions.length > 0 && (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.suggestionsScroll}
+                  contentContainerStyle={styles.suggestionsContent}
+                  keyboardShouldPersistTaps="handled"
+                >
+                  {suggestions.map((suggestion, i) => (
+                    <Pressable
+                      key={i}
+                      style={({ pressed }) => [
+                        styles.suggestionChip,
+                        { opacity: pressed ? 0.7 : 1 },
+                      ]}
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setReframeText(suggestion);
+                      }}
+                      accessibilityLabel={`Suggestion: ${suggestion}`}
+                      accessibilityRole="button"
+                      accessibilityHint={`Fill in "${suggestion}" as your reframe`}
+                    >
+                      <Text style={styles.suggestionChipText}>{suggestion}</Text>
+                    </Pressable>
+                  ))}
+                </ScrollView>
               )}
 
               {/* Free-text reframe input — toggled by the REFRAME button */}
@@ -762,5 +809,28 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: "Inter_700Bold",
     letterSpacing: 1,
+  },
+  suggestionsScroll: {
+    maxHeight: 44,
+    marginHorizontal: 24,
+    marginBottom: 8,
+  },
+  suggestionsContent: {
+    gap: 8,
+    paddingVertical: 4,
+    alignItems: "center",
+  },
+  suggestionChip: {
+    backgroundColor: "rgba(255,255,255,0.12)",
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.18)",
+  },
+  suggestionChipText: {
+    color: Colors.white,
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
   },
 });
