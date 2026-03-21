@@ -5,7 +5,7 @@ modules = ["nodejs-20"]
 
     [deployment]
     deploymentTarget = "autoscale"
-    build = ["bash", "-c", "pnpm install && (cd artifacts/api-server && pnpm run build)"]
+    build = ["pnpm", "--filter", "@workspace/api-server", "run", "build"]
     run = ["node", "artifacts/api-server/dist/index.cjs"]
 
     [workflows]
