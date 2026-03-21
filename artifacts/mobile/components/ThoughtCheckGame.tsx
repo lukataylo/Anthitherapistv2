@@ -641,7 +641,7 @@ export function ThoughtCheckGame({
                 contain distorted thinking or healthy thinking — and learn
                 where you went wrong.
               </Text>
-              <Pressable style={styles.startBtn} onPress={startGame}>
+              <Pressable style={[styles.startBtn, { marginTop: 16 }]} onPress={startGame}>
                 <Text style={styles.startBtnTxt}>Begin</Text>
               </Pressable>
             </View>
@@ -858,7 +858,6 @@ const styles = StyleSheet.create({
     maxWidth: 280,
   },
   startBtn: {
-    marginTop: 16,
     backgroundColor: C.accent,
     paddingHorizontal: 38,
     paddingVertical: 15,

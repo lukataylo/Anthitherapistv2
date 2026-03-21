@@ -740,7 +740,7 @@ export function SailGame({
                 distorted thinking to push the ship across the sea — before
                 the clock runs out.
               </Text>
-              <Pressable style={styles.startBtn} onPress={startGame}>
+              <Pressable style={[styles.startBtn, { marginTop: 12 }]} onPress={startGame}>
                 <Text style={styles.startBtnTxt}>Set Sail</Text>
               </Pressable>
               <Pressable onPress={onClose} style={{ padding: 10 }}>
@@ -955,7 +955,6 @@ const styles = StyleSheet.create({
     maxWidth: 280,
   },
   startBtn: {
-    marginTop: 12,
     backgroundColor: "#fff",
     paddingHorizontal: 40,
     paddingVertical: 15,

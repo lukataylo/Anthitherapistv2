@@ -847,7 +847,7 @@ export function RocketGame({
                 Pick the better word to keep your rocket flying. Answer fast —
                 the clock gets tighter every round.
               </Text>
-              <Pressable style={styles.launchBtn} onPress={startGame}>
+              <Pressable style={[styles.launchBtn, { marginTop: 16 }]} onPress={startGame}>
                 <Text style={styles.launchBtnTxt}>Launch</Text>
               </Pressable>
             </View>
@@ -1039,7 +1039,6 @@ const styles = StyleSheet.create({
     maxWidth: 270,
   },
   launchBtn: {
-    marginTop: 16,
     backgroundColor: C.accent,
     paddingHorizontal: 38,
     paddingVertical: 15,
