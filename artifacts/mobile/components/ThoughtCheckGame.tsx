@@ -17,6 +17,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import Svg, { Defs, RadialGradient, Stop, Rect } from "react-native-svg";
 import type { HistoryEntry } from "@/context/HistoryContext";
 
 const { width: SW, height: SH } = Dimensions.get("window");
@@ -210,56 +211,44 @@ function buildRounds(entries: HistoryEntry[]): Round[] {
 // ─── Background ───────────────────────────────────────────────────────────────
 
 function Background({ wrong }: { wrong: boolean }) {
-  const bgAnim = useRef(new Animated.Value(0)).current;
+  const wrongAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.timing(bgAnim, {
+    Animated.timing(wrongAnim, {
       toValue: wrong ? 1 : 0,
       duration: 400,
       easing: Easing.out(Easing.cubic),
-      useNativeDriver: false,
+      useNativeDriver: true,
     }).start();
-  }, [wrong, bgAnim]);
-
-  const bgColor = bgAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [C.bg, C.wrongBg],
-  });
-  const glowColor = bgAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [C.glow, C.wrongGlow],
-  });
+  }, [wrong, wrongAnim]);
 
   return (
-    <Animated.View
-      style={[StyleSheet.absoluteFill, { backgroundColor: bgColor }]}
-      pointerEvents="none"
-    >
-      <Animated.View
-        style={{
-          position: "absolute",
-          top: -SH * 0.25,
-          left: SW * 0.5 - SH * 0.55,
-          width: SH * 1.1,
-          height: SH * 1.1,
-          borderRadius: SH * 0.55,
-          backgroundColor: glowColor,
-          opacity: 0.28,
-        }}
-      />
-      <View
-        style={{
-          position: "absolute",
-          bottom: -SH * 0.25,
-          right: -SW * 0.3,
-          width: SH * 0.7,
-          height: SH * 0.7,
-          borderRadius: SH * 0.35,
-          backgroundColor: "#000",
-          opacity: 0.45,
-        }}
-      />
-    </Animated.View>
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      {/* Normal dark-green radial gradient */}
+      <Svg width={SW} height={SH} style={StyleSheet.absoluteFill}>
+        <Defs>
+          <RadialGradient id="normal-gradient" cx="50%" cy="45%" r="65%" fx="50%" fy="45%">
+            <Stop offset="0%" stopColor={C.glow} stopOpacity="0.35" />
+            <Stop offset="100%" stopColor={C.bg} stopOpacity="1" />
+          </RadialGradient>
+        </Defs>
+        <Rect x="0" y="0" width={SW} height={SH} fill={C.bg} />
+        <Rect x="0" y="0" width={SW} height={SH} fill="url(#normal-gradient)" />
+      </Svg>
+      {/* Wrong-answer red radial gradient, fades in/out */}
+      <Animated.View style={[StyleSheet.absoluteFill, { opacity: wrongAnim }]}>
+        <Svg width={SW} height={SH} style={StyleSheet.absoluteFill}>
+          <Defs>
+            <RadialGradient id="wrong-gradient" cx="50%" cy="45%" r="65%" fx="50%" fy="45%">
+              <Stop offset="0%" stopColor={C.wrongGlow} stopOpacity="0.35" />
+              <Stop offset="100%" stopColor={C.wrongBg} stopOpacity="1" />
+            </RadialGradient>
+          </Defs>
+          <Rect x="0" y="0" width={SW} height={SH} fill={C.wrongBg} />
+          <Rect x="0" y="0" width={SW} height={SH} fill="url(#wrong-gradient)" />
+        </Svg>
+      </Animated.View>
+    </View>
   );
 }
 
