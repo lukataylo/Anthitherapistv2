@@ -27,6 +27,7 @@ import cors from "cors";
 import rateLimit from "express-rate-limit";
 import pinoHttp from "pino-http";
 import router from "./routes";
+import landingRouter from "./routes/landing";
 import { logger } from "./lib/logger";
 
 const app: Express = express();
@@ -77,5 +78,7 @@ const reframeLimiter = rateLimit({
 app.use("/api/reframe", reframeLimiter);
 
 app.use("/api", router);
+
+app.use("/", landingRouter);
 
 export default app;
