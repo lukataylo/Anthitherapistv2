@@ -874,6 +874,20 @@ export function RocketGame({
         {/* ── HUD row ── */}
         <View style={[styles.hud, { paddingTop: insets.top + 10 }]}>
           <QuitButton onQuit={onClose} isPlaying={phase === "playing"} />
+        </View>
+
+        {/* ── Lives + Score cluster (top right) ── */}
+        <View style={[styles.rightCluster, { top: insets.top + 12 }]}>
+          <View style={styles.livesRow}>
+            {Array.from({ length: MAX_LIVES }).map((_, i) => (
+              <Ionicons
+                key={i}
+                name={i < lives ? "heart" : "heart-outline"}
+                size={15}
+                color={i < lives ? C.heart : "rgba(255,255,255,0.18)"}
+              />
+            ))}
+          </View>
           <View style={styles.scoreBox}>
             <Text style={styles.scoreNum}>{score}</Text>
             {bonusText && (
@@ -884,18 +898,6 @@ export function RocketGame({
               </Animated.Text>
             )}
           </View>
-        </View>
-
-        {/* ── Lives (top right) ── */}
-        <View style={[styles.livesRow, { top: insets.top + 12 }]}>
-          {Array.from({ length: MAX_LIVES }).map((_, i) => (
-            <Ionicons
-              key={i}
-              name={i < lives ? "heart" : "heart-outline"}
-              size={15}
-              color={i < lives ? C.heart : "rgba(255,255,255,0.18)"}
-            />
-          ))}
         </View>
 
         {/* ── Height bar (right edge) ── */}
@@ -1061,10 +1063,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     zIndex: 10,
   },
+  rightCluster: {
+    position: "absolute",
+    right: 62,
+    alignItems: "flex-end",
+    zIndex: 10,
+  },
   scoreBox: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
+    marginTop: 4,
   },
   scoreNum: {
     color: "#fff",
@@ -1086,11 +1095,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   livesRow: {
-    position: "absolute",
-    right: 62,
     flexDirection: "row",
     gap: 5,
-    zIndex: 10,
   },
   altBarWrap: {
     position: "absolute",
