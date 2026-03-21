@@ -842,7 +842,7 @@ export function RewordGame({
         {phase === "idle" && (
           <View style={styles.overlay}>
             <View style={styles.overlayCard}>
-              <Text style={styles.overlayEmoji}>🔄</Text>
+              <Ionicons name="refresh-outline" size={48} color="#fff" style={{ marginBottom: 4 }} />
               <Text style={styles.overlayTitle}>Reword</Text>
               <Text style={styles.overlayDesc}>
                 Each distorted word has a healthier alternative. Tap the one that
@@ -1066,10 +1066,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 32,
     gap: 10,
-  },
-  overlayEmoji: {
-    fontSize: 48,
-    marginBottom: 4,
   },
   overlayTitle: {
     color: C.text,

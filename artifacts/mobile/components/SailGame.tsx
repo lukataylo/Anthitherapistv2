@@ -998,7 +998,7 @@ export function SailGame({
         {phase === "idle" && (
           <View style={styles.overlay}>
             <View style={styles.overlayCard}>
-              <Text style={styles.overlayEmoji}>⛵</Text>
+              <Ionicons name="boat-outline" size={52} color="#fff" style={{ marginBottom: 4 }} />
               <Text style={styles.overlayTitle}>Mind Voyage</Text>
               <Text style={styles.overlayDesc}>
                 Your own thoughts appear with a highlighted word. Identify
@@ -1218,10 +1218,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 30,
     gap: 10,
-  },
-  overlayEmoji: {
-    fontSize: 52,
-    marginBottom: 4,
   },
   overlayTitle: {
     color: "#fff",
