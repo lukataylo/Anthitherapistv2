@@ -360,7 +360,7 @@ export function GameCarousel({
 const styles = StyleSheet.create({
   section: {
     marginTop: 8,
-    marginBottom: 4,
+    marginBottom: 24,
   },
   heading: {
     fontSize: 10,
