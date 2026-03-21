@@ -90,8 +90,8 @@ const TABS: TabDef[] = [
     name: "flashcards",
     label: "Own",
     renderIcon: (focused) => (
-      <MaterialCommunityIcons
-        name={focused ? "form-textbox" : "form-textbox"}
+      <Ionicons
+        name={focused ? "infinite" : "infinite-outline"}
         size={24}
         color={focused ? "#fff" : "rgba(255,255,255,0.38)"}
       />
