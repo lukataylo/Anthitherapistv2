@@ -1,10 +1,11 @@
 /**
  * Standalone production server for Expo static builds.
  *
- * Serves the output of build.js (static-build/) with two special routes:
+ * Serves the output of build.js (static-build/) with special routes:
  * - GET / or /manifest with expo-platform header → platform manifest JSON
  * - GET / without expo-platform → landing page HTML
- * Everything else falls through to static file serving from ./static-build/.
+ * - /api/* → proxied to API server at localhost:8081
+ * - Everything else → static file serving from ./static-build/.
  *
  * Zero external dependencies — uses only Node.js built-ins (http, fs, path).
  */
@@ -16,6 +17,9 @@ const path = require("path");
 const STATIC_ROOT = path.resolve(__dirname, "..", "static-build");
 const TEMPLATE_PATH = path.resolve(__dirname, "templates", "landing-page.html");
 const basePath = (process.env.BASE_PATH || "/").replace(/\/+$/, "");
+
+const API_HOST = "localhost";
+const API_PORT = 8080;
 
 const MIME_TYPES = {
   ".html": "text/html; charset=utf-8",
@@ -104,6 +108,41 @@ function serveStaticFile(urlPath, res) {
   res.end(content);
 }
 
+function proxyToApi(req, res, apiPath) {
+  const options = {
+    hostname: API_HOST,
+    port: API_PORT,
+    path: apiPath,
+    method: req.method,
+    headers: {
+      ...req.headers,
+      host: `${API_HOST}:${API_PORT}`,
+    },
+  };
+
+  const proxyReq = http.request(options, (proxyRes) => {
+    const corsHeaders = {
+      "access-control-allow-origin": "*",
+      "access-control-allow-methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+      "access-control-allow-headers":
+        "content-type,authorization,expo-platform,expo-protocol-version",
+    };
+    res.writeHead(proxyRes.statusCode, {
+      ...proxyRes.headers,
+      ...corsHeaders,
+    });
+    proxyRes.pipe(res, { end: true });
+  });
+
+  proxyReq.on("error", (err) => {
+    console.error("API proxy error:", err.message);
+    res.writeHead(502, { "content-type": "application/json" });
+    res.end(JSON.stringify({ error: "API unavailable" }));
+  });
+
+  req.pipe(proxyReq, { end: true });
+}
+
 const landingPageTemplate = fs.readFileSync(TEMPLATE_PATH, "utf-8");
 const appName = getAppName();
 
@@ -113,6 +152,22 @@ const server = http.createServer((req, res) => {
 
   if (basePath && pathname.startsWith(basePath)) {
     pathname = pathname.slice(basePath.length) || "/";
+  }
+
+  if (pathname.startsWith("/api/") || pathname === "/api") {
+    if (req.method === "OPTIONS") {
+      res.writeHead(204, {
+        "access-control-allow-origin": "*",
+        "access-control-allow-methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+        "access-control-allow-headers":
+          "content-type,authorization,expo-platform,expo-protocol-version",
+        "access-control-max-age": "86400",
+      });
+      res.end();
+      return;
+    }
+    const apiPath = pathname + (url.search || "");
+    return proxyToApi(req, res, apiPath);
   }
 
   if (pathname === "/" || pathname === "/manifest") {
