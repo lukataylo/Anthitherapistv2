@@ -19,7 +19,8 @@ const TEMPLATE_PATH = path.resolve(__dirname, "templates", "landing-page.html");
 const basePath = (process.env.BASE_PATH || "/").replace(/\/+$/, "");
 
 const API_HOST = "localhost";
-const API_PORT = 8080;
+// Allow overriding the internal API port via env var (set by start-production.js)
+const API_PORT = parseInt(process.env.API_PORT || "8080", 10);
 
 const MIME_TYPES = {
   ".html": "text/html; charset=utf-8",
