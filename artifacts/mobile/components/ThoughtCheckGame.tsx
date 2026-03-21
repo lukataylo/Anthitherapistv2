@@ -29,12 +29,17 @@
  * ## Phase state machine
  *
  *   idle → playing → explain → playing (loop)
+ *                  → bonus → playing (loop)
+ *                  → false_positive → playing (loop)
  *                  ↘ done (all rounds exhausted or lives = 0)
  *
- * - `"explain"` is only entered when the user wrongly marks a distorted thought
+ * - `"explain"` is entered when the user wrongly marks a distorted thought
  *   as healthy — they see the highlighted distorted words and an explanation.
- *   False positives (marking a healthy thought as distorted) skip the explain
- *   phase and move directly to the next round.
+ * - `"bonus"` is entered after correctly identifying a distorted thought —
+ *   the user taps individual distorted words for +50 bonus points each.
+ *   Auto-advances after 4 seconds or when all words are found.
+ * - `"false_positive"` is entered when the user incorrectly marks a healthy
+ *   thought as distorted — a teach screen explains why it's actually healthy.
  *
  * ## DroppingText animation
  *
@@ -111,6 +116,28 @@ const CAT: Record<string, string> = {
   minimization: "shrinks positive aspects unfairly",
   filtering: "focuses only on the negatives",
 };
+
+// ─── Healthy-thought explanations (for false-positive teach screen) ──────────
+
+const HEALTHY_EXPLANATIONS: Record<string, string> = {
+  "I made a mistake and I can learn from it.":
+    "Acknowledging mistakes while focusing on growth is balanced, realistic thinking.",
+  "This is difficult, but I can handle it step by step.":
+    "Recognizing difficulty without catastrophizing shows healthy coping.",
+  "Not everything went as planned, but that's manageable.":
+    "Accepting imperfect outcomes without all-or-nothing thinking is balanced.",
+  "I did my best given the situation.":
+    "Giving yourself fair credit rather than harsh self-judgment is healthy.",
+  "Some things are outside my control and that's okay.":
+    "Accepting limits of control prevents unnecessary self-blame.",
+  "I struggled with this, but struggle is part of growth.":
+    "Seeing struggle as normal rather than a personal failure is realistic.",
+  "I had a hard day, but tomorrow can be different.":
+    "Keeping perspective without fortune-telling shows balanced thinking.",
+};
+
+const HEALTHY_FALLBACK_EXPLANATION =
+  "This thought acknowledges reality without exaggerating, blaming, or predicting the worst. That's balanced, healthy thinking.";
 
 // ─── Built-in rounds ─────────────────────────────────────────────────────────
 
@@ -432,9 +459,91 @@ function ProgressDots({
   );
 }
 
+// ─── Bonus word chip ──────────────────────────────────────────────────────────
+
+function WordChip({
+  word,
+  isHighlighted,
+  onPress,
+  highlightWords,
+}: {
+  word: string;
+  isHighlighted: boolean;
+  onPress: (word: string) => void;
+  highlightWords: string[];
+}) {
+  const shakeAnim = useRef(new Animated.Value(0)).current;
+
+  const isDistortedWord = highlightWords.some((h) => {
+    const clean = word.toLowerCase().replace(/[^a-z]/g, "");
+    const multiWord = h.toLowerCase().replace(/[^a-z ]/g, "");
+    return clean.includes(multiWord.replace(/ /g, "")) ||
+      multiWord.split(" ").some((part) => clean === part.replace(/[^a-z]/g, ""));
+  });
+
+  const handlePress = useCallback(() => {
+    if (isHighlighted) return;
+    if (!isDistortedWord) {
+      Animated.sequence([
+        Animated.timing(shakeAnim, { toValue: 8, duration: 50, useNativeDriver: true }),
+        Animated.timing(shakeAnim, { toValue: -8, duration: 50, useNativeDriver: true }),
+        Animated.timing(shakeAnim, { toValue: 5, duration: 50, useNativeDriver: true }),
+        Animated.timing(shakeAnim, { toValue: 0, duration: 50, useNativeDriver: true }),
+      ]).start();
+    }
+    onPress(word);
+  }, [word, isHighlighted, isDistortedWord, onPress, shakeAnim]);
+
+  return (
+    <Animated.View style={{ transform: [{ translateX: shakeAnim }] }}>
+      <Pressable
+        onPress={handlePress}
+        style={[
+          chipStyles.chip,
+          isHighlighted && chipStyles.chipFound,
+        ]}
+      >
+        <Text
+          style={[
+            chipStyles.chipText,
+            isHighlighted && chipStyles.chipTextFound,
+          ]}
+        >
+          {word}
+        </Text>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+const chipStyles = StyleSheet.create({
+  chip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1.2,
+    borderColor: "rgba(255,255,255,0.2)",
+    backgroundColor: "rgba(255,255,255,0.05)",
+    margin: 3,
+  },
+  chipFound: {
+    borderColor: C.distortHighlight,
+    backgroundColor: "rgba(255,77,122,0.2)",
+  },
+  chipText: {
+    color: "#fff",
+    fontSize: 18,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: -0.3,
+  },
+  chipTextFound: {
+    color: C.distortHighlight,
+  },
+});
+
 // ─── Main game ────────────────────────────────────────────────────────────────
 
-type Phase = "idle" | "playing" | "explain" | "done";
+type Phase = "idle" | "playing" | "explain" | "bonus" | "false_positive" | "done";
 
 export function ThoughtCheckGame({
   visible,
@@ -473,6 +582,11 @@ export function ThoughtCheckGame({
   const trueNegRef = useRef(0);
   const falsePosRef = useRef(0);
   const falseNegRef = useRef(0);
+
+  const [bonusRemaining, setBonusRemaining] = useState<Set<string>>(new Set());
+  const [bonusFound, setBonusFound] = useState<Set<string>>(new Set());
+  const bonusTimerAnim = useRef(new Animated.Value(1)).current;
+  const bonusTimerRef = useRef<Animated.CompositeAnimation | null>(null);
 
   const feedbackOpacity = useRef(new Animated.Value(0)).current;
 
@@ -547,13 +661,20 @@ export function ThoughtCheckGame({
         if (answerDistorted && currentRound.isDistorted) truePosRef.current += 1;
         else if (!answerDistorted && !currentRound.isDistorted) trueNegRef.current += 1;
         setScore((s) => s + 200);
-        const next = rIdx + 1;
-        if (next >= rounds.length) {
-          captureDoneStats();
-          setPhase("done");
+        if (currentRound.isDistorted && currentRound.highlight.length > 0) {
+          const remaining = new Set(currentRound.highlight.map((w) => w.toLowerCase()));
+          setBonusRemaining(remaining);
+          setBonusFound(new Set());
+          setPhase("bonus");
         } else {
-          setRIdx(next);
-          setTriggerKey((k) => k + 1);
+          const next = rIdx + 1;
+          if (next >= rounds.length) {
+            captureDoneStats();
+            setPhase("done");
+          } else {
+            setRIdx(next);
+            setTriggerKey((k) => k + 1);
+          }
         }
       } else {
         wrongCountRef.current += 1;
@@ -567,38 +688,19 @@ export function ThoughtCheckGame({
         setLives(newLives);
 
         if (currentRound.isDistorted) {
-          // Show explanation only for distorted thoughts user missed
           setPhase("explain");
           setShowWrong(true);
         } else {
-          // User said "distorted" but it was healthy — brief pause then continue
-          if (newLives <= 0) {
-            captureDoneStats();
-            setPhase("done");
-            return;
-          }
-          const next = rIdx + 1;
-          if (next >= rounds.length) {
-            captureDoneStats();
-            setPhase("done");
-          } else {
-            setRIdx(next);
-            setTriggerKey((k) => k + 1);
-          }
+          setShowWrong(true);
+          setPhase("false_positive");
         }
       }
     },
     [phase, currentRound, rIdx, rounds, lives, feedbackOpacity, captureDoneStats]
   );
 
-  // ── Continue after explanation ──
-  const handleContinue = useCallback(() => {
+  const advanceToNext = useCallback(() => {
     setShowWrong(false);
-    if (lives <= 0) {
-      captureDoneStats();
-      setPhase("done");
-      return;
-    }
     const next = rIdx + 1;
     if (next >= rounds.length) {
       captureDoneStats();
@@ -608,13 +710,80 @@ export function ThoughtCheckGame({
       setPhase("playing");
       setTriggerKey((k) => k + 1);
     }
-  }, [lives, rIdx, rounds, captureDoneStats]);
+  }, [rIdx, rounds, captureDoneStats]);
+
+  // ── Continue after explanation or false_positive ──
+  const handleContinue = useCallback(() => {
+    setShowWrong(false);
+    if (lives <= 0) {
+      captureDoneStats();
+      setPhase("done");
+      return;
+    }
+    advanceToNext();
+  }, [lives, advanceToNext, captureDoneStats]);
+
+  // ── Bonus phase timer ──
+  useEffect(() => {
+    if (phase === "bonus") {
+      bonusTimerAnim.setValue(1);
+      const anim = Animated.timing(bonusTimerAnim, {
+        toValue: 0,
+        duration: 4000,
+        easing: Easing.linear,
+        useNativeDriver: false,
+      });
+      bonusTimerRef.current = anim;
+      anim.start(({ finished }) => {
+        if (finished) {
+          advanceToNext();
+        }
+      });
+      return () => {
+        anim.stop();
+        bonusTimerRef.current = null;
+      };
+    }
+  }, [phase, advanceToNext, bonusTimerAnim]);
+
+  // ── Bonus word tap ──
+  const handleBonusWordTap = useCallback(
+    (word: string) => {
+      if (phase !== "bonus" || !currentRound) return;
+
+      const cleanWord = word.toLowerCase().replace(/[^a-z]/g, "");
+
+      setBonusRemaining((prevRemaining) => {
+        const matchedKey = Array.from(prevRemaining).find((h) => {
+          const multiWord = h.toLowerCase().replace(/[^a-z ]/g, "");
+          return cleanWord.includes(multiWord.replace(/ /g, "")) ||
+            multiWord.split(" ").some((part) => cleanWord === part.replace(/[^a-z]/g, ""));
+        });
+
+        if (!matchedKey) return prevRemaining;
+
+        setScore((s) => s + 50);
+        setBonusFound((prev) => new Set(prev).add(matchedKey));
+        const newRemaining = new Set(prevRemaining);
+        newRemaining.delete(matchedKey);
+
+        if (newRemaining.size === 0) {
+          if (bonusTimerRef.current) bonusTimerRef.current.stop();
+          setTimeout(() => advanceToNext(), 300);
+        }
+
+        return newRemaining;
+      });
+    },
+    [phase, currentRound, advanceToNext]
+  );
 
   // ── Reset on hide ──
   useEffect(() => {
     if (!visible) {
       setPhase("idle");
       setShowWrong(false);
+      if (bonusTimerRef.current) bonusTimerRef.current.stop();
     }
   }, [visible]);
 
@@ -636,7 +805,7 @@ export function ThoughtCheckGame({
 
         {/* ── HUD ── */}
         <View style={[styles.hud, { paddingTop: insets.top + 10 }]}>
-          <QuitButton onQuit={onClose} isPlaying={phase === "playing"} />
+          <QuitButton onQuit={onClose} isPlaying={phase === "playing" || phase === "bonus"} />
           <View style={styles.scoreRow}>
             <Ionicons
               name="pause"
@@ -735,6 +904,67 @@ export function ThoughtCheckGame({
             {currentRound.explanation ? (
               <Text style={styles.explainBody}>{currentRound.explanation}</Text>
             ) : null}
+            <Text style={styles.tapToContinue}>TAP TO CONTINUE</Text>
+          </Pressable>
+        )}
+
+        {/* ── BONUS phase ── */}
+        {phase === "bonus" && currentRound && (
+          <View
+            style={[
+              styles.bonusArea,
+              { paddingTop: insets.top + 54, paddingBottom: Math.max(insets.bottom + 24, 32) },
+            ]}
+          >
+            <Animated.View
+              style={[
+                styles.timerBar,
+                {
+                  width: bonusTimerAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: ["0%", "100%"],
+                  }),
+                },
+              ]}
+            />
+            <Text style={styles.bonusLabel}>TAP THE DISTORTED WORDS</Text>
+            <Text style={styles.bonusSubLabel}>+50 per word</Text>
+            <View style={styles.chipWrap}>
+              {currentRound.thought.split(" ").map((word, i) => {
+                const cleanWord = word.toLowerCase().replace(/[^a-z]/g, "");
+                const isFound = Array.from(bonusFound).some((h) => {
+                  const multiWord = h.toLowerCase().replace(/[^a-z ]/g, "");
+                  return cleanWord.includes(multiWord.replace(/ /g, "")) ||
+                    multiWord.split(" ").some((part) => cleanWord === part.replace(/[^a-z]/g, ""));
+                });
+                return (
+                  <WordChip
+                    key={`${rIdx}-${i}`}
+                    word={word}
+                    isHighlighted={isFound}
+                    onPress={handleBonusWordTap}
+                    highlightWords={currentRound.highlight}
+                  />
+                );
+              })}
+            </View>
+          </View>
+        )}
+
+        {/* ── FALSE POSITIVE phase ── */}
+        {phase === "false_positive" && currentRound && (
+          <Pressable
+            style={[
+              styles.explainArea,
+              { paddingTop: insets.top + 60, paddingBottom: Math.max(insets.bottom + 24, 32) },
+            ]}
+            onPress={handleContinue}
+          >
+            <Text style={styles.fpLabel}>THIS THOUGHT IS ACTUALLY HEALTHY</Text>
+            <Text style={styles.explainThought}>{currentRound.thought}</Text>
+            <Text style={styles.explainBody}>
+              {HEALTHY_EXPLANATIONS[currentRound.thought] ?? HEALTHY_FALLBACK_EXPLANATION}
+            </Text>
             <Text style={styles.tapToContinue}>TAP TO CONTINUE</Text>
           </Pressable>
         )}
@@ -923,6 +1153,7 @@ const styles = StyleSheet.create({
     gap: 22,
   },
   explainThought: {
+    color: "#fff",
     fontSize: 28,
     fontFamily: "Inter_700Bold",
     lineHeight: 38,
@@ -947,6 +1178,49 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     letterSpacing: 1.5,
     textAlign: "center",
+  },
+  bonusArea: {
+    flex: 1,
+    paddingHorizontal: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 16,
+  },
+  timerBar: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    height: 3,
+    backgroundColor: C.accent,
+    borderRadius: 2,
+  },
+  bonusLabel: {
+    color: C.accent,
+    fontSize: 10,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 2,
+    textAlign: "center",
+  },
+  bonusSubLabel: {
+    color: "rgba(255,255,255,0.45)",
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    letterSpacing: 1,
+    marginTop: -8,
+  },
+  chipWrap: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    paddingHorizontal: 10,
+    marginTop: 4,
+  },
+  fpLabel: {
+    color: C.accent,
+    fontSize: 10,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 2,
+    marginBottom: 4,
   },
   closeBtn: {
     position: "absolute",
