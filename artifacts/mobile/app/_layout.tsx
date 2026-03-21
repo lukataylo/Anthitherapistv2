@@ -4,10 +4,11 @@
  * Expo Router renders this file once for the lifetime of the app. Its
  * responsibilities are:
  *
- * 1. **Font loading** — Inter (400/500/600/700 weights) is loaded
- *    asynchronously via expo-google-fonts. The splash screen is held open
- *    until fonts are ready (or have failed to load), preventing a flash of
- *    unstyled text on first render.
+ * 1. **Font loading** — Inter (400/500/600/700 weights) plus Ionicons and
+ *    MaterialCommunityIcons icon fonts are loaded asynchronously. The icon
+ *    fonts must be explicitly pre-loaded on Android (iOS loads them lazily).
+ *    The splash screen is held open until fonts are ready (or have failed to
+ *    load), preventing a flash of unstyled text on first render.
  *
  * 2. **Provider nesting** — React context providers are ordered carefully:
  *
@@ -37,6 +38,8 @@ import {
   Inter_700Bold,
   useFonts,
 } from "@expo-google-fonts/inter";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Tabs } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
@@ -77,6 +80,8 @@ export default function RootLayout() {
     Inter_500Medium,
     Inter_600SemiBold,
     Inter_700Bold,
+    ...Ionicons.font,
+    ...MaterialCommunityIcons.font,
   });
 
   useEffect(() => {
