@@ -47,11 +47,19 @@ modules = ["nodejs-20"]
   args = "PORT=8080 pnpm --filter @workspace/api-server run dev"
   waitForPort = 8080
 
-  [[ports]]
-  localPort = 8080
-  externalPort = 80
+[[ports]]
+localPort = 8080
+externalPort = 8080
 
-  [[ports]]
-  localPort = 18115
-  externalPort = 3000
+[[ports]]
+localPort = 8081
+externalPort = 8081
+
+[[ports]]
+localPort = 18115
+externalPort = 80
+
+[postMerge]
+path = "scripts/post-merge.sh"
+timeoutMs = 180000
   

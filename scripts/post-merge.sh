@@ -1,4 +1,6 @@
 #!/bin/bash
 set -e
-pnpm install --frozen-lockfile
-pnpm --filter db push
+
+# Install any new packages added by task agents.
+# Non-interactive, idempotent, safe to run multiple times.
+pnpm install
