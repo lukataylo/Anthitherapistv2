@@ -487,6 +487,9 @@ function TreeDiagram({
               onPress={() => onNodePress(i)}
               disabled={selectedIdx !== null}
               style={{ alignItems: "center" }}
+              accessibilityLabel={options[i]}
+              accessibilityRole="button"
+              accessibilityHint="Tap to select this word as the healthier alternative"
             >
               {/* Node circle */}
               <Animated.View
@@ -827,7 +830,12 @@ export function RewordGame({
             {/* Instruction / explanation */}
             <View style={styles.bottomArea}>
               {explanation ? (
-                <Pressable onPress={handleExplanationTap} style={styles.explanationWrap}>
+                <Pressable
+                  onPress={handleExplanationTap}
+                  style={styles.explanationWrap}
+                  accessibilityLabel={explanation + ". Tap to continue"}
+                  accessibilityRole="button"
+                >
                   <Text style={styles.explanationTxt}>{explanation}</Text>
                   <Text style={styles.tapContinue}>TAP TO CONTINUE</Text>
                 </Pressable>
@@ -848,7 +856,12 @@ export function RewordGame({
                 Each distorted word has a healthier alternative. Tap the one that
                 reframes the thought — before time runs out.
               </Text>
-              <Pressable style={[styles.actionBtn, { marginTop: 16 }]} onPress={startGame}>
+              <Pressable
+                style={[styles.actionBtn, { marginTop: 16 }]}
+                onPress={startGame}
+                accessibilityLabel="Play Reword game"
+                accessibilityRole="button"
+              >
                 <Text style={styles.actionBtnTxt}>Play</Text>
               </Pressable>
             </View>
@@ -884,7 +897,12 @@ export function RewordGame({
                 </View>
               )}
               <View style={styles.doneBtns}>
-                <Pressable style={styles.actionBtn} onPress={startGame}>
+                <Pressable
+                  style={styles.actionBtn}
+                  onPress={startGame}
+                  accessibilityLabel="Play again"
+                  accessibilityRole="button"
+                >
                   <Text style={styles.actionBtnTxt}>Play Again</Text>
                 </Pressable>
                 <QuitButton onQuit={onClose} isPlaying={false} />

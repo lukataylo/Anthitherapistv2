@@ -955,6 +955,8 @@ export function SailGame({
               <Pressable
                 style={styles.explainCard}
                 onPress={dismissExplanation}
+                accessibilityLabel={`${explanation}. Tap to continue`}
+                accessibilityRole="button"
               >
                 <Text style={styles.explainTxt}>{explanation}</Text>
                 <Text style={styles.tapContinue}>TAP TO CONTINUE</Text>
@@ -975,6 +977,9 @@ export function SailGame({
                       pressed && styles.btnPressed,
                     ]}
                     onPress={() => handleAnswer(true)}
+                    accessibilityLabel="Error — distorted thinking"
+                    accessibilityRole="button"
+                    accessibilityHint="The highlighted word represents distorted thinking"
                   >
                     <Text style={styles.btnErrorTxt}>× ERROR</Text>
                   </Pressable>
@@ -985,6 +990,9 @@ export function SailGame({
                       pressed && styles.btnPressed,
                     ]}
                     onPress={() => handleAnswer(false)}
+                    accessibilityLabel="Valid — not distorted"
+                    accessibilityRole="button"
+                    accessibilityHint="The highlighted word does not represent distorted thinking"
                   >
                     <Text style={styles.btnValidTxt}>✓ VALID</Text>
                   </Pressable>
@@ -1005,7 +1013,12 @@ export function SailGame({
                 distorted thinking to push the ship across the sea — before
                 the clock runs out.
               </Text>
-              <Pressable style={[styles.startBtn, { marginTop: 12 }]} onPress={startGame}>
+              <Pressable
+                style={[styles.startBtn, { marginTop: 12 }]}
+                onPress={startGame}
+                accessibilityLabel="Set sail — start game"
+                accessibilityRole="button"
+              >
                 <Text style={styles.startBtnTxt}>Set Sail</Text>
               </Pressable>
             </View>
@@ -1043,7 +1056,12 @@ export function SailGame({
                 </View>
               )}
               <View style={styles.doneBtns}>
-                <Pressable style={styles.startBtn} onPress={startGame}>
+                <Pressable
+                  style={styles.startBtn}
+                  onPress={startGame}
+                  accessibilityLabel="Sail again"
+                  accessibilityRole="button"
+                >
                   <Text style={styles.startBtnTxt}>Sail Again</Text>
                 </Pressable>
                 <QuitButton onQuit={onClose} isPlaying={false} />

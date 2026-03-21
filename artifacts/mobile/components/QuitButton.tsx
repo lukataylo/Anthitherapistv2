@@ -49,6 +49,8 @@ export function QuitButton({
         hitSlop={12}
         style={styles.quitBtn}
         accessibilityLabel="Quit game"
+        accessibilityRole="button"
+        accessibilityHint="Opens a confirmation sheet before quitting"
       >
         <Ionicons name="close" size={18} color={tintColor} />
       </Pressable>
@@ -76,6 +78,8 @@ export function QuitButton({
                 { opacity: pressed ? 0.85 : 1 },
               ]}
               onPress={handleKeepPlaying}
+              accessibilityLabel="Keep playing"
+              accessibilityRole="button"
             >
               <Text style={styles.keepBtnText}>Keep playing</Text>
             </Pressable>
@@ -85,6 +89,8 @@ export function QuitButton({
                 { opacity: pressed ? 0.7 : 1 },
               ]}
               onPress={handleConfirmQuit}
+              accessibilityLabel="Quit game"
+              accessibilityRole="button"
             >
               <Text style={styles.quitConfirmText}>Quit</Text>
             </Pressable>

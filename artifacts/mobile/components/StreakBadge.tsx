@@ -37,18 +37,30 @@ export function StreakBadge({ animate = false }: StreakBadgeProps) {
     transform: [{ scale: scale.value }],
   }));
 
+  const streakLabel =
+    currentStreak === 0
+      ? "No streak yet"
+      : `${currentStreak}-day streak${reflectedToday ? ", reflected today" : ", not yet reflected today"}`;
+
   return (
-    <Animated.View style={[styles.pill, pillStyle]}>
+    <Animated.View
+      style={[styles.pill, pillStyle]}
+      accessible
+      accessibilityLabel={streakLabel}
+      accessibilityRole="text"
+    >
       <Ionicons
         name="flame"
         size={13}
         color={reflectedToday ? "#FF9500" : "rgba(255,255,255,0.35)"}
+        importantForAccessibility="no"
       />
       <Text
         style={[
           styles.count,
           { color: reflectedToday ? "#FF9500" : "rgba(255,255,255,0.5)" },
         ]}
+        importantForAccessibility="no"
       >
         {currentStreak}
       </Text>

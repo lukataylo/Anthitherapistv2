@@ -878,18 +878,29 @@ export function RocketGame({
 
         {/* ── Lives + Score cluster (top right) ── */}
         <View style={[styles.rightCluster, { top: insets.top + 12 }]}>
-          <View style={styles.livesRow}>
+          <View
+            style={styles.livesRow}
+            accessible
+            accessibilityLabel={`${lives} of ${MAX_LIVES} lives remaining`}
+            accessibilityRole="progressbar"
+          >
             {Array.from({ length: MAX_LIVES }).map((_, i) => (
               <Ionicons
                 key={i}
                 name={i < lives ? "heart" : "heart-outline"}
                 size={15}
                 color={i < lives ? C.heart : "rgba(255,255,255,0.18)"}
+                importantForAccessibility="no"
               />
             ))}
           </View>
-          <View style={styles.scoreBox}>
-            <Text style={styles.scoreNum}>{score}</Text>
+          <View
+            style={styles.scoreBox}
+            accessible
+            accessibilityLabel={`Score: ${score}`}
+            accessibilityRole="text"
+          >
+            <Text style={styles.scoreNum} importantForAccessibility="no">{score}</Text>
             {bonusText && (
               <Animated.Text
                 style={[styles.bonusTxt, { opacity: bonusOpacity }]}
@@ -964,6 +975,9 @@ export function RocketGame({
                   key={i}
                   onPress={() => handleAnswer(i as 0 | 1)}
                   disabled={answered}
+                  accessibilityLabel={opt}
+                  accessibilityRole="button"
+                  accessibilityHint={`Pick "${opt}" as the better reframe for "${currentQ.prompt}"`}
                   style={({ pressed }) => [
                     styles.optBtn,
                     pressed && !answered && styles.optPressed,
@@ -1002,7 +1016,12 @@ export function RocketGame({
                 Pick the better word to keep your rocket flying. Answer fast —
                 the clock gets tighter every round.
               </Text>
-              <Pressable style={[styles.launchBtn, { marginTop: 16 }]} onPress={startGame}>
+              <Pressable
+                style={[styles.launchBtn, { marginTop: 16 }]}
+                onPress={startGame}
+                accessibilityLabel="Launch game"
+                accessibilityRole="button"
+              >
                 <Text style={styles.launchBtnTxt}>Launch</Text>
               </Pressable>
             </View>
@@ -1038,7 +1057,12 @@ export function RocketGame({
                 </View>
               )}
               <View style={styles.doneBtns}>
-                <Pressable style={styles.launchBtn} onPress={startGame}>
+                <Pressable
+                  style={styles.launchBtn}
+                  onPress={startGame}
+                  accessibilityLabel="Relaunch game"
+                  accessibilityRole="button"
+                >
                   <Text style={styles.launchBtnTxt}>Relaunch</Text>
                 </Pressable>
                 <QuitButton onQuit={onClose} isPlaying={false} />

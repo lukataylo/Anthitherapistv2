@@ -440,6 +440,9 @@ export function GamePanel() {
                           { opacity: pressed ? 0.8 : 1 },
                         ]}
                         onPress={() => handleFiftyFiftyPick(opt)}
+                        accessibilityLabel={opt}
+                        accessibilityRole="button"
+                        accessibilityHint={`Select "${opt}" as your reframe`}
                       >
                         <Text style={styles.fiftyOptionText}>{opt}</Text>
                       </Pressable>
@@ -467,6 +470,8 @@ export function GamePanel() {
                       { opacity: pressed ? 0.8 : 1 },
                     ]}
                     onPress={handleReframeSubmit}
+                    accessibilityLabel="Submit reframe"
+                    accessibilityRole="button"
                   >
                     <Ionicons name="arrow-forward" size={20} color="#fff" />
                   </Pressable>
@@ -486,6 +491,9 @@ export function GamePanel() {
                     // Opening REFRAME dismisses 50/50 and vice versa — mutually exclusive
                     setFiftyFiftyOptions(null);
                   }}
+                  accessibilityLabel="Reframe"
+                  accessibilityRole="button"
+                  accessibilityHint="Type your own reframe for the distorted word"
                 >
                   <Text style={styles.actionBtnText}>REFRAME</Text>
                 </Pressable>
@@ -500,6 +508,9 @@ export function GamePanel() {
                     setHintRevealed(true);
                     setFiftyFiftyOptions(null);
                   }}
+                  accessibilityLabel="Hint"
+                  accessibilityRole="button"
+                  accessibilityHint="Reveal a hint word to help you reframe"
                 >
                   <Text style={styles.actionBtnText}>HINT</Text>
                 </Pressable>
@@ -521,6 +532,9 @@ export function GamePanel() {
                         : [activeWord.hint ?? "sometimes", activeWord.word];
                     setFiftyFiftyOptions(opts);
                   }}
+                  accessibilityLabel="50 50"
+                  accessibilityRole="button"
+                  accessibilityHint="Show two options and pick the better reframe"
                 >
                   <Text style={styles.actionBtnText}>50/50</Text>
                 </Pressable>
@@ -531,6 +545,9 @@ export function GamePanel() {
                     { backgroundColor: Colors.skipBtn, opacity: pressed ? 0.85 : 1 },
                   ]}
                   onPress={handleSkip}
+                  accessibilityLabel="Skip"
+                  accessibilityRole="button"
+                  accessibilityHint="Skip this word and move to the next one"
                 >
                   <Text style={styles.actionBtnText}>SKIP</Text>
                 </Pressable>

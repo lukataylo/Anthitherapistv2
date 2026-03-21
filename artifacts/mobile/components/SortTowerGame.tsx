@@ -424,7 +424,13 @@ function WordCard({ word, onSwipe }: WordCardProps) {
       </Animated.View>
 
       <GestureDetector gesture={gesture}>
-        <Animated.View style={[styles.card, cardStyle]}>
+        <Animated.View
+          style={[styles.card, cardStyle]}
+          accessible
+          accessibilityLabel={`${word.text}. Swipe left for negative, swipe right for positive`}
+          accessibilityRole="adjustable"
+          accessibilityHint="Swipe left if this is a distorted thought, right if it is a positive reframe"
+        >
           <Text style={styles.wordText}>{word.text}</Text>
         </Animated.View>
       </GestureDetector>
@@ -704,7 +710,12 @@ export function SortTowerGame({ visible, entries, onClose }: SortTowerGameProps)
               <Text style={styles.emptyBody}>
                 Complete a few more reflections first, then come back to play.
               </Text>
-              <Pressable style={styles.emptyCloseBtn} onPress={onClose}>
+              <Pressable
+                style={styles.emptyCloseBtn}
+                onPress={onClose}
+                accessibilityLabel="Close game"
+                accessibilityRole="button"
+              >
                 <Text style={styles.emptyCloseBtnText}>Got it</Text>
               </Pressable>
             </View>
@@ -749,7 +760,12 @@ export function SortTowerGame({ visible, entries, onClose }: SortTowerGameProps)
                 </View>
               )}
               <View style={styles.doneBtnRow}>
-                <Pressable style={styles.playAgainBtn} onPress={startGame}>
+                <Pressable
+                  style={styles.playAgainBtn}
+                  onPress={startGame}
+                  accessibilityLabel="Play again"
+                  accessibilityRole="button"
+                >
                   <Text style={styles.playAgainText}>Play Again</Text>
                 </Pressable>
                 <QuitButton onQuit={onClose} isPlaying={false} />

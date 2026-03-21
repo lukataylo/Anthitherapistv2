@@ -169,7 +169,14 @@ function TabItem({
   };
 
   return (
-    <Pressable onPress={handlePress} style={styles.tabItem} hitSlop={10}>
+    <Pressable
+      onPress={handlePress}
+      style={styles.tabItem}
+      hitSlop={10}
+      accessibilityLabel={tab.label}
+      accessibilityRole="tab"
+      accessibilityState={{ selected: isFocused }}
+    >
       <Animated.View
         style={[styles.tabInner, { transform: [{ scale: iconScale }] }]}
       >

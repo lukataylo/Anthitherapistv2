@@ -96,6 +96,9 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
               transform: [{ scale: pressed ? 0.98 : 1 }],
             },
           ]}
+          accessibilityLabel="Try again"
+          accessibilityRole="button"
+          accessibilityHint="Reload the app to recover from the error"
         >
           <Text style={[styles.buttonText, { color: theme.buttonText }]}>
             Try Again

@@ -133,6 +133,9 @@ export function AnnotatedThought({ thought, words, reframedWords, onWordPress }:
             style={[styles.highlight, { backgroundColor: cat.bg, color: cat.fg }]}
             onPress={() => onWordPress(wordIdx as number)}
             suppressHighlighting
+            accessibilityLabel={`${raw}, distorted word`}
+            accessibilityRole="button"
+            accessibilityHint="Tap to reframe this word"
           >
             {raw}{" "}
           </Text>

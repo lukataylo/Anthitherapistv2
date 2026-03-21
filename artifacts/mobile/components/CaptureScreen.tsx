@@ -384,7 +384,13 @@ export function CaptureScreen({
                 {/* Mic button — always visible on native (iOS/Android); hidden on web.
                     If the speech module failed to load, tapping shows an error message. */}
                 {Platform.OS !== "web" && (
-                <Pressable onPress={handleMicPress} hitSlop={8}>
+                <Pressable
+                  onPress={handleMicPress}
+                  hitSlop={8}
+                  accessibilityLabel={isRecording ? "Stop recording" : "Record with microphone"}
+                  accessibilityRole="button"
+                  accessibilityHint={isRecording ? "Tap to stop dictation" : "Tap to start dictating your thought"}
+                >
                   <View style={styles.micWrap}>
                     {/* Glow halo behind the button */}
                     <Animated.View style={[styles.micGlow, micGlowStyle]} />
@@ -405,6 +411,9 @@ export function CaptureScreen({
                   disabled={!canSend}
                   hitSlop={8}
                   style={({ pressed }) => ({ opacity: pressed ? 0.75 : 1 })}
+                  accessibilityLabel="Submit thought"
+                  accessibilityRole="button"
+                  accessibilityHint="Send your thought for cognitive reframing analysis"
                 >
                   <Animated.View style={[styles.sendBtn, sendBtnStyle]}>
                     <Ionicons
@@ -450,6 +459,9 @@ export function CaptureScreen({
               onPress={handleBack}
               style={styles.backBtn}
               hitSlop={12}
+              accessibilityLabel="New thought"
+              accessibilityRole="button"
+              accessibilityHint="Go back and type a new thought"
             >
               <Ionicons
                 name="pencil-outline"

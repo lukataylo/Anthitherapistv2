@@ -278,6 +278,9 @@ function GameCard({
         pressed && game.available && styles.cardPressed,
         !game.available && styles.cardLocked,
       ]}
+      accessibilityLabel={game.available ? `${game.name} — ${game.category}` : `${game.name} — coming soon`}
+      accessibilityRole="button"
+      accessibilityHint={game.available ? `Launch the ${game.name} game` : undefined}
     >
       {/* Pattern layer — pointer-events disabled so it doesn't absorb taps */}
       <View style={StyleSheet.absoluteFill} pointerEvents="none">

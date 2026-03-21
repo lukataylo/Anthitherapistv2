@@ -441,10 +441,16 @@ function ProgressDots({
   current: number;
 }) {
   return (
-    <View style={styles.dotsRow}>
+    <View
+      style={styles.dotsRow}
+      accessible
+      accessibilityLabel={`Round ${current} of ${total}`}
+      accessibilityRole="progressbar"
+    >
       {Array.from({ length: total }).map((_, i) => (
         <View
           key={i}
+          importantForAccessibility="no"
           style={[
             styles.dot,
             i < current
@@ -502,6 +508,9 @@ function WordChip({
           chipStyles.chip,
           isHighlighted && chipStyles.chipFound,
         ]}
+        accessibilityLabel={isHighlighted ? `${word}, found` : word}
+        accessibilityRole="button"
+        accessibilityHint={isHighlighted ? undefined : "Tap if this is a distorted word"}
       >
         <Text
           style={[
@@ -859,6 +868,9 @@ export function ThoughtCheckGame({
                     pressed && styles.btnPressed,
                   ]}
                   onPress={() => handleAnswer(true)}
+                  accessibilityLabel="Distorted"
+                  accessibilityRole="button"
+                  accessibilityHint="Mark this thought as containing distorted thinking"
                 >
                   <Ionicons
                     name="close"
@@ -874,6 +886,9 @@ export function ThoughtCheckGame({
                     pressed && styles.btnPressed,
                   ]}
                   onPress={() => handleAnswer(false)}
+                  accessibilityLabel="Healthy"
+                  accessibilityRole="button"
+                  accessibilityHint="Mark this thought as healthy, balanced thinking"
                 >
                   <Ionicons
                     name="checkmark"
@@ -896,6 +911,8 @@ export function ThoughtCheckGame({
               { paddingTop: insets.top + 60, paddingBottom: Math.max(insets.bottom + 24, 32) },
             ]}
             onPress={handleContinue}
+            accessibilityLabel="Explanation. Tap to continue to the next round"
+            accessibilityRole="button"
           >
             <HighlightedThought
               text={currentRound.thought}
@@ -959,6 +976,8 @@ export function ThoughtCheckGame({
               { paddingTop: insets.top + 60, paddingBottom: Math.max(insets.bottom + 24, 32) },
             ]}
             onPress={handleContinue}
+            accessibilityLabel="This thought is actually healthy. Tap to continue to the next round"
+            accessibilityRole="button"
           >
             <Text style={styles.fpLabel}>THIS THOUGHT IS ACTUALLY HEALTHY</Text>
             <Text style={styles.explainThought}>{currentRound.thought}</Text>
@@ -985,7 +1004,12 @@ export function ThoughtCheckGame({
                 contain distorted thinking or healthy thinking — and learn
                 where you went wrong.
               </Text>
-              <Pressable style={[styles.startBtn, { marginTop: 16 }]} onPress={startGame}>
+              <Pressable
+                style={[styles.startBtn, { marginTop: 16 }]}
+                onPress={startGame}
+                accessibilityLabel="Begin game"
+                accessibilityRole="button"
+              >
                 <Text style={styles.startBtnTxt}>Begin</Text>
               </Pressable>
             </View>
@@ -1030,7 +1054,12 @@ export function ThoughtCheckGame({
                 </View>
               )}
               <View style={styles.doneBtns}>
-                <Pressable style={styles.startBtn} onPress={startGame}>
+                <Pressable
+                  style={styles.startBtn}
+                  onPress={startGame}
+                  accessibilityLabel="Play again"
+                  accessibilityRole="button"
+                >
                   <Text style={styles.startBtnTxt}>Play Again</Text>
                 </Pressable>
                 <QuitButton onQuit={onClose} isPlaying={false} />
