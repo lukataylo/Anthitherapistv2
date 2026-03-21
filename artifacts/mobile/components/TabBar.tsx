@@ -70,7 +70,7 @@ const TABS: TabDef[] = [
     renderIcon: (focused) => (
       <Ionicons
         name={focused ? "create" : "create-outline"}
-        size={24}
+        size={28}
         color={focused ? "#fff" : "rgba(255,255,255,0.38)"}
       />
     ),
@@ -81,7 +81,7 @@ const TABS: TabDef[] = [
     renderIcon: (focused) => (
       <Ionicons
         name={focused ? "repeat" : "repeat-outline"}
-        size={24}
+        size={28}
         color={focused ? "#fff" : "rgba(255,255,255,0.38)"}
       />
     ),
@@ -92,7 +92,7 @@ const TABS: TabDef[] = [
     renderIcon: (focused) => (
       <Ionicons
         name={focused ? "infinite" : "infinite-outline"}
-        size={24}
+        size={28}
         color={focused ? "#fff" : "rgba(255,255,255,0.38)"}
       />
     ),
@@ -176,36 +176,30 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
     <View
       style={[
         styles.container,
-        // Respect home indicator height on iPhone; use a minimum of 18 px
-        { paddingBottom: Math.max(insets.bottom + 6, 18) },
+        { paddingBottom: Math.max(insets.bottom + 4, 16) },
       ]}
     >
-      {/* Glassmorphic pill container */}
-      <View style={styles.pillOuter}>
-        {Platform.OS === "web" ? (
-          // Web fallback: CSS backdrop-filter instead of BlurView
-          <View style={[styles.pillFallback]}>
-            <TabRow
-              state={state}
-              navigation={navigation}
-              currentStreak={currentStreak}
-              reflectedToday={reflectedToday}
-            />
-          </View>
-        ) : (
-          <BlurView intensity={75} tint="dark" style={styles.pill}>
-            <TabRow
-              state={state}
-              navigation={navigation}
-              currentStreak={currentStreak}
-              reflectedToday={reflectedToday}
-            />
-          </BlurView>
-        )}
-        {/* Border rendered as a separate overlay because BlurView ignores
-            borderWidth on some Android and Expo Web versions */}
-        <View style={styles.pillBorder} pointerEvents="none" />
-      </View>
+      {Platform.OS === "web" ? (
+        <View style={styles.barFallback}>
+          <TabRow
+            state={state}
+            navigation={navigation}
+            currentStreak={currentStreak}
+            reflectedToday={reflectedToday}
+          />
+        </View>
+      ) : (
+        <BlurView intensity={80} tint="dark" style={styles.bar}>
+          <TabRow
+            state={state}
+            navigation={navigation}
+            currentStreak={currentStreak}
+            reflectedToday={reflectedToday}
+          />
+        </BlurView>
+      )}
+      {/* Subtle top separator line */}
+      <View style={styles.topBorder} pointerEvents="none" />
     </View>
   );
 }
@@ -258,26 +252,16 @@ function TabRow({
 const styles = StyleSheet.create({
   container: {
     backgroundColor: "#000",
-    alignItems: "center",
-    paddingTop: 10,
-  },
-  pillOuter: {
     position: "relative",
-    borderRadius: 36,
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.45,
-    shadowRadius: 20,
-    elevation: 16,
   },
-  pill: {
-    borderRadius: 36,
-    overflow: "hidden",
+  bar: {
+    width: "100%",
+    paddingTop: 6,
   },
-  pillFallback: {
-    borderRadius: 36,
-    backgroundColor: "rgba(28, 28, 32, 0.88)",
+  barFallback: {
+    width: "100%",
+    paddingTop: 6,
+    backgroundColor: "rgba(18, 18, 20, 0.92)",
     ...Platform.select({
       web: {
         // @ts-ignore — CSS-only backdrop blur for web rendering
@@ -286,37 +270,36 @@ const styles = StyleSheet.create({
       },
     }),
   },
-  pillBorder: {
+  topBorder: {
     ...StyleSheet.absoluteFillObject,
-    borderRadius: 36,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.13)",
+    bottom: undefined,
+    height: 1,
+    backgroundColor: "rgba(255,255,255,0.10)",
   },
   row: {
     flexDirection: "row",
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    gap: 4,
+    paddingHorizontal: 0,
+    paddingVertical: 4,
   },
   tabItem: {
-    width: 76,
+    flex: 1,
     alignItems: "center",
     justifyContent: "center",
   },
   tabInner: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 4,
-    gap: 2,
+    paddingVertical: 6,
+    gap: 4,
     position: "relative",
   },
   activeHighlight: {
     position: "absolute",
-    width: 40,
-    height: 36,
+    width: 56,
+    height: 44,
     top: 2,
     alignSelf: "center",
-    borderRadius: 18,
+    borderRadius: 22,
     backgroundColor: "rgba(255,255,255,0.09)",
   },
   iconWrap: {
@@ -336,10 +319,10 @@ const styles = StyleSheet.create({
     borderColor: "#000",
   },
   label: {
-    fontSize: 10,
-    letterSpacing: 0.3,
+    fontSize: 12,
+    letterSpacing: 0.2,
     color: "rgba(255,255,255,0.38)",
-    marginTop: 3,
+    marginTop: 1,
   },
   labelFocused: {
     color: "#fff",
