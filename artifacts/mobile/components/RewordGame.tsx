@@ -71,6 +71,7 @@ import {
   Easing,
   Modal,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -413,8 +414,8 @@ function TreeDiagram({
       {/* Node circles + labels */}
       {NODE_XS.map((x, i) => {
         const state = nodeStates[i];
-        const isDimmed = selectedIdx !== null && i !== selectedIdx;
         const isCorrect = state === "selected-correct";
+        const isDimmed = selectedIdx !== null && i !== selectedIdx && !isCorrect;
         const isWrong = state === "selected-wrong";
 
         return (
@@ -518,10 +519,29 @@ export function RewordGame({
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
   const [nodeStates, setNodeStates] = useState<NodeState[]>(["idle", "idle", "idle"]);
   const [explanation, setExplanation] = useState<string>("");
+  const [showHint, setShowHint] = useState(false);
+  const [trailResults, setTrailResults] = useState<Array<"correct" | "wrong">>([]);
 
   const phaseRef = useRef<Phase>("idle");
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timeRef = useRef(GAME_SEC);
+  const hintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const trailScrollRef = useRef<ScrollView>(null);
+
+  const clearHintTimer = useCallback(() => {
+    if (hintTimerRef.current) {
+      clearTimeout(hintTimerRef.current);
+      hintTimerRef.current = null;
+    }
+  }, []);
+
+  const startHintTimer = useCallback(() => {
+    clearHintTimer();
+    setShowHint(false);
+    hintTimerRef.current = setTimeout(() => {
+      setShowHint(true);
+    }, 3000);
+  }, [clearHintTimer]);
 
   const stopTimer = useCallback(() => {
     if (timerRef.current) {
@@ -539,33 +559,42 @@ export function RewordGame({
       setTimeLeft(timeRef.current);
       if (timeRef.current <= 0) {
         stopTimer();
+        clearHintTimer();
         if (phaseRef.current === "playing") {
           phaseRef.current = "done";
           setPhase("done");
         }
       }
     }, 1000);
-  }, [stopTimer]);
+  }, [stopTimer, clearHintTimer]);
 
   const resetNodes = useCallback(() => {
     setSelectedIdx(null);
     setNodeStates(["idle", "idle", "idle"]);
     setExplanation("");
+    setShowHint(false);
   }, []);
 
   const nextRound = useCallback(
-    (idx: number) => {
+    (idx: number, result: "correct" | "wrong") => {
+      setTrailResults((prev) => {
+        const updated = [...prev, result];
+        setTimeout(() => trailScrollRef.current?.scrollToEnd({ animated: true }), 50);
+        return updated;
+      });
       const next = idx + 1;
       if (next >= rounds.length) {
+        clearHintTimer();
         phaseRef.current = "done";
         setPhase("done");
         stopTimer();
       } else {
         setRIdx(next);
         resetNodes();
+        startHintTimer();
       }
     },
-    [rounds, stopTimer, resetNodes]
+    [rounds, stopTimer, resetNodes, clearHintTimer, startHintTimer]
   );
 
   const handleNodePress = useCallback(
@@ -574,11 +603,15 @@ export function RewordGame({
       const round = rounds[rIdx];
       if (!round) return;
 
+      clearHintTimer();
+      setShowHint(false);
+
       setSelectedIdx(i);
       const correct = i === round.correctIdx;
 
       const states: NodeState[] = round.options.map((_, idx) => {
         if (idx === i) return correct ? "selected-correct" : "selected-wrong";
+        if (!correct && idx === round.correctIdx) return "selected-correct";
         return "unselected";
       });
       setNodeStates(states);
@@ -588,13 +621,13 @@ export function RewordGame({
         setStreak(ns);
         const multi = ns >= 3 ? 3 : ns >= 2 ? 2 : 1;
         setScore((s) => s + 200 * multi);
-        setTimeout(() => nextRound(rIdx), 900);
+        setTimeout(() => nextRound(rIdx, "correct"), 900);
       } else {
         setStreak(0);
         setExplanation(round.explanation);
       }
     },
-    [rounds, rIdx, streak, selectedIdx, nextRound]
+    [rounds, rIdx, streak, selectedIdx, nextRound, clearHintTimer]
   );
 
   const handleExplanationTap = useCallback(() => {
@@ -603,7 +636,7 @@ export function RewordGame({
       selectedIdx < nodeStates.length &&
       nodeStates[selectedIdx] === "selected-wrong"
     ) {
-      nextRound(rIdx);
+      nextRound(rIdx, "wrong");
     }
   }, [selectedIdx, nodeStates, rIdx, nextRound]);
 
@@ -613,20 +646,24 @@ export function RewordGame({
     setRIdx(0);
     setScore(0);
     setStreak(0);
+    setTrailResults([]);
     resetNodes();
     phaseRef.current = "playing";
     setPhase("playing");
     startTimer();
-  }, [entries, resetNodes, startTimer]);
+    startHintTimer();
+  }, [entries, resetNodes, startTimer, startHintTimer]);
 
   useEffect(() => {
     if (!visible) {
       stopTimer();
+      clearHintTimer();
       phaseRef.current = "idle";
       setPhase("idle");
       resetNodes();
+      setTrailResults([]);
     }
-  }, [visible, stopTimer, resetNodes]);
+  }, [visible, stopTimer, clearHintTimer, resetNodes]);
 
   const currentRound = rounds[rIdx];
   const multi = streak >= 3 ? 3 : streak >= 2 ? 2 : 1;
@@ -657,6 +694,32 @@ export function RewordGame({
           </Text>
         )}
 
+        {/* History trail */}
+        {phase === "playing" && trailResults.length > 0 && (
+          <ScrollView
+            ref={trailScrollRef}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={[styles.trailScroll, { top: insets.top + 52 }]}
+            contentContainerStyle={styles.trailContent}
+            pointerEvents="none"
+          >
+            {trailResults.map((result, idx) => (
+              <View key={idx} style={styles.trailItem}>
+                {idx > 0 && (
+                  <View style={styles.trailConnector} />
+                )}
+                <View
+                  style={[
+                    styles.trailDot,
+                    { backgroundColor: result === "correct" ? C.correct : C.nodeWrong },
+                  ]}
+                />
+              </View>
+            ))}
+          </ScrollView>
+        )}
+
         {/* Playing field */}
         {phase === "playing" && currentRound && (
           <>
@@ -665,6 +728,13 @@ export function RewordGame({
               <Text style={styles.wordHint}>REPLACE THE DISTORTED WORD</Text>
               <AnimatedWord word={currentRound.distorted} />
             </View>
+
+            {/* Inactivity hint */}
+            {showHint && selectedIdx === null && (
+              <View style={styles.hintArea}>
+                <Text style={styles.hintTxt}>Choose the healthier word ↓</Text>
+              </View>
+            )}
 
             {/* Tree + nodes */}
             <TreeDiagram
@@ -764,6 +834,49 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontFamily: "Inter_700Bold",
     letterSpacing: -0.5,
+  },
+  trailScroll: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 5,
+  },
+  trailContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+  },
+  trailItem: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  trailDot: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    opacity: 0.85,
+  },
+  trailConnector: {
+    width: 12,
+    height: 1.5,
+    backgroundColor: "rgba(255,255,255,0.25)",
+  },
+  hintArea: {
+    position: "absolute",
+    top: DOT_Y - 130,
+    left: 20,
+    right: 20,
+    alignItems: "center",
+    zIndex: 5,
+  },
+  hintTxt: {
+    color: "rgba(255,255,255,0.42)",
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    letterSpacing: 0.2,
+    textAlign: "center",
   },
   wordArea: {
     position: "absolute",
