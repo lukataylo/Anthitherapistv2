@@ -45,7 +45,7 @@
  * here before they're implemented.
  */
 
-import React from "react";
+import React, { useState } from "react";
 import {
   Pressable,
   ScrollView,
@@ -318,6 +318,8 @@ export function GameCarousel({
 }: {
   onGamePress: (id: string) => void;
 }) {
+  const [activeIdx, setActiveIdx] = useState(0);
+
   return (
     <View style={styles.section}>
       <Text style={styles.heading}>GAMES</Text>
@@ -326,14 +328,31 @@ export function GameCarousel({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
         decelerationRate="fast"
-        // Snap so each swipe reveals exactly one more card
         snapToInterval={CARD_W + 12}
         snapToAlignment="start"
+        onScroll={(e) => {
+          const x = e.nativeEvent.contentOffset.x;
+          const idx = Math.round(x / (CARD_W + 12));
+          setActiveIdx(Math.max(0, Math.min(idx, GAMES.length - 1)));
+        }}
+        scrollEventThrottle={16}
       >
         {GAMES.map((g) => (
           <GameCard key={g.id} game={g} onPress={() => onGamePress(g.id)} />
         ))}
       </ScrollView>
+      {/* Scroll-position dots */}
+      <View style={styles.dots}>
+        {GAMES.map((g, i) => (
+          <View
+            key={g.id}
+            style={[
+              styles.dot,
+              i === activeIdx ? styles.dotActive : styles.dotInactive,
+            ]}
+          />
+        ))}
+      </View>
     </View>
   );
 }
@@ -413,5 +432,25 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.3)",
     letterSpacing: 2,
     textTransform: "uppercase",
+  },
+  dots: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 10,
+    marginBottom: 2,
+  },
+  dot: {
+    height: 5,
+    borderRadius: 3,
+  },
+  dotActive: {
+    width: 18,
+    backgroundColor: "rgba(255,255,255,0.75)",
+  },
+  dotInactive: {
+    width: 5,
+    backgroundColor: "rgba(255,255,255,0.2)",
   },
 });
