@@ -244,8 +244,8 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 13,
-    fontFamily: "Inter_400Regular",
-    color: "rgba(255,255,255,0.35)",
+    fontFamily: "Inter_500Medium",
+    color: "rgba(255,255,255,0.5)",
     marginTop: 2,
   },
   center: {
@@ -353,9 +353,9 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   cardFrontText: {
-    fontSize: 20,
-    fontFamily: "Inter_600SemiBold",
-    color: "rgba(255,255,255,0.9)",
+    fontSize: 24,
+    fontFamily: "Inter_700Bold",
+    color: "#fff",
     textAlign: "center",
     lineHeight: 28,
     flex: 1,
@@ -379,9 +379,9 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   cardBackText: {
-    fontSize: 18,
-    fontFamily: "Inter_500Medium",
-    color: "rgba(255,255,255,0.88)",
+    fontSize: 20,
+    fontFamily: "Inter_600SemiBold",
+    color: "#fff",
     textAlign: "center",
     lineHeight: 26,
   },
