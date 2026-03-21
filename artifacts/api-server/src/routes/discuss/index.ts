@@ -162,4 +162,141 @@ router.get("/conversations/:id/messages", async (req, res) => {
   }
 });
 
+/**
+ * GET /api/discuss/insights — Extract key affirmations and reframes from discuss sessions.
+ *
+ * Queries up to the 5 most recent conversations, fetches their messages, and uses
+ * Claude to extract 3–5 key affirmations or reframes the user expressed. The result
+ * is a list of { front, back } flashcard pairs.
+ *
+ * Results are cached per conversation set (using a hash of the conversation IDs) to
+ * avoid redundant LLM calls. The cache lives in-process and is cleared on restart.
+ */
+
+const INSIGHTS_SYSTEM_PROMPT = `You are a compassionate CBT coach reviewing journal/discussion transcripts.
+
+Your task: Extract 3–5 key positive reframes, affirmations, or healthy insights that the USER (not the assistant) expressed during the conversation. Focus on moments where the user demonstrated growth, challenged a limiting belief, or articulated something healthy about themselves.
+
+Return a JSON array of objects in this exact format:
+[
+  { "front": "A short label for the insight or original thought (≤10 words)", "back": "The full positive reframe or affirmation the user expressed (1–2 sentences)" },
+  ...
+]
+
+Rules:
+- Only capture things the USER said, not the assistant's questions
+- front should be a concise, memorable label (like a card title)
+- back should be the actual healthy insight or affirmation in the user's own words or a close paraphrase
+- If there are fewer than 3 meaningful insights, return fewer — never fabricate
+- Return ONLY the JSON array, no other text`;
+
+const INSIGHTS_CACHE_MAX = 50;
+const insightsCache = new Map<string, { front: string; back: string }[]>();
+
+/** Evict the oldest entry when the cache exceeds the cap. */
+function cacheSet(key: string, value: { front: string; back: string }[]): void {
+  if (insightsCache.size >= INSIGHTS_CACHE_MAX) {
+    const firstKey = insightsCache.keys().next().value;
+    if (firstKey !== undefined) insightsCache.delete(firstKey);
+  }
+  insightsCache.set(key, value);
+}
+
+router.get("/discuss/insights", async (req, res) => {
+  try {
+    const recentConvs = await db
+      .select({ id: conversations.id, title: conversations.title })
+      .from(conversations)
+      .orderBy(desc(conversations.createdAt))
+      .limit(5);
+
+    if (recentConvs.length === 0) {
+      res.json({ insights: [] });
+      return;
+    }
+
+    const allMessages: { role: string; content: string }[] = [];
+    const msgCountByConvId: Record<number, number> = {};
+
+    for (const conv of recentConvs) {
+      const msgs = await db
+        .select({ role: messages.role, content: messages.content })
+        .from(messages)
+        .where(eq(messages.conversationId, conv.id))
+        .orderBy(messages.createdAt);
+
+      msgCountByConvId[conv.id] = msgs.length;
+      for (const m of msgs) {
+        allMessages.push(m);
+      }
+    }
+
+    // Build cache key from conversation IDs + per-conversation message count so that
+    // new messages added to existing conversations correctly bust the cache.
+    const cacheKey = recentConvs
+      .map((c) => `${c.id}:${msgCountByConvId[c.id] ?? 0}`)
+      .join(",");
+
+    const cached = insightsCache.get(cacheKey);
+    if (cached) {
+      res.json({ insights: cached });
+      return;
+    }
+
+    if (allMessages.length === 0) {
+      res.json({ insights: [] });
+      return;
+    }
+
+    // Cap transcript to last 60 messages (≈ 30 user turns) and truncate each
+    // message to 500 chars to stay well within Claude's context window even
+    // if conversations are lengthy.
+    const cappedMessages = allMessages.slice(-60);
+    const transcript = cappedMessages
+      .map((m) => {
+        const label = m.role === "user" ? "User" : "Coach";
+        const text = m.content.length > 500 ? `${m.content.slice(0, 500)}…` : m.content;
+        return `${label}: ${text}`;
+      })
+      .join("\n");
+
+    const message = await anthropic.messages.create({
+      model: "claude-sonnet-4-6",
+      max_tokens: 512,
+      system: INSIGHTS_SYSTEM_PROMPT,
+      messages: [{ role: "user", content: `Transcript:\n${transcript}` }],
+    });
+
+    const block = message.content[0];
+    if (block.type !== "text") {
+      res.status(500).json({ error: "Unexpected response type from AI" });
+      return;
+    }
+
+    let insights: { front: string; back: string }[];
+    try {
+      insights = JSON.parse(block.text.trim());
+      if (!Array.isArray(insights)) throw new Error("Not an array");
+      insights = insights
+        .filter(
+          (i): i is { front: string; back: string } =>
+            typeof i === "object" &&
+            i !== null &&
+            typeof i.front === "string" &&
+            typeof i.back === "string"
+        )
+        .slice(0, 5);
+    } catch {
+      insights = [];
+    }
+
+    cacheSet(cacheKey, insights);
+
+    res.json({ insights });
+  } catch (err) {
+    req.log.error({ err }, "GET /discuss/insights error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 export default router;

@@ -115,6 +115,7 @@ export default function RootLayout() {
                     >
                       <Tabs.Screen name="index" options={{ title: "Reframe" }} />
                       <Tabs.Screen name="history" options={{ title: "History" }} />
+                      <Tabs.Screen name="flashcards" options={{ title: "Practice" }} />
                       <Tabs.Screen name="discuss" options={{ title: "Discuss", href: null }} />
                       <Tabs.Screen name="journal" options={{ title: "Journal", href: null }} />
                       <Tabs.Screen name="journal-feedback" options={{ title: "Session Complete", href: null }} />

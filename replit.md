@@ -16,6 +16,7 @@ Reframe (internal name: Antitherapist) is a mobile-first CBT (Cognitive Behaviou
 - Daily streak tracking (AsyncStorage)
 - Socratic Discuss mode (chat with Claude)
 - Insights dashboard with donut/trend charts and AI-generated pattern observations
+- **Belief flashcard Practice tab** — sequential deck of cards built from reframing history, journal insights (via `/api/discuss/insights`), and open-ended belief prompts. Users flip cards, type answers for prompts, and use Previous/Next navigation to drill positive beliefs. Progress is tracked via a position indicator (e.g. 3/12).
 - Dark glassmorphic visual design throughout
 
 **Monorepo workspace structure:**
@@ -47,7 +48,7 @@ Preferred communication style: Simple, everyday language.
 
 **Framework:** Expo SDK 54, React Native 0.81, Expo Router 6 (file-based routing).
 
-**Navigation:** Three main tabs (Reframe `/`, History `/history`, Discuss `/discuss`) managed by Expo Router. A custom `TabBar` component replaces the default tab bar with a floating glassmorphic BlurView pill. Tab routes are defined in `app/_layout.tsx`. Insights (charts, trends, AI patterns) are embedded in the History tab header via the `InsightsSection` component.
+**Navigation:** Four main tabs (Reframe `/`, History `/history`, Practice `/flashcards`, Discuss `/discuss`) managed by Expo Router. The Discuss tab is hidden from the tab bar (`href: null`). A custom `TabBar` component replaces the default tab bar with a floating glassmorphic BlurView pill. Tab routes are defined in `app/_layout.tsx`. Insights (charts, trends, AI patterns) are embedded in the History tab header via the `InsightsSection` component.
 
 **State management:** React Context only — no Redux or Zustand:
 - `JournalSessionContext` — multi-turn journal session state (active session, turns, analyses). Persisted to AsyncStorage (`temet_active_session`, `temet_active_turns`, `temet_active_analyses`). Completed sessions stored in `temet_session_history`. Manages arc controller (U-shaped descent/ascent), check-in states, and feedback assembly.
@@ -97,7 +98,7 @@ capture → (API returns) → cloud → (tap distorted word) → game → (refra
 
 **Structure:** Single `app.ts` factory with ordered middleware (pino-http → cors → rate-limit → express.json → `/api` router). Entry point `index.ts` reads `PORT` env var and starts the server.
 
-**Routes:** All under `/api` prefix. Includes `/api/healthz` health check, `/api/reframe` (Claude thought analysis), `/api/analyse-turn` (background therapeutic analysis for journal turns), `/api/patterns` (AI pattern observations for insights screen), `/api/discuss` (Socratic chat), `/api/summarise-session` (Claude session summary + insight cards for journal wrap-up), and a landing page router.
+**Routes:** All under `/api` prefix. Includes `/api/healthz` health check, `/api/reframe` (Claude thought analysis), `/api/analyse-turn` (background therapeutic analysis for journal turns), `/api/patterns` (AI pattern observations for insights screen), `/api/discuss` (Socratic chat), `/api/summarise-session` (Claude session summary + insight cards for journal wrap-up), `/api/discuss/insights` (AI-extracted flashcard insights from recent discuss sessions), `/api/conversations` and `/api/conversations/:id/messages`, and a landing page router.
 
 **Logging:** Pino with `pino-pretty` in development, raw JSON lines in production. Sensitive headers (`Authorization`, `Cookie`, `Set-Cookie`) are redacted. Query strings stripped from logged URLs to avoid logging user thoughts.
 

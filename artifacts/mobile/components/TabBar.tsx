@@ -98,6 +98,17 @@ const TABS: TabDef[] = [
       />
     ),
   },
+  {
+    name: "flashcards",
+    label: "Practice",
+    renderIcon: (focused) => (
+      <Ionicons
+        name={focused ? "sunny" : "sunny-outline"}
+        size={24}
+        color={focused ? "#fff" : "rgba(255,255,255,0.38)"}
+      />
+    ),
+  },
 ];
 
 /**
