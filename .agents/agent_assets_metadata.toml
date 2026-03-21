@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "MenobjQkGqMaQYqUz1FIc"
+uri = "file://README.md"
+type = "text"
+title = "Reframe — Full README"
