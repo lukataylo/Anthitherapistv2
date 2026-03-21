@@ -221,15 +221,19 @@ function CyclingLabel() {
   const opacity = useSharedValue(1);
 
   useEffect(() => {
+    let pendingTimeout: ReturnType<typeof setTimeout>;
     const interval = setInterval(() => {
       // Start the fade-out, swap text at the midpoint, then fade back in
       opacity.value = withSequence(
         withTiming(0, { duration: 280 }),
         withTiming(1, { duration: 280 })
       );
-      setTimeout(() => setIdx((i) => (i + 1) % MESSAGES.length), 280);
+      pendingTimeout = setTimeout(() => setIdx((i) => (i + 1) % MESSAGES.length), 280);
     }, 2200);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      clearTimeout(pendingTimeout);
+    };
   }, []);
 
   const style = useAnimatedStyle(() => ({ opacity: opacity.value }));

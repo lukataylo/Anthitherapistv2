@@ -33,7 +33,7 @@
  */
 
 import React, { useEffect, useRef, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { Alert, StyleSheet, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { Colors } from "@/constants/colors";
 import { useGame } from "@/context/GameContext";
@@ -76,7 +76,12 @@ export default function HomeScreen() {
         setWords(mapped);
       },
       onError(err: unknown) {
-        console.error("Reframe error:", err);
+        const message =
+          err instanceof Error ? err.message : "Something went wrong";
+        Alert.alert(
+          "Couldn't analyse thought",
+          `Please check your connection and try again.\n\n${message}`,
+        );
       },
     },
   });

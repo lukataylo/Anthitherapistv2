@@ -250,6 +250,14 @@ function FinalLetterReveal({
 export function LetterTumble({ word, onComplete }: LetterTumbleProps) {
   const letters = useMemo(() => word.toUpperCase().split(""), [word]);
   const [phase, setPhase] = useState<"scatter" | "burst" | "reveal">("scatter");
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  // Clear all pending timeouts on unmount
+  useEffect(() => {
+    return () => {
+      timersRef.current.forEach(clearTimeout);
+    };
+  }, []);
 
   // Fixed letter width used for computing convergence X positions
   const letterWidth = 34;
@@ -287,11 +295,13 @@ export function LetterTumble({ word, onComplete }: LetterTumbleProps) {
    */
   const handleConvergeDone = useCallback(() => {
     setPhase("burst");
-    setTimeout(() => {
+    const t1 = setTimeout(() => {
       setPhase("reveal");
       // Wait for all letters to drop in (stagger * count + settle time)
-      setTimeout(onComplete, letters.length * 70 + 600);
+      const t2 = setTimeout(onComplete, letters.length * 70 + 600);
+      timersRef.current.push(t2);
     }, 500);
+    timersRef.current.push(t1);
   }, [onComplete, letters.length]);
 
   return (

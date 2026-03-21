@@ -514,9 +514,10 @@ export function GamePanel() {
                     setShowReframeInput(false);
                     // Use the AI-provided 50/50 pair if available; otherwise construct
                     // a fallback from the hint and the original word
+                    const ff = activeWord.fiftyFifty;
                     const opts =
-                      activeWord.fiftyFifty?.length >= 2
-                        ? [...activeWord.fiftyFifty].sort(() => Math.random() - 0.5)
+                      Array.isArray(ff) && ff.length >= 2
+                        ? [...ff].sort(() => Math.random() - 0.5)
                         : [activeWord.hint ?? "sometimes", activeWord.word];
                     setFiftyFiftyOptions(opts);
                   }}

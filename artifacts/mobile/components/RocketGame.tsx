@@ -699,6 +699,7 @@ export function RocketGame({
   const startGame = useCallback(() => {
     const pairs = extractPairs(entries);
     const qs = buildQuestions(pairs);
+    if (qs.length === 0) return;
 
     questionsRef.current = qs;
     qIdxRef.current = 0;

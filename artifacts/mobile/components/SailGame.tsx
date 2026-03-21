@@ -592,11 +592,11 @@ export function SailGame({
       useNativeDriver: true,
     }).start();
     if (next >= BOAT_END) {
+      stopTimer();
       setTimeout(() => {
         if (phaseRef.current === "playing") {
           phaseRef.current = "done";
           setPhase("done");
-          stopTimer();
         }
       }, 500);
     }

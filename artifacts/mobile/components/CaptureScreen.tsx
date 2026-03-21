@@ -3,7 +3,7 @@
  *
  * This component renders two full-screen layers stacked with `absoluteFill`:
  *
- * 1. **Input layer** — the thought capture UI (text input + mic/send buttons).
+ * 1. **Input layer** — the thought capture UI (text input + send button).
  *    Visible when `screen === "capture"`, pointer events disabled when reviewing.
  *
  * 2. **Review layer** — the annotated thought view with `AnnotatedThought` and
@@ -31,13 +31,6 @@
  *  - Background colour: dark grey (#3A3A3A) → white (#FFFFFF)
  * The colour change makes it immediately obvious when a thought is ready to send.
  *
- * ## Mic button (UI only)
- *
- * The mic button UI (pulse animation, red background on "recording") is
- * implemented but does not connect to any speech-to-text service — it is
- * a placeholder for future voice input. The `isRecording` state toggles
- * purely visual feedback.
- *
  * ## Loading state
  *
  * When `isLoading` is true (the API request is in-flight), the component
@@ -62,8 +55,6 @@ import Animated, {
   interpolateColor,
   useAnimatedStyle,
   useSharedValue,
-  withRepeat,
-  withSequence,
   withSpring,
   withTiming,
 } from "react-native-reanimated";
@@ -110,16 +101,11 @@ export function CaptureScreen({
 
   const isReviewing = screen === "cloud" || screen === "game";
 
-  // Mic recording UI state — purely visual, not wired to speech-to-text
-  const [isRecording, setIsRecording] = React.useState(false);
-
   // Animated values for various interactive elements
   const sendScale = useSharedValue(1);      // Bounce scale on send button press
   const sendActive = useSharedValue(0);     // 0 = disabled, 1 = enabled
   const nudgeOpacity = useSharedValue(0);   // Streak reminder visibility
   const reviewProgress = useSharedValue(0); // Cross-fade between input/review layers
-  const micBg = useSharedValue(0);          // Mic background: 0=dark, 1=red
-  const micPulse = useSharedValue(1);       // Mic pulse scale when recording
 
   const canSend = thought.trim().length > 0 && !isLoading;
   const showNudge = currentStreak > 0 && !reflectedToday;
@@ -150,24 +136,6 @@ export function CaptureScreen({
     });
   }, [isReviewing]);
 
-  // Animate mic button on record/stop
-  useEffect(() => {
-    if (isRecording) {
-      micBg.value = withTiming(1, { duration: 200 });
-      // Continuous slow pulse to indicate active recording
-      micPulse.value = withRepeat(
-        withSequence(
-          withTiming(1.14, { duration: 480 }),
-          withTiming(1.0, { duration: 480 })
-        ),
-        -1
-      );
-    } else {
-      micBg.value = withTiming(0, { duration: 180 });
-      micPulse.value = withTiming(1, { duration: 200 });
-    }
-  }, [isRecording]);
-
   // Send button: opacity and colour react to canSend
   const sendBtnStyle = useAnimatedStyle(() => ({
     transform: [{ scale: sendScale.value }],
@@ -177,22 +145,6 @@ export function CaptureScreen({
       [0, 1],
       ["#3A3A3A", "#FFFFFF"]
     ),
-  }));
-
-  // Mic button: colour transitions red when recording, pulses when active
-  const micBtnStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: micPulse.value }],
-    backgroundColor: interpolateColor(
-      micBg.value,
-      [0, 1],
-      ["#2C2C2C", "#E03030"]
-    ),
-  }));
-
-  // Soft glow halo behind mic button that expands when recording
-  const micGlowStyle = useAnimatedStyle(() => ({
-    opacity: micBg.value * 0.3,
-    transform: [{ scale: 1 + micBg.value * 0.25 + (micPulse.value - 1) * 1.4 }],
   }));
 
   const nudgeStyle = useAnimatedStyle(() => ({
@@ -218,11 +170,6 @@ export function CaptureScreen({
       sendScale.value = withSpring(1, { damping: 8 });
     });
     onSubmit(thought.trim());
-  };
-
-  const handleMicPress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setIsRecording((r) => !r);
   };
 
   /** Return to the capture input and clear the current session. */
@@ -291,20 +238,6 @@ export function CaptureScreen({
               />
 
               <View style={styles.toolbar}>
-                {/* Mic button with animated glow and pulse */}
-                <View style={styles.micWrap}>
-                  <Animated.View style={[styles.micGlow, micGlowStyle]} />
-                  <Pressable
-                    onPress={handleMicPress}
-                    hitSlop={8}
-                    style={({ pressed }) => ({ opacity: pressed ? 0.75 : 1 })}
-                  >
-                    <Animated.View style={[styles.micBtn, micBtnStyle]}>
-                      <Ionicons name="mic" size={21} color="#fff" />
-                    </Animated.View>
-                  </Pressable>
-                </View>
-
                 {/* Send button — icon colour inverts with the background */}
                 <Pressable
                   onPress={handleSubmit}
@@ -480,26 +413,6 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
     paddingTop: 14,
     gap: 10,
-  },
-  micWrap: {
-    width: 48,
-    height: 48,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  micGlow: {
-    position: "absolute",
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "#E03030",
-  },
-  micBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: "center",
-    justifyContent: "center",
   },
   sendBtn: {
     width: 48,

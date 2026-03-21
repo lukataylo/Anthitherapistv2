@@ -24,6 +24,7 @@
 
 import express, { type Express } from "express";
 import cors from "cors";
+import rateLimit from "express-rate-limit";
 import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
@@ -50,9 +51,30 @@ app.use(
     },
   }),
 );
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+
+// CORS — restrict to known origins in production, allow all in development
+const allowedOrigins = process.env["ALLOWED_ORIGINS"]?.split(",") ?? [];
+app.use(
+  cors(
+    allowedOrigins.length > 0
+      ? { origin: allowedOrigins }
+      : undefined,
+  ),
+);
+
+// Body size limits to prevent memory exhaustion
+app.use(express.json({ limit: "1mb" }));
+app.use(express.urlencoded({ extended: true, limit: "1mb" }));
+
+// Rate limit the AI-powered reframe endpoint to control costs
+const reframeLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 20,             // 20 requests per minute per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many requests, please try again shortly" },
+});
+app.use("/api/reframe", reframeLimiter);
 
 app.use("/api", router);
 

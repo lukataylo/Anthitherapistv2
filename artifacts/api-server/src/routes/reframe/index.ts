@@ -116,6 +116,11 @@ router.post("/reframe", async (req, res) => {
     return;
   }
 
+  if (thought.length > 2000) {
+    res.status(400).json({ error: "thought must be 2000 characters or fewer" });
+    return;
+  }
+
   try {
     const message = await anthropic.messages.create({
       model: "claude-sonnet-4-6",
@@ -147,7 +152,7 @@ router.post("/reframe", async (req, res) => {
       }
       parsed = JSON.parse(jsonMatch[0]);
     } catch {
-      req.log.error({ text: block.text }, "Failed to parse AI response as JSON");
+      req.log.error({ textLength: block.text.length }, "Failed to parse AI response as JSON");
       res.status(500).json({ error: "Failed to parse AI response" });
       return;
     }
@@ -157,7 +162,7 @@ router.post("/reframe", async (req, res) => {
     // immediately with structured error details rather than crashing downstream.
     const validated = reframeResponseSchema.safeParse(parsed);
     if (!validated.success) {
-      req.log.error({ errors: validated.error.flatten(), parsed }, "AI response failed schema validation");
+      req.log.error({ errors: validated.error.flatten() }, "AI response failed schema validation");
       res.status(500).json({ error: "AI response did not match expected schema" });
       return;
     }

@@ -510,6 +510,7 @@ export function SortTowerGame({ visible, entries, onClose }: SortTowerGameProps)
   const handleSwipe = useCallback(
     (swipedNegative: boolean) => {
       swipeHintOpacity.value = withTiming(0, { duration: 180 });
+      if (deckIdx >= deck.length) return;
       const current = deck[deckIdx];
       if (!current) return;
 

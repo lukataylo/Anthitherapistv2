@@ -54,7 +54,14 @@ import { StreakProvider } from "@/context/StreakContext";
 import { seedIfEmpty } from "@/utils/seedData";
 
 // Configure the API client before any hooks can run
-setBaseUrl(`https://${process.env.EXPO_PUBLIC_DOMAIN}`);
+const domain = process.env.EXPO_PUBLIC_DOMAIN;
+if (!domain) {
+  console.warn(
+    "EXPO_PUBLIC_DOMAIN is not set — API calls will fail. " +
+    "Set this environment variable to the domain where the API server is reachable.",
+  );
+}
+setBaseUrl(domain ? `https://${domain}` : "");
 
 // Keep the native splash screen up while fonts load
 SplashScreen.preventAutoHideAsync();

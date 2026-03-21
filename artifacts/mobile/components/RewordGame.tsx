@@ -651,7 +651,11 @@ export function RewordGame({
   );
 
   const handleExplanationTap = useCallback(() => {
-    if (selectedIdx !== null && nodeStates[selectedIdx] === "selected-wrong") {
+    if (
+      selectedIdx !== null &&
+      selectedIdx < nodeStates.length &&
+      nodeStates[selectedIdx] === "selected-wrong"
+    ) {
       nextRound(rIdx);
     }
   }, [selectedIdx, nodeStates, rIdx, nextRound]);
