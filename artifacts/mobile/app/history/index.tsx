@@ -57,7 +57,96 @@ import { ThoughtCheckGame } from "@/components/ThoughtCheckGame";
 import { SailGame } from "@/components/SailGame";
 import { RewordGame } from "@/components/RewordGame";
 import { GameCarousel } from "@/components/GameCarousel";
+import { GameIntroScreen, type GameIntroDef } from "@/components/GameIntroScreen";
 import { InsightsSection } from "@/components/InsightsSection";
+
+/** Metadata for the intro screen of each mini-game.
+ * accent colors and bg values are kept in sync with GameCarousel's GAMES list. */
+const GAME_INTROS: Record<string, GameIntroDef> = {
+  "sort-tower": {
+    id: "sort-tower",
+    name: "Sort Tower",
+    icon: "layers",
+    aim: "Build a tower by quickly sorting words into distorted or positive categories.",
+    mechanics: [
+      "Swipe LEFT to classify a word as a cognitive distortion.",
+      "Swipe RIGHT to classify a word as a healthy, positive thought.",
+      "Every correct sort adds a floor to your tower — aim for the spire!",
+    ],
+    accentColor: "#1E4A6E",
+    bg: "#0C1E2E",
+  },
+  "rocket-reframe": {
+    id: "rocket-reframe",
+    name: "Rocket Reframe",
+    icon: "rocket",
+    aim: "Keep your rocket airborne by choosing the best reframe for each distorted word before gravity wins.",
+    mechanics: [
+      "A distorted word appears — pick the healthier replacement from two options.",
+      "A correct answer boosts the rocket upward; a wrong answer costs a life.",
+      "Answer fast for bonus points — speed matters!",
+    ],
+    accentColor: "#00557A",
+    bg: "#020D1A",
+  },
+  "thought-check": {
+    id: "thought-check",
+    name: "Thought Check",
+    icon: "checkmark-circle-outline",
+    aim: "Train your awareness by deciding whether each thought is distorted or healthy.",
+    mechanics: [
+      "Read the thought shown on screen.",
+      "Tap DISTORTED if it contains cognitive distortions, or HEALTHY if it is balanced.",
+      "Wrong answers reveal an explanation so you learn — and cost you a life.",
+    ],
+    accentColor: "#007A62",
+    bg: "#001A14",
+  },
+  "mind-voyage": {
+    id: "mind-voyage",
+    name: "Mind Voyage",
+    icon: "boat-outline",
+    aim: "Sail across the sea by pinpointing the exact distorted word hiding in each thought.",
+    mechanics: [
+      "One word in each thought is highlighted — decide if it is an ERROR or VALID.",
+      "Every correct answer advances your sailboat toward the far shore.",
+      "Wrong answers show why the word is or isn't distorted, teaching as you go.",
+    ],
+    accentColor: "#00B5AA",
+    bg: "#002E2A",
+  },
+  reword: {
+    id: "reword",
+    name: "Reword",
+    icon: "swap-horizontal-outline",
+    aim: "Pick the best word to replace a cognitive distortion from three options on the tree.",
+    mechanics: [
+      "A distorted word sits at the root — three possible reframes branch below it.",
+      "Tap the one that best softens the distortion without replacing it with another.",
+      "Build combos with consecutive correct answers for a score multiplier.",
+    ],
+    accentColor: "#8A2050",
+    bg: "#160A1C",
+  },
+};
+
+/** Launches the actual game modal for the given game id. */
+function openGameById(
+  id: string,
+  setters: {
+    setPracticeVisible: (v: boolean) => void;
+    setRocketVisible: (v: boolean) => void;
+    setThoughtCheckVisible: (v: boolean) => void;
+    setSailVisible: (v: boolean) => void;
+    setRewordVisible: (v: boolean) => void;
+  }
+) {
+  if (id === "sort-tower") setters.setPracticeVisible(true);
+  if (id === "rocket-reframe") setters.setRocketVisible(true);
+  if (id === "thought-check") setters.setThoughtCheckVisible(true);
+  if (id === "mind-voyage") setters.setSailVisible(true);
+  if (id === "reword") setters.setRewordVisible(true);
+}
 
 /** Converts a Unix timestamp to a short relative time string. */
 function timeAgo(ts: number): string {
@@ -168,17 +257,36 @@ export default function HistoryScreen() {
   const [sailVisible, setSailVisible] = useState(false);
   const [rewordVisible, setRewordVisible] = useState(false);
 
-  /** Map game carousel ids to the correct modal visibility toggle. */
+  // Intro screen state — tracks which game's intro is currently shown
+  const [introGameId, setIntroGameId] = useState<string | null>(null);
+  const introGame = introGameId ? GAME_INTROS[introGameId] ?? null : null;
+
+  const gameSetters = {
+    setPracticeVisible,
+    setRocketVisible,
+    setThoughtCheckVisible,
+    setSailVisible,
+    setRewordVisible,
+  };
+
+  /** Open the game's intro screen first, rather than jumping straight into gameplay. */
   const handleGamePress = useCallback(
     (id: string) => {
-      if (id === "sort-tower") setPracticeVisible(true);
-      if (id === "rocket-reframe") setRocketVisible(true);
-      if (id === "thought-check") setThoughtCheckVisible(true);
-      if (id === "mind-voyage") setSailVisible(true);
-      if (id === "reword") setRewordVisible(true);
+      if (GAME_INTROS[id]) {
+        setIntroGameId(id);
+      } else {
+        openGameById(id, gameSetters);
+      }
     },
     []
   );
+
+  /** Called when the user presses Play in the intro screen. */
+  const handleIntroPlay = useCallback(() => {
+    const id = introGameId;
+    setIntroGameId(null);
+    if (id) openGameById(id, gameSetters);
+  }, [introGameId]);
 
   /** Navigate to the detail screen for this history entry. */
   const handlePress = useCallback(
@@ -206,6 +314,16 @@ export default function HistoryScreen() {
   return (
     <View style={styles.root}>
       <StatusBar style="light" />
+
+      {/* Game intro overlay — shown before the user enters any game */}
+      {introGame && (
+        <GameIntroScreen
+          {...introGame}
+          visible={!!introGame}
+          onPlay={handleIntroPlay}
+          onClose={() => setIntroGameId(null)}
+        />
+      )}
 
       {/* Mini-game modals — always mounted so they can initialise state before becoming visible */}
       <SortTowerGame
