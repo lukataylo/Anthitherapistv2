@@ -15,6 +15,7 @@ import { useHistory, type HistoryEntry } from "@/context/HistoryContext";
 import { useGame } from "@/context/GameContext";
 import { useStreak } from "@/context/StreakContext";
 import { SortTowerGame } from "@/components/SortTowerGame";
+import { RocketGame } from "@/components/RocketGame";
 import { GameCarousel } from "@/components/GameCarousel";
 
 function timeAgo(ts: number): string {
@@ -106,10 +107,12 @@ export default function HistoryScreen() {
   const { currentStreak, longestStreak, reflectedToday } = useStreak();
   const router = useRouter();
   const [practiceVisible, setPracticeVisible] = useState(false);
+  const [rocketVisible, setRocketVisible] = useState(false);
 
   const handleGamePress = useCallback(
     (id: string) => {
       if (id === "sort-tower") setPracticeVisible(true);
+      if (id === "rocket-reframe") setRocketVisible(true);
     },
     []
   );
@@ -144,6 +147,11 @@ export default function HistoryScreen() {
         visible={practiceVisible}
         entries={entries}
         onClose={() => setPracticeVisible(false)}
+      />
+      <RocketGame
+        visible={rocketVisible}
+        entries={entries}
+        onClose={() => setRocketVisible(false)}
       />
 
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
