@@ -176,7 +176,7 @@ function buildRounds(entries: HistoryEntry[]): Round[] {
   for (const e of entries) {
     const dWords = e.words
       .filter((w) => w.category !== "neutral")
-      .map((w) => w.text);
+      .map((w) => w.word);
     if (dWords.length === 0) continue;
 
     const categories = e.words

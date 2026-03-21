@@ -184,9 +184,9 @@ function buildRounds(entries: HistoryEntry[]): Round[] {
     const desc = EXPLAIN[w.category] ?? "reflects distorted thinking.";
     fromHistory.push({
       thought: e.thought,
-      highlight: w.text,
+      highlight: w.word,
       isError: true,
-      explanation: `"${w.text}" ${desc}`,
+      explanation: `"${w.word}" ${desc}`,
     });
   }
 
