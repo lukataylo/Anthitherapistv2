@@ -392,6 +392,16 @@ function WordCard({ word, onSwipe }: WordCardProps) {
 
   return (
     <View style={styles.cardRow}>
+      <View style={styles.sideAffordanceLeft} pointerEvents="none">
+        <Ionicons name="chevron-up" size={18} color="rgba(255,255,255,0.22)" />
+        <Text style={styles.affordanceLabel}>negative</Text>
+      </View>
+
+      <View style={styles.sideAffordanceRight} pointerEvents="none">
+        <Ionicons name="chevron-up" size={18} color="rgba(255,255,255,0.22)" />
+        <Text style={styles.affordanceLabel}>positive</Text>
+      </View>
+
       <Animated.View style={[styles.sideLabel, negHintStyle]}>
         <Ionicons name="arrow-back" size={16} color={NEG_COLOR} />
         <Text style={[styles.sideLabelText, { color: NEG_COLOR }]}>
@@ -821,6 +831,33 @@ const styles = StyleSheet.create({
     fontSize: 8,
     fontFamily: "Inter_700Bold",
     letterSpacing: 1.2,
+  },
+  sideAffordanceLeft: {
+    position: "absolute",
+    left: 12,
+    top: 0,
+    bottom: 0,
+    width: 64,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+  },
+  sideAffordanceRight: {
+    position: "absolute",
+    right: 12,
+    top: 0,
+    bottom: 0,
+    width: 64,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+  },
+  affordanceLabel: {
+    color: "rgba(255,255,255,0.22)",
+    fontSize: 8,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 1.2,
+    textTransform: "lowercase",
   },
   swipeHintRow: {
     flexDirection: "row",
