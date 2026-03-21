@@ -155,7 +155,6 @@ export function CaptureScreen() {
   const [mode, setMode] = useState<ScreenMode>(session ? "journaling" : "mood-select");
   const [inputText, setInputText] = useState("");
   const INPUT_MIN_HEIGHT = 60;
-  const [inputHeight, setInputHeight] = useState(INPUT_MIN_HEIGHT);
 
   useEffect(() => {
     if (session && mode === "mood-select") {
@@ -598,7 +597,7 @@ export function CaptureScreen() {
           <View style={styles.inputSection}>
             <TextInput
               ref={inputRef}
-              style={[styles.boldInput as any, { height: inputHeight }]}
+              style={[styles.boldInput as any, { minHeight: INPUT_MIN_HEIGHT }]}
               value={inputText}
               onChangeText={setInputText}
               placeholder={isWrapping ? "Reflect..." : (turns.length === 0 ? "What's on your mind?" : "Keep writing...")}
@@ -609,9 +608,6 @@ export function CaptureScreen() {
               selectionColor="rgba(255,255,255,0.5)"
               autoFocus={false}
               scrollEnabled={false}
-              onContentSizeChange={(e) =>
-                setInputHeight(Math.max(INPUT_MIN_HEIGHT, e.nativeEvent.contentSize.height))
-              }
               onSubmitEditing={isWrapping ? handleWrapSend : handleSend}
             />
 
