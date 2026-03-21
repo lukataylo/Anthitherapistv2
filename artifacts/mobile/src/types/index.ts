@@ -90,6 +90,8 @@ export type Session = {
   turnCount: number;
   status: "active" | "complete" | "abandoned";
   feedbackPayload: FeedbackPayload | null;
+  archivedTurns?: Turn[];
+  archivedAnalyses?: Analysis[];
   sessionPhase: SessionPhase;
   checkInState: CheckInState;
 };

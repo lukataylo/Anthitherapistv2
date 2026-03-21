@@ -120,6 +120,15 @@ class SessionStore {
     await this.persistActiveState();
   }
 
+  async setCheckInState(
+    sessionPhase: Session["sessionPhase"],
+    checkInState: Session["checkInState"]
+  ): Promise<void> {
+    if (!this.state.session) return;
+    this.state.session = { ...this.state.session, sessionPhase, checkInState };
+    await this.persistActiveState();
+  }
+
   async wrapSession(): Promise<Session | null> {
     if (!this.state.session) return null;
 
@@ -127,6 +136,8 @@ class SessionStore {
       ...this.state.session,
       completedAt: Date.now(),
       status: "complete",
+      archivedTurns: this.state.turns,
+      archivedAnalyses: this.state.analyses,
       feedbackPayload: assembleFeedback(
         this.state.session.id,
         this.state.turns,

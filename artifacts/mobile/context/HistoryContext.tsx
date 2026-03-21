@@ -30,144 +30,51 @@
  * reflections, and if they do, the oldest ones are quietly pruned.
  */
 
-import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-  ReactNode,
-} from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import type { WordAnalysis } from "@/context/GameContext";
+import React, { createContext, useCallback, useContext, useEffect, useState, ReactNode } from "react";
 import { sessionStore } from "@/src/modules/sessionStore";
 import type { Session } from "@/src/types";
+import { sessionToHistoryEntry, type SessionHistoryEntry } from "@/src/modules/sessionAdapters";
 
-/** Versioned storage key — increment if the shape of HistoryEntry ever changes. */
-const STORAGE_KEY = "temet_history_ui_adapter";
-
-export interface HistoryEntry {
-  id: string;
-  thought: string;
-  /** Full word analysis from the API, preserved so mini-games can use it. */
-  words: WordAnalysis[];
-  /** Map of word index → chosen reframe. Updated live as the user plays. */
-  reframedWords: Record<number, string>;
-  /** Unix timestamp (ms) when the entry was created. Used for "time ago" display. */
-  savedAt: number;
-}
+export type HistoryEntry = SessionHistoryEntry;
 
 interface HistoryContextValue {
-  entries: HistoryEntry[];
-  /** Create a new entry and return its id so GameContext can reference it. */
-  addEntry: (thought: string, words: WordAnalysis[]) => string;
-  /** Patch the reframedWords map on an existing entry. */
-  updateEntry: (id: string, reframedWords: Record<number, string>) => void;
+  entries: SessionHistoryEntry[];
+  sessions: Session[];
+  refresh: () => Promise<void>;
   removeEntry: (id: string) => void;
 }
 
 const HistoryContext = createContext<HistoryContextValue | null>(null);
 
-/**
- * Generates a simple collision-resistant id using timestamp + random suffix.
- * Avoids a uuid dependency for a non-critical use case.
- */
-function generateId(): string {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-}
-
 export function HistoryProvider({ children }: { children: ReactNode }) {
-  const [entries, setEntries] = useState<HistoryEntry[]>([]);
-  /** Tracks whether the initial AsyncStorage load has completed. */
-  const loaded = useRef(false);
+  const [sessions, setSessions] = useState<Session[]>([]);
+
+  const refresh = useCallback(async () => {
+    try {
+      await sessionStore.loadFromStorage();
+      const history = await sessionStore.getHistorySessions();
+      setSessions(Array.isArray(history) ? history : []);
+    } catch {
+      setSessions([]);
+    }
+  }, []);
 
   useEffect(() => {
-    Promise.all([sessionStore.loadFromStorage(), AsyncStorage.getItem(STORAGE_KEY)])
-      .then(([, raw]) => {
-        if (!raw) return;
-        const parsed = JSON.parse(raw) as HistoryEntry[];
-        // Guard against corrupted storage containing a non-array value
-        setEntries(Array.isArray(parsed) ? parsed : []);
-      })
-      .catch(() => {
-        // Storage read failures are silent — the app works without history
-      })
-      .finally(() => {
-        loaded.current = true;
-      });
-  }, []);
-
-  /**
-   * Write the current entries list to AsyncStorage. Called after every mutation
-   * to keep storage in sync. Errors are silently swallowed — a failed write
-   * means the change won't survive a restart, but the in-memory state remains
-   * correct for the current session.
-   */
-  const persist = useCallback((next: HistoryEntry[]) => {
-    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next)).catch(() => {});
-  }, []);
-
-  const addEntry = useCallback(
-    (thought: string, words: WordAnalysis[]): string => {
-      const id = generateId();
-      const entry: HistoryEntry = {
-        id,
-        thought,
-        words,
-        reframedWords: {},
-        savedAt: Date.now(),
-      };
-      setEntries((prev) => {
-        // Prepend the new entry and cap the list at 100 to limit storage usage
-        const next = [entry, ...prev].slice(0, 100);
-        persist(next);
-        return next;
-      });
-      const completedSession: Session = {
-        id,
-        createdAt: entry.savedAt,
-        completedAt: entry.savedAt,
-        moodOnOpen: "low",
-        turnCount: words.length > 0 ? words.length : 1,
-        status: "complete",
-        feedbackPayload: null,
-        sessionPhase: "descent",
-        checkInState: "none",
-      };
-      void sessionStore.upsertCompletedSession(completedSession);
-      return id;
-    },
-    [persist]
-  );
-
-  const updateEntry = useCallback(
-    (id: string, reframedWords: Record<number, string>) => {
-      setEntries((prev) => {
-        const next = prev.map((e) =>
-          e.id === id ? { ...e, reframedWords } : e
-        );
-        persist(next);
-        return next;
-      });
-    },
-    [persist]
-  );
+    void refresh();
+  }, [refresh]);
 
   const removeEntry = useCallback(
     (id: string) => {
-      setEntries((prev) => {
-        const next = prev.filter((e) => e.id !== id);
-        persist(next);
-        return next;
-      });
       void sessionStore.removeHistorySession(id);
+      setSessions((prev) => prev.filter((session) => session.id !== id));
     },
-    [persist]
+    []
   );
 
+  const entries = sessions.map(sessionToHistoryEntry);
+
   return (
-    <HistoryContext.Provider value={{ entries, addEntry, updateEntry, removeEntry }}>
+    <HistoryContext.Provider value={{ entries, sessions, refresh, removeEntry }}>
       {children}
     </HistoryContext.Provider>
   );

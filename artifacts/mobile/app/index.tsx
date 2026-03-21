@@ -32,96 +32,124 @@
  * cleared after 1.5 s so the animation plays once and then stops.
  */
 
-import React, { useEffect, useRef, useState } from "react";
-import { Alert, StyleSheet, View } from "react-native";
+import React, { useMemo, useState } from "react";
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { Colors } from "@/constants/colors";
-import { useGame } from "@/context/GameContext";
-import { useHistory } from "@/context/HistoryContext";
 import { useStreak } from "@/context/StreakContext";
-import { CaptureScreen } from "@/components/CaptureScreen";
-import { useReframeThought, type ReframeResponse } from "@workspace/api-client-react";
+import { useSessionRuntime } from "@/context/SessionRuntimeContext";
+import { useHistory } from "@/context/HistoryContext";
 
 export default function HomeScreen() {
-  const { setWords, words, reframedWords } = useGame();
-  const { addEntry, updateEntry } = useHistory();
+  const {
+    session,
+    turns,
+    checkInPrompt,
+    lastPrompt,
+    submitTurn,
+    chooseCheckIn,
+    wrapSession,
+    clearSession,
+  } = useSessionRuntime();
+  const { refresh } = useHistory();
   const { recordReflection } = useStreak();
-  // The id returned by addEntry, held in a ref so the useEffect below can
-  // always read the latest value without being listed as a dependency
-  const entryIdRef = useRef<string | null>(null);
-  // The thought text submitted in the current API request; stored as a ref
-  // rather than state to avoid triggering a re-render on submit
-  const pendingThoughtRef = useRef<string>("");
-  const [streakJustIncremented, setStreakJustIncremented] = useState(false);
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
 
-  const mutation = useReframeThought({
-    mutation: {
-      onSuccess(data: ReframeResponse) {
-        // Map API response to the internal WordAnalysis shape, providing
-        // safe defaults for optional fields that Claude might omit
-        const mapped = data.words.map((w) => ({
-          word: w.word,
-          category: w.category ?? "neutral",
-          reframes: w.reframes ?? [],
-          hint: w.hint ?? null,
-          fiftyFifty: w.fiftyFifty ?? [],
-          explainer: w.explainer ?? null,
-        }));
-        // Create the history entry first so we have an id to update later
-        const id = addEntry(pendingThoughtRef.current, mapped);
-        entryIdRef.current = id;
-        recordReflection();
-        setStreakJustIncremented(true);
-        // Transition GameContext to the "cloud" (annotation review) screen
-        setWords(mapped);
-      },
-      onError(err: unknown) {
-        const message =
-          err instanceof Error ? err.message : "Something went wrong";
-        Alert.alert(
-          "Couldn't analyse thought",
-          `Please check your connection and try again.\n\n${message}`,
-        );
-      },
-    },
-  });
+  const canSend = text.trim().length > 0 && !busy;
+  const checkInPending = session?.checkInState === "pending" && Boolean(checkInPrompt);
 
-  /**
-   * Sync reframedWords back to HistoryContext whenever the user completes or
-   * skips a word in the GamePanel. This keeps the history entry's reframedWords
-   * map up to date so the HistoryScreen progress badge is accurate.
-   *
-   * The dep array intentionally omits `entryIdRef` and `updateEntry` because:
-   * - refs don't trigger re-renders
-   * - updateEntry is stable (wrapped in useCallback with no deps)
-   */
-  useEffect(() => {
-    if (entryIdRef.current && words.length > 0) {
-      updateEntry(entryIdRef.current, reframedWords);
+  const messages = useMemo(() => {
+    const trail: Array<{ role: "user" | "system"; content: string }> = [];
+    for (let i = 0; i < turns.length; i++) {
+      trail.push({ role: "user", content: turns[i].rawText });
     }
-  }, [reframedWords]);
-
-  // Auto-clear the streak animation flag after 1.5 s
-  useEffect(() => {
-    if (streakJustIncremented) {
-      const t = setTimeout(() => setStreakJustIncremented(false), 1500);
-      return () => clearTimeout(t);
+    if (lastPrompt) {
+      trail.push({ role: "system", content: lastPrompt });
     }
-  }, [streakJustIncremented]);
+    return trail;
+  }, [turns, lastPrompt]);
 
-  const handleSubmitThought = (text: string) => {
-    pendingThoughtRef.current = text;
-    mutation.mutate({ data: { thought: text } });
+  const onSend = async () => {
+    if (!canSend) return;
+    const value = text.trim();
+    setBusy(true);
+    try {
+      await submitTurn(value, "text");
+      recordReflection();
+      setText("");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onWrap = async () => {
+    setBusy(true);
+    try {
+      await wrapSession();
+      await refresh();
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
     <View style={styles.root}>
       <StatusBar style="light" />
-      <CaptureScreen
-        onSubmit={handleSubmitThought}
-        isLoading={mutation.isPending}
-        streakJustIncremented={streakJustIncremented}
-      />
+      <View style={styles.header}>
+        <Text style={styles.title}>Reframe</Text>
+        {session ? (
+          <Pressable onPress={() => void clearSession()}>
+            <Text style={styles.clear}>Clear</Text>
+          </Pressable>
+        ) : null}
+      </View>
+      <ScrollView style={styles.feed} contentContainerStyle={styles.feedContent}>
+        {messages.length === 0 ? (
+          <Text style={styles.empty}>Share what is on your mind.</Text>
+        ) : (
+          messages.map((msg, idx) => (
+            <View key={idx} style={msg.role === "user" ? styles.userBubble : styles.systemBubble}>
+              <Text style={msg.role === "user" ? styles.userText : styles.systemText}>{msg.content}</Text>
+            </View>
+          ))
+        )}
+      </ScrollView>
+      {checkInPending && (
+        <View style={styles.checkIn}>
+          <Text style={styles.checkInText}>{checkInPrompt}</Text>
+          <View style={styles.checkInRow}>
+            <Pressable style={styles.secondaryBtn} onPress={() => void chooseCheckIn("continue")}>
+              <Text style={styles.secondaryText}>Keep going</Text>
+            </Pressable>
+            <Pressable style={styles.primaryBtn} onPress={() => void chooseCheckIn("wrap")}>
+              <Text style={styles.primaryText}>Let's ease off</Text>
+            </Pressable>
+          </View>
+        </View>
+      )}
+      <View style={styles.bottom}>
+        <TextInput
+          style={styles.input}
+          value={text}
+          onChangeText={setText}
+          placeholder="What's on your mind..."
+          placeholderTextColor="rgba(255,255,255,0.25)"
+          multiline
+        />
+        <View style={styles.controls}>
+          <Pressable style={styles.secondaryBtn} onPress={() => void onWrap()}>
+            <Text style={styles.secondaryText}>Wrap up</Text>
+          </Pressable>
+          <Pressable
+            style={[styles.primaryBtn, !canSend && { opacity: 0.4 }]}
+            onPress={() => void onSend()}
+            disabled={!canSend}
+          >
+            <Text style={styles.primaryText}>Send</Text>
+          </Pressable>
+        </View>
+      </View>
     </View>
   );
 }
@@ -130,5 +158,129 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: Colors.background,
+    paddingTop: 54,
+  },
+  header: {
+    paddingHorizontal: 20,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  title: {
+    color: "#fff",
+    fontFamily: "Inter_700Bold",
+    fontSize: 28,
+  },
+  clear: {
+    color: "rgba(255,255,255,0.55)",
+    fontFamily: "Inter_500Medium",
+    fontSize: 13,
+  },
+  feed: {
+    flex: 1,
+  },
+  feedContent: {
+    paddingHorizontal: 16,
+    gap: 10,
+    paddingBottom: 20,
+  },
+  empty: {
+    marginTop: 12,
+    color: "rgba(255,255,255,0.4)",
+    fontFamily: "Inter_400Regular",
+  },
+  userBubble: {
+    alignSelf: "flex-end",
+    backgroundColor: "#fff",
+    borderRadius: 18,
+    borderBottomRightRadius: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    maxWidth: "86%",
+  },
+  systemBubble: {
+    alignSelf: "flex-start",
+    backgroundColor: "#1a1a1a",
+    borderRadius: 18,
+    borderBottomLeftRadius: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    maxWidth: "86%",
+  },
+  userText: {
+    color: "#000",
+    fontFamily: "Inter_500Medium",
+    lineHeight: 21,
+  },
+  systemText: {
+    color: "rgba(255,255,255,0.85)",
+    fontFamily: "Inter_400Regular",
+    lineHeight: 21,
+    fontStyle: "italic",
+  },
+  checkIn: {
+    marginHorizontal: 16,
+    marginBottom: 10,
+    backgroundColor: "#171717",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+    borderRadius: 16,
+    padding: 14,
+    gap: 10,
+  },
+  checkInText: {
+    color: "rgba(255,255,255,0.88)",
+    fontFamily: "Inter_400Regular",
+    lineHeight: 20,
+  },
+  checkInRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  bottom: {
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.08)",
+    gap: 10,
+  },
+  input: {
+    minHeight: 100,
+    maxHeight: 140,
+    backgroundColor: "#171717",
+    borderColor: "rgba(255,255,255,0.08)",
+    borderWidth: 1,
+    borderRadius: 16,
+    color: "#fff",
+    padding: 14,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 21,
+  },
+  controls: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 10,
+  },
+  primaryBtn: {
+    backgroundColor: "#fff",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  primaryText: {
+    color: "#000",
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 13,
+  },
+  secondaryBtn: {
+    backgroundColor: "rgba(255,255,255,0.1)",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  secondaryText: {
+    color: "rgba(255,255,255,0.75)",
+    fontFamily: "Inter_500Medium",
+    fontSize: 13,
   },
 });

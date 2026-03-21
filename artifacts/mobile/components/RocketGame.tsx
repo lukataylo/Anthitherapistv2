@@ -160,7 +160,7 @@ function extractPairs(entries: HistoryEntry[]): Pair[] {
   for (const e of entries) {
     for (let i = 0; i < e.words.length; i++) {
       if (e.words[i].category !== "neutral") {
-        const r = e.reframedWords?.[String(i)];
+        const r = e.reframedWords?.[i];
         if (r && r.length <= 28)
           pairs.push({ original: e.words[i].word, better: r });
       }

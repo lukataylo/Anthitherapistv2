@@ -47,10 +47,10 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { setBaseUrl } from "@workspace/api-client-react";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { GameProvider } from "@/context/GameContext";
 import { HistoryProvider } from "@/context/HistoryContext";
 import { TabBar } from "@/components/TabBar";
 import { StreakProvider } from "@/context/StreakContext";
+import { SessionRuntimeProvider } from "@/context/SessionRuntimeContext";
 import { seedIfEmpty } from "@/utils/seedData";
 
 // Configure the API client before any hooks can run
@@ -101,7 +101,7 @@ export default function RootLayout() {
           <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#000" }}>
             <HistoryProvider>
               <StreakProvider>
-                <GameProvider>
+                <SessionRuntimeProvider>
                   <Tabs
                     tabBar={(props) => <TabBar {...props} />}
                     screenOptions={{ headerShown: false }}
@@ -110,7 +110,7 @@ export default function RootLayout() {
                     <Tabs.Screen name="history" options={{ title: "History" }} />
                     <Tabs.Screen name="discuss" options={{ title: "Discuss" }} />
                   </Tabs>
-                </GameProvider>
+                </SessionRuntimeProvider>
               </StreakProvider>
             </HistoryProvider>
           </GestureHandlerRootView>
