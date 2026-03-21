@@ -16,6 +16,7 @@ import { useGame } from "@/context/GameContext";
 import { useStreak } from "@/context/StreakContext";
 import { SortTowerGame } from "@/components/SortTowerGame";
 import { RocketGame } from "@/components/RocketGame";
+import { ThoughtCheckGame } from "@/components/ThoughtCheckGame";
 import { GameCarousel } from "@/components/GameCarousel";
 
 function timeAgo(ts: number): string {
@@ -108,11 +109,13 @@ export default function HistoryScreen() {
   const router = useRouter();
   const [practiceVisible, setPracticeVisible] = useState(false);
   const [rocketVisible, setRocketVisible] = useState(false);
+  const [thoughtCheckVisible, setThoughtCheckVisible] = useState(false);
 
   const handleGamePress = useCallback(
     (id: string) => {
       if (id === "sort-tower") setPracticeVisible(true);
       if (id === "rocket-reframe") setRocketVisible(true);
+      if (id === "thought-check") setThoughtCheckVisible(true);
     },
     []
   );
@@ -152,6 +155,11 @@ export default function HistoryScreen() {
         visible={rocketVisible}
         entries={entries}
         onClose={() => setRocketVisible(false)}
+      />
+      <ThoughtCheckGame
+        visible={thoughtCheckVisible}
+        entries={entries}
+        onClose={() => setThoughtCheckVisible(false)}
       />
 
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
