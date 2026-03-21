@@ -19,10 +19,12 @@ import { GameProvider } from "@/context/GameContext";
 import { HistoryProvider } from "@/context/HistoryContext";
 import { TabBar } from "@/components/TabBar";
 import { StreakProvider } from "@/context/StreakContext";
+import { seedIfEmpty } from "@/utils/seedData";
 
 setBaseUrl(`https://${process.env.EXPO_PUBLIC_DOMAIN}`);
 
 SplashScreen.preventAutoHideAsync();
+seedIfEmpty();
 
 const queryClient = new QueryClient();
 
