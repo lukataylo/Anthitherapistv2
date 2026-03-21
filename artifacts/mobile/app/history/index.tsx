@@ -18,12 +18,6 @@
  * keeps the game components decoupled from the carousel — they receive entries
  * and an onClose callback, nothing else.
  *
- * ## Streak cards
- *
- * The header shows three streak/stats cards: current streak, best streak, and
- * total reflections. The current streak card turns amber when the user has
- * reflected today, providing immediate visual confirmation of the habit.
- *
  * ## ProgressBadge logic
  *
  * Only significant (non-neutral) words count toward the progress fraction.
@@ -50,13 +44,13 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useHistory, type HistoryEntry } from "@/context/HistoryContext";
-import { useStreak } from "@/context/StreakContext";
 import { SortTowerGame } from "@/components/SortTowerGame";
 import { RocketGame } from "@/components/RocketGame";
 import { ThoughtCheckGame } from "@/components/ThoughtCheckGame";
 import { SailGame } from "@/components/SailGame";
 import { RewordGame } from "@/components/RewordGame";
 import { GameCarousel } from "@/components/GameCarousel";
+import { InsightsSection } from "@/components/InsightsSection";
 import { GameIntroScreen, type GameIntroDef } from "@/components/GameIntroScreen";
 
 /** Metadata for the intro screen of each mini-game.
@@ -246,7 +240,6 @@ function EmptyState() {
 export default function HistoryScreen() {
   const insets = useSafeAreaInsets();
   const { entries, removeEntry } = useHistory();
-  const { currentStreak, longestStreak, reflectedToday } = useStreak();
   const router = useRouter();
   const params = useLocalSearchParams<{ game?: string }>();
 
@@ -372,27 +365,6 @@ export default function HistoryScreen() {
             </Text>
           </View>
         </View>
-
-        {/* Streak stat cards — the first card turns amber when reflectedToday */}
-        <View style={styles.streakRow}>
-          <View style={[styles.streakCard, reflectedToday && styles.streakCardActive]}>
-            <Ionicons name="flame" size={18} color={reflectedToday ? "#FF9500" : "rgba(255,255,255,0.3)"} />
-            <Text style={[styles.streakNum, reflectedToday && styles.streakNumActive]}>
-              {currentStreak}
-            </Text>
-            <Text style={styles.streakLabel}>day streak</Text>
-          </View>
-          <View style={styles.streakCard}>
-            <Ionicons name="trophy-outline" size={18} color="rgba(255,255,255,0.3)" />
-            <Text style={styles.streakNum}>{longestStreak}</Text>
-            <Text style={styles.streakLabel}>best streak</Text>
-          </View>
-          <View style={styles.streakCard}>
-            <Ionicons name="chatbubble-outline" size={18} color="rgba(255,255,255,0.3)" />
-            <Text style={styles.streakNum}>{entries.length}</Text>
-            <Text style={styles.streakLabel}>total</Text>
-          </View>
-        </View>
       </View>
 
       <FlatList
@@ -404,14 +376,7 @@ export default function HistoryScreen() {
         ]}
         ListHeaderComponent={
           <>
-            <Pressable
-              onPress={() => router.push("/history/insights")}
-              style={({ pressed }) => [styles.insightsBtn, pressed && styles.insightsBtnPressed]}
-            >
-              <Ionicons name="analytics" size={18} color="rgba(255,255,255,0.55)" />
-              <Text style={styles.insightsBtnText}>Insights</Text>
-              <Ionicons name="chevron-forward" size={14} color="rgba(255,255,255,0.25)" />
-            </Pressable>
+            <InsightsSection entries={entries} />
             <GameCarousel onGamePress={handleGamePress} />
           </>
         }
@@ -511,40 +476,6 @@ const styles = StyleSheet.create({
   separator: {
     height: 8,
   },
-  streakRow: {
-    flexDirection: "row",
-    gap: 10,
-    marginTop: 16,
-  },
-  streakCard: {
-    flex: 1,
-    backgroundColor: "rgba(255,255,255,0.05)",
-    borderRadius: 12,
-    padding: 12,
-    alignItems: "center",
-    gap: 3,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,255,255,0.07)",
-  },
-  streakCardActive: {
-    backgroundColor: "rgba(255,149,0,0.1)",
-    borderColor: "rgba(255,149,0,0.2)",
-  },
-  streakNum: {
-    fontSize: 20,
-    fontFamily: "Inter_700Bold",
-    color: "rgba(255,255,255,0.6)",
-  },
-  streakNumActive: {
-    color: "#FF9500",
-  },
-  streakLabel: {
-    fontSize: 10,
-    fontFamily: "Inter_400Regular",
-    color: "rgba(255,255,255,0.3)",
-    textTransform: "uppercase",
-    letterSpacing: 0.4,
-  },
   empty: {
     flex: 1,
     alignItems: "center",
@@ -563,27 +494,5 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.2)",
     textAlign: "center",
     maxWidth: 220,
-  },
-  insightsBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.05)",
-    borderRadius: 14,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,255,255,0.08)",
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    marginTop: 14,
-    marginBottom: 4,
-    gap: 10,
-  },
-  insightsBtnPressed: {
-    backgroundColor: "rgba(255,255,255,0.09)",
-  },
-  insightsBtnText: {
-    flex: 1,
-    fontSize: 14,
-    fontFamily: "Inter_600SemiBold",
-    color: "rgba(255,255,255,0.8)",
   },
 });

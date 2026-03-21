@@ -1,15 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  LayoutAnimation,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   UIManager,
   View,
 } from "react-native";
-import Svg, { Circle, Line, Path, Polyline, Text as SvgText } from "react-native-svg";
 import { Ionicons } from "@expo/vector-icons";
 import { getPatterns } from "@workspace/api-client-react";
 import type { HistoryEntry } from "@/context/HistoryContext";
@@ -24,18 +22,14 @@ if (
 
 type SignificantCategory = "belief" | "fear" | "absolute" | "self_judgment";
 
+const CARD_W = 120;
+const CARD_H = 148;
+
 const CATEGORY_LABELS: Record<SignificantCategory, string> = {
   belief: "Belief",
   fear: "Fear",
   absolute: "Absolute",
   self_judgment: "Self-Judgment",
-};
-
-const CATEGORY_COLORS: Record<SignificantCategory, string> = {
-  belief: Colors.belief,
-  fear: Colors.fear,
-  absolute: Colors.absolute,
-  self_judgment: Colors.self_judgment,
 };
 
 const SIGNIFICANT_CATEGORIES: SignificantCategory[] = [
@@ -58,250 +52,64 @@ function getWeekKey(date: Date): string {
   return `${d.getFullYear()}-W${String(weekNum).padStart(2, "0")}`;
 }
 
-function MiniDonut({
-  data,
-  size = 36,
-}: {
-  data: { category: SignificantCategory; count: number; pct: number }[];
-  size?: number;
-}) {
-  const cx = size / 2;
-  const cy = size / 2;
-  const outerR = size / 2 - 2;
-  const innerR = outerR * 0.55;
-  const total = data.reduce((s, d) => s + d.count, 0);
+type InsightCardData = {
+  id: string;
+  reversed: boolean;
+  bigText?: string;
+  icon?: keyof typeof Ionicons.glyphMap;
+  label: string;
+  sublabel?: string;
+};
 
-  if (total === 0) return null;
-
-  let currentAngle = -Math.PI / 2;
-  const slices = data
-    .filter((d) => d.count > 0)
-    .map((d) => {
-      const angle = (d.pct / 100) * 2 * Math.PI;
-      const startAngle = currentAngle;
-      currentAngle += angle;
-      const endAngle = currentAngle;
-
-      const x1 = cx + outerR * Math.cos(startAngle);
-      const y1 = cy + outerR * Math.sin(startAngle);
-      const x2 = cx + outerR * Math.cos(endAngle);
-      const y2 = cy + outerR * Math.sin(endAngle);
-      const ix1 = cx + innerR * Math.cos(endAngle);
-      const iy1 = cy + innerR * Math.sin(endAngle);
-      const ix2 = cx + innerR * Math.cos(startAngle);
-      const iy2 = cy + innerR * Math.sin(startAngle);
-
-      const largeArc = angle > Math.PI ? 1 : 0;
-
-      const path = [
-        `M ${x1} ${y1}`,
-        `A ${outerR} ${outerR} 0 ${largeArc} 1 ${x2} ${y2}`,
-        `L ${ix1} ${iy1}`,
-        `A ${innerR} ${innerR} 0 ${largeArc} 0 ${ix2} ${iy2}`,
-        "Z",
-      ].join(" ");
-
-      return { path, color: CATEGORY_COLORS[d.category] };
-    });
-
+function InsightCard({ card, grid }: { card: InsightCardData; grid?: boolean }) {
   return (
-    <Svg width={size} height={size}>
-      {slices.map((s, i) => (
-        <Path key={i} d={s.path} fill={s.color} opacity={0.9} />
-      ))}
-    </Svg>
-  );
-}
-
-function DonutChart({
-  data,
-  size = 140,
-}: {
-  data: { category: SignificantCategory; count: number; pct: number }[];
-  size?: number;
-}) {
-  const cx = size / 2;
-  const cy = size / 2;
-  const outerR = size / 2 - 4;
-  const innerR = outerR * 0.58;
-  const total = data.reduce((s, d) => s + d.count, 0);
-
-  if (total === 0) return null;
-
-  let currentAngle = -Math.PI / 2;
-  const slices = data
-    .filter((d) => d.count > 0)
-    .map((d) => {
-      const angle = (d.pct / 100) * 2 * Math.PI;
-      const startAngle = currentAngle;
-      currentAngle += angle;
-      const endAngle = currentAngle;
-
-      const x1 = cx + outerR * Math.cos(startAngle);
-      const y1 = cy + outerR * Math.sin(startAngle);
-      const x2 = cx + outerR * Math.cos(endAngle);
-      const y2 = cy + outerR * Math.sin(endAngle);
-      const ix1 = cx + innerR * Math.cos(endAngle);
-      const iy1 = cy + innerR * Math.sin(endAngle);
-      const ix2 = cx + innerR * Math.cos(startAngle);
-      const iy2 = cy + innerR * Math.sin(startAngle);
-
-      const largeArc = angle > Math.PI ? 1 : 0;
-
-      const path = [
-        `M ${x1} ${y1}`,
-        `A ${outerR} ${outerR} 0 ${largeArc} 1 ${x2} ${y2}`,
-        `L ${ix1} ${iy1}`,
-        `A ${innerR} ${innerR} 0 ${largeArc} 0 ${ix2} ${iy2}`,
-        "Z",
-      ].join(" ");
-
-      return { path, color: CATEGORY_COLORS[d.category] };
-    });
-
-  return (
-    <Svg width={size} height={size}>
-      {slices.map((s, i) => (
-        <Path key={i} d={s.path} fill={s.color} opacity={0.9} />
-      ))}
-      <SvgText
-        x={cx}
-        y={cy - 6}
-        textAnchor="middle"
-        fontSize={11}
-        fill={Colors.textSecondary}
-        fontFamily="Inter_400Regular"
-      >
-        total
-      </SvgText>
-      <SvgText
-        x={cx}
-        y={cy + 12}
-        textAnchor="middle"
-        fontSize={20}
-        fontWeight="bold"
-        fill={Colors.text}
-        fontFamily="Inter_700Bold"
-      >
-        {total}
-      </SvgText>
-    </Svg>
-  );
-}
-
-function TrendChart({
-  weeks,
-  series,
-  width = 280,
-  height = 110,
-}: {
-  weeks: string[];
-  series: { category: SignificantCategory; points: number[] }[];
-  width?: number;
-  height?: number;
-}) {
-  const padLeft = 4;
-  const padRight = 4;
-  const padTop = 8;
-  const padBottom = 18;
-  const chartW = width - padLeft - padRight;
-  const chartH = height - padTop - padBottom;
-
-  if (weeks.length < 2) return null;
-
-  const xScale = (i: number) => padLeft + (i / (weeks.length - 1)) * chartW;
-  const yScale = (pct: number) => padTop + chartH - (pct / 100) * chartH;
-
-  return (
-    <Svg width={width} height={height}>
-      {[25, 50, 75].map((pct) => (
-        <Line
-          key={pct}
-          x1={padLeft}
-          y1={yScale(pct)}
-          x2={padLeft + chartW}
-          y2={yScale(pct)}
-          stroke="rgba(255,255,255,0.06)"
-          strokeWidth={1}
-        />
-      ))}
-      <SvgText
-        x={padLeft}
-        y={height - 2}
-        fontSize={9}
-        fill={Colors.textSecondary}
-        fontFamily="Inter_400Regular"
-      >
-        {formatWeekLabel(weeks[0])}
-      </SvgText>
-      <SvgText
-        x={padLeft + chartW}
-        y={height - 2}
-        textAnchor="end"
-        fontSize={9}
-        fill={Colors.textSecondary}
-        fontFamily="Inter_400Regular"
-      >
-        {formatWeekLabel(weeks[weeks.length - 1])}
-      </SvgText>
-      {series.map((s) => {
-        const pts = s.points
-          .map((pct, i) => `${xScale(i)},${yScale(pct)}`)
-          .join(" ");
-        return (
-          <Polyline
-            key={s.category}
-            points={pts}
-            fill="none"
-            stroke={CATEGORY_COLORS[s.category]}
-            strokeWidth={2}
-            strokeLinejoin="round"
-            strokeLinecap="round"
-            opacity={0.85}
-          />
-        );
-      })}
-      {series.map((s) => {
-        const lastI = s.points.length - 1;
-        return (
-          <Circle
-            key={s.category}
-            cx={xScale(lastI)}
-            cy={yScale(s.points[lastI])}
-            r={3}
-            fill={CATEGORY_COLORS[s.category]}
-          />
-        );
-      })}
-    </Svg>
-  );
-}
-
-function formatWeekLabel(weekKey: string): string {
-  const [year, week] = weekKey.split("-W");
-  const jan4 = new Date(Number(year), 0, 4);
-  const weekStart = new Date(jan4);
-  weekStart.setDate(jan4.getDate() + (Number(week) - 1) * 7 - ((jan4.getDay() + 6) % 7));
-  return weekStart.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-}
-
-function PatternSkeleton() {
-  return (
-    <View style={styles.skeletonCard}>
-      <View style={[styles.skeletonLine, { width: "90%" }]} />
-      <View style={[styles.skeletonLine, { width: "70%", marginTop: 6 }]} />
+    <View style={grid ? styles.gridCard : styles.card} accessibilityLabel={card.label}>
+      {card.bigText ? (
+        <Text style={styles.bigText} numberOfLines={1} adjustsFontSizeToFit>
+          {card.bigText}
+        </Text>
+      ) : card.icon ? (
+        <Ionicons name={card.icon} size={26} color="rgba(255,255,255,0.45)" style={styles.bigIcon} />
+      ) : null}
+      <View style={styles.cardBottom}>
+        <Text style={styles.label} numberOfLines={2}>
+          {card.label}
+        </Text>
+        {card.sublabel ? (
+          <Text style={styles.sublabel} numberOfLines={1}>
+            {card.sublabel}
+          </Text>
+        ) : null}
+      </View>
     </View>
   );
 }
 
-export function InsightsSection({
-  entries,
-  alwaysExpanded = false,
-}: {
-  entries: HistoryEntry[];
-  alwaysExpanded?: boolean;
-}) {
-  const [expanded, setExpanded] = useState(false);
+function SkeletonCard({ grid }: { grid?: boolean }) {
+  return (
+    <View style={[grid ? styles.gridCard : styles.card, styles.skeletonBg]}>
+      <View style={[styles.skeletonBlock, { width: 48, height: 28, borderRadius: 6, marginBottom: "auto" }]} />
+      <View>
+        <View style={[styles.skeletonBlock, { width: "75%", height: 10, borderRadius: 5, marginBottom: 6 }]} />
+        <View style={[styles.skeletonBlock, { width: "50%", height: 8, borderRadius: 4 }]} />
+      </View>
+    </View>
+  );
+}
+
+function ErrorCard({ onRetry, grid }: { onRetry: () => void; grid?: boolean }) {
+  return (
+    <Pressable onPress={onRetry} style={[grid ? styles.gridCard : styles.card, styles.skeletonBg]}>
+      <Ionicons name="refresh-outline" size={28} color="rgba(255,255,255,0.35)" style={styles.bigIcon} />
+      <View style={styles.cardBottom}>
+        <Text style={[styles.label, { color: "#fff" }]}>Could not load</Text>
+        <Text style={[styles.sublabel, { color: "rgba(255,255,255,0.4)" }]}>Tap to retry</Text>
+      </View>
+    </Pressable>
+  );
+}
+
+function useInsightsData(entries: HistoryEntry[]) {
   const [patterns, setPatterns] = useState<string[]>([]);
   const [patternsLoading, setPatternsLoading] = useState(false);
   const [patternsError, setPatternsError] = useState(false);
@@ -344,13 +152,12 @@ export function InsightsSection({
     return top ? top : null;
   }, [donutData]);
 
-  const { weeks, trendSeries, trendSummary } = useMemo(() => {
+  const { trendSummary, trendDelta, trendDir } = useMemo(() => {
     if (entries.length === 0) {
-      return { weeks: [] as string[], trendSeries: [] as { category: SignificantCategory; points: number[] }[], trendSummary: null as string | null };
+      return { trendSummary: null as string | null, trendDelta: 0, trendDir: "down" as "up" | "down" };
     }
 
     const weekMap: Map<string, Record<SignificantCategory, number>> = new Map();
-
     for (const entry of entries) {
       const key = getWeekKey(new Date(entry.savedAt));
       if (!weekMap.has(key)) {
@@ -365,17 +172,9 @@ export function InsightsSection({
     }
 
     const sortedWeeks = Array.from(weekMap.keys()).sort();
-
-    const series = SIGNIFICANT_CATEGORIES.map((cat) => ({
-      category: cat,
-      points: sortedWeeks.map((wk) => {
-        const bucket = weekMap.get(wk)!;
-        const weekTotal = SIGNIFICANT_CATEGORIES.reduce((s, c) => s + bucket[c], 0);
-        return weekTotal > 0 ? Math.round((bucket[cat] / weekTotal) * 100) : 0;
-      }),
-    }));
-
     let summary: string | null = null;
+    let delta = 0;
+    let dir: "up" | "down" = "down";
     if (sortedWeeks.length >= 2) {
       const firstWeek = weekMap.get(sortedWeeks[0])!;
       const lastWeek = weekMap.get(sortedWeeks[sortedWeeks.length - 1])!;
@@ -385,33 +184,28 @@ export function InsightsSection({
       if (firstTotal > 0 && lastTotal > 0) {
         let biggestChange = 0;
         let biggestCat: SignificantCategory | null = null;
-        let changeDir: "up" | "down" = "down";
 
         for (const cat of SIGNIFICANT_CATEGORIES) {
           const firstPct = Math.round((firstWeek[cat] / firstTotal) * 100);
           const lastPct = Math.round((lastWeek[cat] / lastTotal) * 100);
-          const delta = lastPct - firstPct;
-          if (Math.abs(delta) > Math.abs(biggestChange)) {
-            biggestChange = delta;
+          const d = lastPct - firstPct;
+          if (Math.abs(d) > Math.abs(biggestChange)) {
+            biggestChange = d;
             biggestCat = cat;
-            changeDir = delta > 0 ? "up" : "down";
           }
         }
 
         if (biggestCat && Math.abs(biggestChange) >= 5) {
-          const numWeeks = sortedWeeks.length;
+          delta = Math.abs(biggestChange);
+          dir = biggestChange > 0 ? "up" : "down";
           const label = CATEGORY_LABELS[biggestCat].toLowerCase();
-          const absDelta = Math.abs(biggestChange);
-          if (changeDir === "down") {
-            summary = `${label} language dropped ${absDelta}% over ${numWeeks} wk${numWeeks > 1 ? "s" : ""}`;
-          } else {
-            summary = `${label} language rose ${absDelta}% over ${numWeeks} wk${numWeeks > 1 ? "s" : ""}`;
-          }
+          const numWeeks = sortedWeeks.length;
+          summary = `${label} ${dir === "down" ? "dropped" : "rose"} over ${numWeeks} wk${numWeeks > 1 ? "s" : ""}`;
         }
       }
     }
 
-    return { weeks: sortedWeeks, trendSeries: series, trendSummary: summary };
+    return { trendSummary: summary, trendDelta: delta, trendDir: dir };
   }, [entries]);
 
   const thoughtSamples = useMemo(() => {
@@ -459,10 +253,90 @@ export function InsightsSection({
     }
   }, [loadPatterns, totalWords]);
 
-  const toggleExpanded = useCallback(() => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setExpanded((prev) => !prev);
-  }, []);
+  const staticCards = useMemo<InsightCardData[]>(() => {
+    const cards: InsightCardData[] = [];
+
+    if (topCategory) {
+      cards.push({
+        id: `top-${topCategory.category}`,
+        reversed: false,
+        bigText: `${topCategory.pct}%`,
+        label: `${CATEGORY_LABELS[topCategory.category]}`,
+        sublabel: "top pattern",
+      });
+    }
+
+    if (trendSummary) {
+      cards.push({
+        id: "trend",
+        reversed: false,
+        bigText: `${trendDir === "down" ? "\u2193" : "\u2191"}${trendDelta}%`,
+        label: trendSummary,
+      });
+    }
+
+    cards.push({
+      id: "total",
+      reversed: false,
+      bigText: `${totalWords}`,
+      label: "distortions found",
+      sublabel: `across ${entries.length} entries`,
+    });
+
+    const nonTopCats = donutData.filter((d) => d.count > 0 && d.category !== topCategory?.category);
+    for (let i = 0; i < nonTopCats.length; i++) {
+      const d = nonTopCats[i];
+      cards.push({
+        id: `cat-${d.category}`,
+        reversed: false,
+        bigText: `${d.pct}%`,
+        label: CATEGORY_LABELS[d.category],
+        sublabel: `${d.count} flagged`,
+      });
+    }
+
+    return cards;
+  }, [topCategory, trendSummary, trendDelta, trendDir, totalWords, donutData, entries.length]);
+
+  const patternCards: InsightCardData[] = useMemo(() =>
+    patterns.map((p, i) => ({
+      id: `pattern-${i}`,
+      reversed: false,
+      icon: (["eye-outline", "bulb-outline", "chatbubble-ellipses-outline", "flash-outline"] as Array<keyof typeof Ionicons.glyphMap>)[i % 4],
+      label: p,
+    })),
+    [patterns]
+  );
+
+  return {
+    totalWords,
+    staticCards,
+    patternCards,
+    patternsLoading,
+    patternsError,
+    loadPatterns,
+  };
+}
+
+export function InsightsSection({
+  entries,
+  alwaysExpanded = false,
+}: {
+  entries: HistoryEntry[];
+  alwaysExpanded?: boolean;
+}) {
+  const {
+    totalWords,
+    staticCards,
+    patternCards,
+    patternsLoading,
+    patternsError,
+    loadPatterns,
+  } = useInsightsData(entries);
+
+  const allCards = useMemo(() => [...staticCards, ...patternCards], [staticCards, patternCards]);
+
+  const [activeIdx, setActiveIdx] = useState(0);
 
   if (totalWords === 0) {
     if (entries.length === 0) return null;
@@ -477,158 +351,88 @@ export function InsightsSection({
         </View>
       );
     }
+    return null;
+  }
+
+  if (alwaysExpanded) {
     return (
-      <View style={styles.compactRow}>
-        <View style={styles.compactIconWrap}>
-          <Ionicons name="analytics" size={18} color="rgba(255,255,255,0.4)" />
-        </View>
-        <View style={styles.compactTextCol}>
-          <Text style={styles.compactTitle}>Insights</Text>
-          <Text style={styles.compactSub} numberOfLines={1}>
-            Start reframing to unlock patterns
-          </Text>
+      <View style={styles.gridContainer}>
+        <View style={styles.gridWrap}>
+          {staticCards.map((card) => (
+            <InsightCard key={card.id} card={card} grid />
+          ))}
+          {patternsLoading ? (
+            <>
+              <SkeletonCard grid />
+              <SkeletonCard grid />
+              <SkeletonCard grid />
+            </>
+          ) : patternsError ? (
+            <ErrorCard onRetry={loadPatterns} grid />
+          ) : (
+            patternCards.map((card) => (
+              <InsightCard key={card.id} card={card} grid />
+            ))
+          )}
         </View>
       </View>
     );
   }
 
-  const summaryText = trendSummary
-    ? trendSummary
-    : topCategory
-      ? `Top: ${CATEGORY_LABELS[topCategory.category]} (${topCategory.pct}%)`
-      : `${totalWords} distortions found`;
-
-  if (!alwaysExpanded && !expanded) {
-    return (
-      <Pressable onPress={toggleExpanded} style={styles.compactRow}>
-        <MiniDonut data={donutData} size={36} />
-        <View style={styles.compactTextCol}>
-          <Text style={styles.compactTitle}>Insights</Text>
-          <Text style={styles.compactSub} numberOfLines={1}>
-            {summaryText}
-          </Text>
-        </View>
-        <View style={styles.compactRight}>
-          <View style={styles.compactBadge}>
-            <Text style={styles.compactBadgeText}>{totalWords}</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.25)" />
-        </View>
-      </Pressable>
-    );
-  }
+  const cardCount = patternsLoading
+    ? staticCards.length + 3
+    : patternsError
+      ? staticCards.length + 1
+      : allCards.length;
 
   return (
-    <View style={styles.container}>
-      {!alwaysExpanded && (
-        <Pressable onPress={toggleExpanded} style={styles.expandedHeader}>
-          <Text style={styles.sectionTitle}>Insights</Text>
-          <Ionicons name="chevron-up" size={16} color="rgba(255,255,255,0.4)" />
-        </Pressable>
-      )}
+    <View style={styles.section}>
+      <Text style={styles.heading}>INSIGHTS</Text>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.scroll}
+        decelerationRate="fast"
+        snapToInterval={CARD_W + 10}
+        snapToAlignment="start"
+        onScroll={(e) => {
+          const x = e.nativeEvent.contentOffset.x;
+          const idx = Math.round(x / (CARD_W + 10));
+          setActiveIdx(Math.max(0, Math.min(idx, cardCount - 1)));
+        }}
+        scrollEventThrottle={16}
+      >
+        {staticCards.map((card) => (
+          <InsightCard key={card.id} card={card} />
+        ))}
 
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Category Breakdown</Text>
-        <View style={styles.donutRow}>
-          <DonutChart data={donutData} size={130} />
-          <View style={styles.legend}>
-            {donutData
-              .filter((d) => d.count > 0)
-              .map((d) => (
-                <View key={d.category} style={styles.legendItem}>
-                  <View
-                    style={[
-                      styles.legendDot,
-                      { backgroundColor: CATEGORY_COLORS[d.category] },
-                    ]}
-                  />
-                  <View>
-                    <Text style={styles.legendLabel}>
-                      {CATEGORY_LABELS[d.category]}
-                    </Text>
-                    <Text style={styles.legendPct}>{d.pct}%</Text>
-                  </View>
-                </View>
-              ))}
-          </View>
-        </View>
-      </View>
-
-      {weeks.length >= 2 && (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Weekly Trends</Text>
-          <View style={styles.trendChartWrap}>
-            <TrendChart
-              weeks={weeks}
-              series={trendSeries.filter((s) =>
-                s.points.some((p) => p > 0)
-              )}
-              width={280}
-              height={110}
-            />
-          </View>
-          <View style={styles.trendLegend}>
-            {SIGNIFICANT_CATEGORIES.filter((cat) =>
-              trendSeries.find((s) => s.category === cat)?.points.some((p) => p > 0)
-            ).map((cat) => (
-              <View key={cat} style={styles.trendLegendItem}>
-                <View
-                  style={[
-                    styles.trendLegendLine,
-                    { backgroundColor: CATEGORY_COLORS[cat] },
-                  ]}
-                />
-                <Text style={styles.trendLegendLabel}>
-                  {CATEGORY_LABELS[cat]}
-                </Text>
-              </View>
-            ))}
-          </View>
-          {trendSummary && (
-            <View style={styles.trendSummaryBox}>
-              <Text style={styles.trendSummaryText}>{trendSummary}</Text>
-            </View>
-          )}
-        </View>
-      )}
-
-      <View style={styles.card}>
-        <View style={styles.cardTitleRow}>
-          <Text style={styles.cardTitle}>Patterns</Text>
-          {!patternsLoading && (
-            <Pressable onPress={loadPatterns} style={styles.refreshBtn}>
-              <Text style={styles.refreshBtnText}>Refresh</Text>
-            </Pressable>
-          )}
-        </View>
-        <Text style={styles.cardSubtitle}>
-          AI-observed patterns in your thinking
-        </Text>
         {patternsLoading ? (
-          <View style={styles.patternLoadingRow}>
-            <ActivityIndicator size="small" color={Colors.textSecondary} />
-            <PatternSkeleton />
-            <PatternSkeleton />
-          </View>
+          <>
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+          </>
         ) : patternsError ? (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>
-              Could not load patterns. Tap Refresh to try again.
-            </Text>
-          </View>
-        ) : patterns.length === 0 ? (
-          <Text style={styles.noPatternsText}>
-            No patterns detected yet — keep journaling!
-          </Text>
+          <ErrorCard onRetry={loadPatterns} />
         ) : (
-          patterns.map((p, i) => (
-            <View key={i} style={styles.patternCard}>
-              <Text style={styles.patternBullet}>✦</Text>
-              <Text style={styles.patternText}>{p}</Text>
-            </View>
+          patternCards.map((card) => (
+            <InsightCard key={card.id} card={card} />
           ))
         )}
-      </View>
+      </ScrollView>
+      {cardCount > 1 && (
+        <View style={styles.dots}>
+          {Array.from({ length: cardCount }).map((_, i) => (
+            <View
+              key={i}
+              style={[
+                styles.dot,
+                i === activeIdx ? styles.dotActive : styles.dotInactive,
+              ]}
+            />
+          ))}
+        </View>
+      )}
     </View>
   );
 }
@@ -653,241 +457,96 @@ const styles = StyleSheet.create({
     maxWidth: 240,
     lineHeight: 18,
   },
-  compactRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.05)",
-    borderRadius: 14,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,255,255,0.08)",
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    marginTop: 14,
-    marginBottom: 4,
-    gap: 12,
+  section: {
+    marginTop: 8,
+    marginBottom: 20,
   },
-  compactIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    alignItems: "center",
-    justifyContent: "center",
+  heading: {
+    fontSize: 10,
+    fontFamily: "Inter_700Bold",
+    color: "rgba(255,255,255,0.35)",
+    letterSpacing: 2.5,
+    paddingHorizontal: 24,
+    marginBottom: 12,
   },
-  compactTextCol: {
-    flex: 1,
+  scroll: {
+    paddingHorizontal: 20,
+    gap: 10,
+  },
+  card: {
+    width: CARD_W,
+    height: CARD_H,
+    borderRadius: 12,
+    padding: 12,
+    justifyContent: "space-between",
+    backgroundColor: "rgba(255,255,255,0.07)",
+  },
+  bigText: {
+    fontSize: 28,
+    fontFamily: "Inter_700Bold",
+    color: "rgba(255,255,255,0.85)",
+    letterSpacing: -1,
+  },
+  bigIcon: {
+    marginTop: 2,
+  },
+  cardBottom: {
     gap: 2,
   },
-  compactTitle: {
-    fontSize: 14,
-    fontFamily: "Inter_600SemiBold",
-    color: Colors.text,
-  },
-  compactSub: {
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-    color: Colors.textSecondary,
-  },
-  compactRight: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  compactBadge: {
-    backgroundColor: "rgba(255,255,255,0.08)",
-    borderRadius: 10,
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-  },
-  compactBadgeText: {
+  label: {
     fontSize: 11,
     fontFamily: "Inter_600SemiBold",
-    color: Colors.textSecondary,
+    color: "rgba(255,255,255,0.7)",
+    lineHeight: 15,
+    letterSpacing: -0.1,
   },
-  container: {
+  sublabel: {
+    fontSize: 9,
+    fontFamily: "Inter_400Regular",
+    color: "rgba(255,255,255,0.35)",
+    letterSpacing: 0.2,
+  },
+  dots: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 10,
+    marginBottom: 2,
+  },
+  dot: {
+    height: 5,
+    borderRadius: 3,
+  },
+  dotActive: {
+    width: 18,
+    backgroundColor: "rgba(255,255,255,0.75)",
+  },
+  dotInactive: {
+    width: 5,
+    backgroundColor: "rgba(255,255,255,0.2)",
+  },
+  skeletonBg: {
+    backgroundColor: "rgba(255,255,255,0.07)",
+  },
+  skeletonBlock: {
+    backgroundColor: "rgba(255,255,255,0.1)",
+  },
+  gridContainer: {
     paddingTop: 14,
     paddingBottom: 4,
   },
-  expandedHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 12,
-    paddingRight: 4,
-  },
-  sectionTitle: {
-    fontSize: 12,
-    fontFamily: "Inter_600SemiBold",
-    color: "rgba(255,255,255,0.5)",
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
-  },
-  card: {
-    backgroundColor: "rgba(255,255,255,0.05)",
-    borderRadius: 16,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,255,255,0.08)",
-    padding: 16,
-    marginBottom: 12,
-  },
-  cardTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: Colors.text,
-    fontFamily: "Inter_600SemiBold",
-    marginBottom: 12,
-  },
-  cardSubtitle: {
-    fontSize: 11,
-    color: Colors.textSecondary,
-    fontFamily: "Inter_400Regular",
-    marginBottom: 12,
-  },
-  cardTitleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 2,
-  },
-  donutRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  legend: {
-    flex: 1,
-    marginLeft: 14,
-    gap: 8,
-  },
-  legendItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  legendDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  legendLabel: {
-    fontSize: 12,
-    color: Colors.text,
-    fontFamily: "Inter_500Medium",
-  },
-  legendPct: {
-    fontSize: 10,
-    color: Colors.textSecondary,
-    fontFamily: "Inter_400Regular",
-  },
-  trendChartWrap: {
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  trendLegend: {
+  gridWrap: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 10,
-    marginBottom: 10,
+    gap: 12,
   },
-  trendLegendItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-  },
-  trendLegendLine: {
-    width: 14,
-    height: 2,
-    borderRadius: 1,
-  },
-  trendLegendLabel: {
-    fontSize: 10,
-    color: Colors.textSecondary,
-    fontFamily: "Inter_400Regular",
-  },
-  trendSummaryBox: {
-    backgroundColor: "rgba(255,255,255,0.04)",
-    borderRadius: 10,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,255,255,0.08)",
-  },
-  trendSummaryText: {
-    fontSize: 12,
-    color: Colors.text,
-    fontFamily: "Inter_400Regular",
-    lineHeight: 17,
-  },
-  patternLoadingRow: {
-    gap: 10,
-    paddingTop: 4,
-  },
-  skeletonCard: {
-    backgroundColor: "rgba(255,255,255,0.04)",
-    borderRadius: 10,
-    padding: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,255,255,0.08)",
-  },
-  skeletonLine: {
-    height: 10,
-    backgroundColor: Colors.neutral,
-    borderRadius: 5,
-  },
-  patternCard: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 8,
-    backgroundColor: "rgba(255,255,255,0.04)",
+  gridCard: {
+    width: "47%",
+    minHeight: 140,
     borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    marginBottom: 8,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,255,255,0.08)",
-  },
-  patternBullet: {
-    fontSize: 9,
-    color: Colors.textSecondary,
-    marginTop: 3,
-  },
-  patternText: {
-    flex: 1,
-    fontSize: 13,
-    color: Colors.text,
-    fontFamily: "Inter_400Regular",
-    lineHeight: 18,
-  },
-  errorBox: {
-    backgroundColor: "rgba(255,255,255,0.04)",
-    borderRadius: 10,
     padding: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,255,255,0.08)",
-  },
-  errorText: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    fontFamily: "Inter_400Regular",
-    lineHeight: 17,
-  },
-  noPatternsText: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    fontFamily: "Inter_400Regular",
-    lineHeight: 17,
-  },
-  refreshBtn: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,255,255,0.08)",
-  },
-  refreshBtnText: {
-    fontSize: 11,
-    color: Colors.textSecondary,
-    fontFamily: "Inter_500Medium",
+    justifyContent: "space-between",
+    backgroundColor: "rgba(255,255,255,0.07)",
   },
 });

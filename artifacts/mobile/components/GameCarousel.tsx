@@ -330,6 +330,8 @@ export function GameCarousel({
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
+        style={styles.scrollOuter}
+        nestedScrollEnabled
         decelerationRate="fast"
         snapToInterval={CARD_W + 12}
         snapToAlignment="start"
