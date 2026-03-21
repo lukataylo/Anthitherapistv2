@@ -68,8 +68,8 @@ const TABS: TabDef[] = [
     name: "index",
     label: "Speak",
     renderIcon: (focused) => (
-      <MaterialCommunityIcons
-        name={focused ? "form-textbox" : "form-textbox"}
+      <Ionicons
+        name={focused ? "create" : "create-outline"}
         size={24}
         color={focused ? "#fff" : "rgba(255,255,255,0.38)"}
       />
@@ -80,7 +80,7 @@ const TABS: TabDef[] = [
     label: "Shape",
     renderIcon: (focused) => (
       <Ionicons
-        name={focused ? "create" : "create-outline"}
+        name={focused ? "repeat" : "repeat-outline"}
         size={24}
         color={focused ? "#fff" : "rgba(255,255,255,0.38)"}
       />
@@ -90,8 +90,8 @@ const TABS: TabDef[] = [
     name: "flashcards",
     label: "Own",
     renderIcon: (focused) => (
-      <Ionicons
-        name={focused ? "infinite" : "infinite-outline"}
+      <MaterialCommunityIcons
+        name={focused ? "form-textbox" : "form-textbox"}
         size={24}
         color={focused ? "#fff" : "rgba(255,255,255,0.38)"}
       />
