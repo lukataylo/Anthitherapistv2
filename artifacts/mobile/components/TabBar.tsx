@@ -91,7 +91,7 @@ const TABS: TabDef[] = [
     label: "Own",
     renderIcon: (focused) => (
       <Ionicons
-        name={focused ? "repeat" : "repeat-outline"}
+        name={focused ? "infinite" : "infinite-outline"}
         size={24}
         color={focused ? "#fff" : "rgba(255,255,255,0.38)"}
       />
