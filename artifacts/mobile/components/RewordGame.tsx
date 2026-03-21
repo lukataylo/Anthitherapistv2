@@ -87,21 +87,21 @@ const { width: SW, height: SH } = Dimensions.get("window");
 // ─── Colors ──────────────────────────────────────────────────────────────────
 
 const C = {
-  bg: "#080810",
-  glowA: "rgba(30,15,50,0.6)",
-  glowB: "rgba(10,5,20,0.4)",
-  line: "rgba(200, 70, 120, 0.55)",
-  lineActive: "rgba(255, 130, 175, 0.9)",
+  bg: "#08001A",
+  glowA: "rgba(91, 31, 168, 0.75)",
+  glowB: "rgba(48, 8, 110, 0.55)",
+  line: "rgba(160, 90, 230, 0.55)",
+  lineActive: "rgba(200, 150, 255, 0.9)",
   lineWrong: "rgba(255, 80, 100, 0.5)",
-  node: "#5A1A40",
-  nodeBorder: "rgba(220, 80, 140, 0.7)",
-  nodeActive: "#E04090",
-  nodeGlow: "rgba(230, 60, 140, 0.55)",
+  node: "#2A0A5A",
+  nodeBorder: "rgba(160, 90, 255, 0.85)",
+  nodeActive: "#7B35D8",
+  nodeGlow: "rgba(130, 60, 220, 0.6)",
   nodeCorrect: "rgba(74, 222, 128, 0.85)",
   nodeWrong: "rgba(255, 60, 80, 0.85)",
   text: "#FFFFFF",
-  textDim: "rgba(255,255,255,0.38)",
-  timer: "#FF6B8A",
+  textDim: "rgba(255,255,255,0.55)",
+  timer: "#B97EFF",
   correct: "#4ADE80",
 };
 
@@ -111,7 +111,7 @@ const DOT_X = SW / 2;
 const DOT_Y = SH * 0.40;
 const BAR_Y = DOT_Y + 22;
 const NODE_Y = SH * 0.595;
-const NODE_R = 16;
+const NODE_R = 20;
 const NODE_XS = [SW * 0.16, SW * 0.5, SW * 0.84];
 const LINE_W = 1.5;
 const GAME_SEC = 90;
@@ -295,14 +295,67 @@ function AnimatedWord({ word }: { word: string }) {
 // ─── Background ───────────────────────────────────────────────────────────────
 
 function SceneBg() {
+  const cx = SW * 0.5;
+  const cy = SH * 0.38;
+  const outerR = SH * 0.42;
+  const innerR = SH * 0.26;
   return (
-    <LinearGradient
-      colors={[C.bg, C.glowA, C.glowB, C.bg]}
-      start={{ x: 0.5, y: 0 }}
-      end={{ x: 0.5, y: 1 }}
-      style={StyleSheet.absoluteFill}
-      pointerEvents="none"
-    />
+    <View style={[StyleSheet.absoluteFill, { backgroundColor: C.bg }]} pointerEvents="none">
+      {/* Outer glow — two orthogonal linear gradients layered to simulate radial */}
+      <LinearGradient
+        colors={["transparent", C.glowB, "transparent"]}
+        start={{ x: 0, y: 0.5 }}
+        end={{ x: 1, y: 0.5 }}
+        style={{
+          position: "absolute",
+          top: cy - outerR,
+          left: cx - outerR,
+          width: outerR * 2,
+          height: outerR * 2,
+          borderRadius: outerR,
+        }}
+      />
+      <LinearGradient
+        colors={["transparent", C.glowB, "transparent"]}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+        style={{
+          position: "absolute",
+          top: cy - outerR,
+          left: cx - outerR,
+          width: outerR * 2,
+          height: outerR * 2,
+          borderRadius: outerR,
+        }}
+      />
+      {/* Inner glow — two orthogonal linear gradients layered to simulate radial */}
+      <LinearGradient
+        colors={["transparent", C.glowA, "transparent"]}
+        start={{ x: 0, y: 0.5 }}
+        end={{ x: 1, y: 0.5 }}
+        style={{
+          position: "absolute",
+          top: cy - innerR,
+          left: cx - innerR,
+          width: innerR * 2,
+          height: innerR * 2,
+          borderRadius: innerR,
+        }}
+      />
+      <LinearGradient
+        colors={["transparent", C.glowA, "transparent"]}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+        style={{
+          position: "absolute",
+          top: cy - innerR,
+          left: cx - innerR,
+          width: innerR * 2,
+          height: innerR * 2,
+          borderRadius: innerR,
+        }}
+      />
+    </View>
   );
 }
 
@@ -351,7 +404,7 @@ function TreeDiagram({
       const st = nodeStates[i];
       return st === "selected-correct" ? C.nodeCorrect : C.lineWrong;
     }
-    return "rgba(200,70,120,0.2)";
+    return "rgba(130,60,220,0.2)";
   };
 
   const topVertLen = BAR_Y - DOT_Y - 8;
@@ -380,7 +433,7 @@ function TreeDiagram({
           top: DOT_Y + 5,
           width: LINE_W,
           height: topVertLen,
-          backgroundColor: selectedIdx === null ? C.line : "rgba(200,70,120,0.25)",
+          backgroundColor: selectedIdx === null ? C.line : "rgba(130,60,220,0.25)",
         }}
       />
 
@@ -392,7 +445,7 @@ function TreeDiagram({
           top: BAR_Y,
           width: NODE_XS[2] - NODE_XS[0],
           height: LINE_W,
-          backgroundColor: selectedIdx === null ? C.line : "rgba(200,70,120,0.25)",
+          backgroundColor: selectedIdx === null ? C.line : "rgba(130,60,220,0.25)",
         }}
       />
 
@@ -935,10 +988,10 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   wordHint: {
-    color: "rgba(255,255,255,0.28)",
+    color: "rgba(200,170,255,0.55)",
     fontSize: 9,
     fontFamily: "Inter_700Bold",
-    letterSpacing: 2,
+    letterSpacing: 2.5,
   },
   wordRow: {
     flexDirection: "row",
@@ -951,12 +1004,16 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_700Bold",
     letterSpacing: -1,
     lineHeight: 54,
+    shadowColor: "#B97EFF",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.75,
+    shadowRadius: 14,
   },
   node: {
     width: NODE_R * 2,
     height: NODE_R * 2,
     borderRadius: NODE_R,
-    borderWidth: 1.5,
+    borderWidth: 2,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -974,7 +1031,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   instructTxt: {
-    color: C.textDim,
+    color: "rgba(200,170,255,0.6)",
     fontSize: 10,
     fontFamily: "Inter_700Bold",
     letterSpacing: 2,
@@ -1000,7 +1057,7 @@ const styles = StyleSheet.create({
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(22, 10, 28, 0.9)",
+    backgroundColor: "rgba(8, 0, 26, 0.92)",
     alignItems: "center",
     justifyContent: "center",
     zIndex: 30,
