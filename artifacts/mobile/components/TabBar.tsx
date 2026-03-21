@@ -2,7 +2,7 @@
  * TabBar — custom bottom navigation bar replacing Expo Router's default.
  *
  * Renders a floating "pill" with a glassmorphic blur effect (expo-blur on
- * native; CSS backdrop-filter on web). Two tabs: Reframe and History.
+ * native; CSS backdrop-filter on web). Three tabs: Reframe, History, and Discuss.
  *
  * ## Tab item animations
  *
@@ -94,6 +94,17 @@ const TABS: TabDef[] = [
       <Ionicons
         name={focused ? "time" : "time-outline"}
         size={24}
+        color={focused ? "#fff" : "rgba(255,255,255,0.38)"}
+      />
+    ),
+  },
+  {
+    name: "discuss",
+    label: "Discuss",
+    renderIcon: (focused) => (
+      <Ionicons
+        name={focused ? "chatbubble-ellipses" : "chatbubble-ellipses-outline"}
+        size={23}
         color={focused ? "#fff" : "rgba(255,255,255,0.38)"}
       />
     ),

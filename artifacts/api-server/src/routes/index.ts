@@ -8,15 +8,18 @@
  * Current routes (all prefixed with /api by the parent):
  *   GET  /api/healthz  — liveness probe
  *   POST /api/reframe  — AI-powered cognitive distortion analysis
+ *   POST /api/discuss  — Socratic dialogue coaching
  */
 
 import { Router, type IRouter } from "express";
 import healthRouter from "./health";
 import reframeRouter from "./reframe";
+import discussRouter from "./discuss";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use(reframeRouter);
+router.use(discussRouter);
 
 export default router;

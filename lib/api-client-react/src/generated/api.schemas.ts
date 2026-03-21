@@ -50,3 +50,16 @@ export interface ReframeResponse {
 export interface ErrorResponse {
   error: string;
 }
+
+export interface DiscussMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface DiscussRequest {
+  messages: DiscussMessage[];
+}
+
+export interface DiscussResponse {
+  reply: string;
+}

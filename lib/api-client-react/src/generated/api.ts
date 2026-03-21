@@ -17,6 +17,8 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  DiscussRequest,
+  DiscussResponse,
   ErrorResponse,
   HealthStatus,
   ReframeRequest,
@@ -193,4 +195,88 @@ export const useReframeThought = <
   TContext
 > => {
   return useMutation(getReframeThoughtMutationOptions(options));
+};
+
+/**
+ * Sends a conversation history and returns Claude's next Socratic question
+ * @summary Socratic coaching dialogue
+ */
+export const getDiscussUrl = () => {
+  return `/api/discuss`;
+};
+
+export const discuss = async (
+  discussRequest: DiscussRequest,
+  options?: RequestInit,
+): Promise<DiscussResponse> => {
+  return customFetch<DiscussResponse>(getDiscussUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(discussRequest),
+  });
+};
+
+export const getDiscussMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof discuss>>,
+    TError,
+    { data: BodyType<DiscussRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof discuss>>,
+  TError,
+  { data: BodyType<DiscussRequest> },
+  TContext
+> => {
+  const mutationKey = ["discuss"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof discuss>>,
+    { data: BodyType<DiscussRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+    return discuss(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DiscussMutationResult = NonNullable<Awaited<ReturnType<typeof discuss>>>;
+export type DiscussMutationBody = BodyType<DiscussRequest>;
+export type DiscussMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Socratic coaching dialogue
+ */
+export const useDiscuss = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof discuss>>,
+    TError,
+    { data: BodyType<DiscussRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof discuss>>,
+  TError,
+  { data: BodyType<DiscussRequest> },
+  TContext
+> => {
+  return useMutation(getDiscussMutationOptions(options));
 };
