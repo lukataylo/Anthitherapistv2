@@ -1,148 +1,299 @@
-import React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import React, { useEffect, useRef } from "react";
+import {
+  Animated,
+  Platform,
+  Pressable,
+  StyleSheet,
+  View,
+} from "react-native";
+import { BlurView } from "expo-blur";
 import { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useStreak } from "@/context/StreakContext";
 
-const TABS: Array<{
+// ─── Tab definitions ─────────────────────────────────────────────────────────
+
+type TabDef = {
   name: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  iconActive: keyof typeof Ionicons.glyphMap;
+  renderIcon: (focused: boolean) => React.ReactNode;
   label: string;
-}> = [
+};
+
+const TABS: TabDef[] = [
   {
     name: "index",
-    icon: "aperture-outline",
-    iconActive: "aperture",
     label: "Reframe",
+    renderIcon: (focused) => (
+      <MaterialCommunityIcons
+        name={focused ? "head-cog" : "head-cog-outline"}
+        size={25}
+        color={focused ? "#fff" : "rgba(255,255,255,0.38)"}
+      />
+    ),
   },
   {
     name: "history",
-    icon: "time-outline",
-    iconActive: "time",
     label: "History",
+    renderIcon: (focused) => (
+      <Ionicons
+        name={focused ? "time" : "time-outline"}
+        size={24}
+        color={focused ? "#fff" : "rgba(255,255,255,0.38)"}
+      />
+    ),
   },
 ];
+
+// ─── Animated tab item ────────────────────────────────────────────────────────
 
 function TabItem({
   tab,
   isFocused,
   onPress,
-  badge,
+  hasBadge,
 }: {
-  tab: (typeof TABS)[0];
+  tab: TabDef;
   isFocused: boolean;
   onPress: () => void;
-  badge?: "active" | "inactive";
+  hasBadge?: boolean;
 }) {
+  const dotScale = useRef(new Animated.Value(isFocused ? 1 : 0)).current;
+  const dotOpacity = useRef(new Animated.Value(isFocused ? 1 : 0)).current;
+  const iconScale = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.spring(dotScale, {
+        toValue: isFocused ? 1 : 0,
+        tension: 120,
+        friction: 10,
+        useNativeDriver: true,
+      }),
+      Animated.timing(dotOpacity, {
+        toValue: isFocused ? 1 : 0,
+        duration: 180,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [isFocused]);
+
+  const handlePress = () => {
+    Animated.sequence([
+      Animated.timing(iconScale, {
+        toValue: 0.82,
+        duration: 80,
+        useNativeDriver: true,
+      }),
+      Animated.spring(iconScale, {
+        toValue: 1,
+        tension: 200,
+        friction: 8,
+        useNativeDriver: true,
+      }),
+    ]).start();
+    onPress();
+  };
+
   return (
-    <Pressable onPress={onPress} style={styles.tabItem} hitSlop={8}>
-      <View style={styles.tabInner}>
+    <Pressable onPress={handlePress} style={styles.tabItem} hitSlop={10}>
+      <Animated.View
+        style={[styles.tabInner, { transform: [{ scale: iconScale }] }]}
+      >
+        {/* Active highlight pill behind icon */}
+        {isFocused && (
+          <View style={styles.activeHighlight} />
+        )}
+
+        {/* Icon */}
         <View style={styles.iconWrap}>
-          <Ionicons
-            name={isFocused ? tab.iconActive : tab.icon}
-            size={24}
-            color={isFocused ? "#fff" : "rgba(255,255,255,0.35)"}
-          />
-          {badge ? (
-            <View style={[
-              styles.badge,
-              { backgroundColor: badge === "active" ? "#FF9500" : "rgba(255,255,255,0.25)" },
-            ]} />
-          ) : null}
+          {tab.renderIcon(isFocused)}
+          {hasBadge && <View style={styles.badge} />}
         </View>
-        <Text
+
+        {/* Active dot */}
+        <Animated.View
           style={[
-            styles.tabLabel,
-            { color: isFocused ? "#fff" : "rgba(255,255,255,0.35)" },
+            styles.dot,
+            { opacity: dotOpacity, transform: [{ scale: dotScale }] },
           ]}
-        >
-          {tab.label}
-        </Text>
-      </View>
+        />
+      </Animated.View>
     </Pressable>
   );
 }
+
+// ─── Main tab bar ─────────────────────────────────────────────────────────────
 
 export function TabBar({ state, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const { currentStreak, reflectedToday } = useStreak();
 
-  const getBadge = (tabName: string): "active" | "inactive" | undefined => {
-    if (tabName === "index" && currentStreak > 0) {
-      return reflectedToday ? "active" : "inactive";
-    }
-    return undefined;
-  };
-
   return (
     <View
       style={[
         styles.container,
-        { paddingBottom: Math.max(insets.bottom, 8) },
+        { paddingBottom: Math.max(insets.bottom + 6, 18) },
       ]}
     >
-      <View style={styles.bar}>
-        {TABS.map((tab, index) => {
-          const isFocused = state.index === index;
-          return (
-            <TabItem
-              key={tab.name}
-              tab={tab}
-              isFocused={isFocused}
-              badge={getBadge(tab.name)}
-              onPress={() => {
-                const event = navigation.emit({
-                  type: "tabPress",
-                  target: state.routes[index]?.key ?? tab.name,
-                  canPreventDefault: true,
-                });
-                if (!isFocused && !event.defaultPrevented) {
-                  navigation.navigate(tab.name);
-                }
-              }}
+      {/* Glassmorphic pill */}
+      <View style={styles.pillOuter}>
+        {Platform.OS === "web" ? (
+          <View style={[styles.pillFallback]}>
+            <TabRow
+              state={state}
+              navigation={navigation}
+              currentStreak={currentStreak}
+              reflectedToday={reflectedToday}
             />
-          );
-        })}
+          </View>
+        ) : (
+          <BlurView intensity={75} tint="dark" style={styles.pill}>
+            <TabRow
+              state={state}
+              navigation={navigation}
+              currentStreak={currentStreak}
+              reflectedToday={reflectedToday}
+            />
+          </BlurView>
+        )}
+        {/* Border overlay (BlurView ignores borderWidth on some platforms) */}
+        <View style={styles.pillBorder} pointerEvents="none" />
       </View>
     </View>
   );
 }
 
+function TabRow({
+  state,
+  navigation,
+  currentStreak,
+  reflectedToday,
+}: {
+  state: BottomTabBarProps["state"];
+  navigation: BottomTabBarProps["navigation"];
+  currentStreak: number;
+  reflectedToday: boolean;
+}) {
+  return (
+    <View style={styles.row}>
+      {TABS.map((tab, index) => {
+        const isFocused = state.index === index;
+        const hasBadge =
+          tab.name === "index" && currentStreak > 0 && !reflectedToday;
+
+        return (
+          <TabItem
+            key={tab.name}
+            tab={tab}
+            isFocused={isFocused}
+            hasBadge={hasBadge}
+            onPress={() => {
+              const event = navigation.emit({
+                type: "tabPress",
+                target: state.routes[index]?.key ?? tab.name,
+                canPreventDefault: true,
+              });
+              if (!isFocused && !event.defaultPrevented) {
+                navigation.navigate(tab.name);
+              }
+            }}
+          />
+        );
+      })}
+    </View>
+  );
+}
+
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
   container: {
     backgroundColor: "#000",
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "rgba(255,255,255,0.08)",
-  },
-  bar: {
-    flexDirection: "row",
+    alignItems: "center",
     paddingTop: 10,
-    paddingHorizontal: 24,
+  },
+  pillOuter: {
+    position: "relative",
+    borderRadius: 36,
+    overflow: "hidden",
+    // Drop shadow
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.45,
+    shadowRadius: 20,
+    elevation: 16,
+  },
+  pill: {
+    borderRadius: 36,
+    overflow: "hidden",
+  },
+  pillFallback: {
+    borderRadius: 36,
+    backgroundColor: "rgba(28, 28, 32, 0.88)",
+    // Web glass blur
+    ...Platform.select({
+      web: {
+        // @ts-ignore
+        backdropFilter: "blur(24px)",
+        WebkitBackdropFilter: "blur(24px)",
+      },
+    }),
+  },
+  pillBorder: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 36,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.13)",
+  },
+  row: {
+    flexDirection: "row",
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    gap: 4,
   },
   tabItem: {
-    flex: 1,
+    width: 76,
     alignItems: "center",
+    justifyContent: "center",
   },
   tabInner: {
     alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 4,
     gap: 4,
+    position: "relative",
+  },
+  activeHighlight: {
+    position: "absolute",
+    top: 0,
+    left: -12,
+    right: -12,
+    bottom: 0,
+    borderRadius: 22,
+    backgroundColor: "rgba(255,255,255,0.09)",
   },
   iconWrap: {
     position: "relative",
+    alignItems: "center",
+    justifyContent: "center",
   },
   badge: {
     position: "absolute",
-    top: -3,
-    right: -5,
+    top: -2,
+    right: -4,
     width: 7,
     height: 7,
     borderRadius: 3.5,
+    backgroundColor: "#FF9500",
+    borderWidth: 1.5,
+    borderColor: "#000",
   },
-  tabLabel: {
-    fontSize: 10,
-    fontFamily: "Inter_500Medium",
-    letterSpacing: 0.3,
+  dot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#fff",
   },
 });
