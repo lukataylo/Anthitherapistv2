@@ -112,21 +112,21 @@ const DISTORTED_FALLBACK: Round[] = [
     isDistorted: true,
     highlight: ["always", "everything"],
     explanation:
-      ""Always" and "everything" are overgeneralizations — one setback doesn't define every outcome.",
+      `"Always" and "everything" are overgeneralizations — one setback doesn't define every outcome.`,
   },
   {
     thought: "Nobody ever cares about what I think.",
     isDistorted: true,
     highlight: ["Nobody", "ever"],
     explanation:
-      ""Nobody" and "ever" are absolute words that rarely reflect reality.",
+      `"Nobody" and "ever" are absolute words that rarely reflect reality.`,
   },
   {
     thought: "This is the worst thing that could have happened to me.",
     isDistorted: true,
     highlight: ["worst"],
     explanation:
-      ""Worst" catastrophizes — difficult events rarely represent the absolute worst possibility.",
+      `"Worst" catastrophizes — difficult events rarely represent the absolute worst possibility.`,
   },
   {
     thought: "I'm completely worthless and useless.",
@@ -140,21 +140,21 @@ const DISTORTED_FALLBACK: Round[] = [
     isDistorted: true,
     highlight: ["Everyone", "stupid"],
     explanation:
-      ""Everyone" overgeneralizes and "stupid" is a label — we can't know what others think.",
+      `"Everyone" overgeneralizes and "stupid" is a label — we can't know what others think.`,
   },
   {
     thought: "It's all my fault. I ruin everything.",
     isDistorted: true,
     highlight: ["all my fault", "everything"],
     explanation:
-      "Taking total blame ignores other factors. "Everything" is an overgeneralization.",
+      `Taking total blame ignores other factors. "Everything" is an overgeneralization.`,
   },
   {
     thought: "I'll never get any better at this.",
     isDistorted: true,
     highlight: ["never"],
     explanation:
-      ""Never" is fortune-telling — skills and situations change with time and effort.",
+      `"Never" is fortune-telling — skills and situations change with time and effort.`,
   },
 ];
 

@@ -12,8 +12,11 @@ import {
 } from "react-native";
 import Animated, {
   Easing,
+  interpolateColor,
   useAnimatedStyle,
   useSharedValue,
+  withRepeat,
+  withSequence,
   withSpring,
   withTiming,
 } from "react-native-reanimated";
@@ -34,7 +37,7 @@ interface CaptureScreenProps {
   streakJustIncremented?: boolean;
 }
 
-const PLACEHOLDER = "What's on your mind?";
+const PLACEHOLDER = "Capture a thought, a belief, or a prediction...";
 
 export function CaptureScreen({
   onSubmit,
@@ -59,10 +62,14 @@ export function CaptureScreen({
 
   const isReviewing = screen === "cloud" || screen === "game";
 
+  const [isRecording, setIsRecording] = React.useState(false);
+
   const sendScale = useSharedValue(1);
   const sendOpacity = useSharedValue(0.3);
   const nudgeOpacity = useSharedValue(0);
   const reviewProgress = useSharedValue(0);
+  const micBg = useSharedValue(0);
+  const micPulse = useSharedValue(1);
 
   const canSend = thought.trim().length > 0 && !isLoading;
   const showNudge = currentStreak > 0 && !reflectedToday;
@@ -89,9 +96,39 @@ export function CaptureScreen({
     });
   }, [isReviewing]);
 
+  useEffect(() => {
+    if (isRecording) {
+      micBg.value = withTiming(1, { duration: 200 });
+      micPulse.value = withRepeat(
+        withSequence(
+          withTiming(1.14, { duration: 480 }),
+          withTiming(1.0, { duration: 480 })
+        ),
+        -1
+      );
+    } else {
+      micBg.value = withTiming(0, { duration: 180 });
+      micPulse.value = withTiming(1, { duration: 200 });
+    }
+  }, [isRecording]);
+
   const sendBtnStyle = useAnimatedStyle(() => ({
     transform: [{ scale: sendScale.value }],
     opacity: sendOpacity.value,
+  }));
+
+  const micBtnStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: micPulse.value }],
+    backgroundColor: interpolateColor(
+      micBg.value,
+      [0, 1],
+      ["#2C2C2C", "#E03030"]
+    ),
+  }));
+
+  const micGlowStyle = useAnimatedStyle(() => ({
+    opacity: micBg.value * 0.3,
+    transform: [{ scale: 1 + micBg.value * 0.25 + (micPulse.value - 1) * 1.4 }],
   }));
 
   const nudgeStyle = useAnimatedStyle(() => ({
@@ -117,8 +154,8 @@ export function CaptureScreen({
   };
 
   const handleMicPress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    inputRef.current?.focus();
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setIsRecording((r) => !r);
   };
 
   const handleBack = () => {
@@ -184,25 +221,34 @@ export function CaptureScreen({
               />
 
               <View style={styles.toolbar}>
-                <Pressable
-                  onPress={handleMicPress}
-                  hitSlop={16}
-                  style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}
-                >
-                  <Ionicons
-                    name="mic-outline"
-                    size={22}
-                    color="rgba(255,255,255,0.28)"
-                  />
-                </Pressable>
+                {/* Mic button */}
+                <View style={styles.micWrap}>
+                  <Animated.View style={[styles.micGlow, micGlowStyle]} />
+                  <Pressable
+                    onPress={handleMicPress}
+                    hitSlop={8}
+                    style={({ pressed }) => ({ opacity: pressed ? 0.75 : 1 })}
+                  >
+                    <Animated.View style={[styles.micBtn, micBtnStyle]}>
+                      <Ionicons name="mic" size={21} color="#fff" />
+                    </Animated.View>
+                  </Pressable>
+                </View>
 
+                {/* Send button — paper plane */}
                 <Pressable
                   onPress={handleSubmit}
                   disabled={!canSend}
                   hitSlop={8}
+                  style={({ pressed }) => ({ opacity: pressed ? 0.75 : 1 })}
                 >
                   <Animated.View style={[styles.sendBtn, sendBtnStyle]}>
-                    <Ionicons name="arrow-up" size={20} color="#fff" />
+                    <Ionicons
+                      name="send"
+                      size={18}
+                      color="#fff"
+                      style={{ marginLeft: 2 }}
+                    />
                   </Animated.View>
                 </Pressable>
               </View>
@@ -356,18 +402,37 @@ const styles = StyleSheet.create({
   toolbar: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "flex-end",
     paddingTop: 14,
+    gap: 10,
   },
-  sendBtn: {
-    backgroundColor: "#0A84FF",
-    paddingHorizontal: 22,
-    paddingVertical: 13,
-    borderRadius: 100,
+  micWrap: {
+    width: 48,
+    height: 48,
     alignItems: "center",
     justifyContent: "center",
-    flexDirection: "row",
-    gap: 4,
+  },
+  micGlow: {
+    position: "absolute",
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#E03030",
+  },
+  micBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sendBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#3A3A3A",
+    alignItems: "center",
+    justifyContent: "center",
   },
   nudgeRow: {
     paddingTop: 12,
