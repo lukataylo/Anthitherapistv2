@@ -42,20 +42,10 @@ const BASE_URL = process.env.EXPO_PUBLIC_DOMAIN
   : "";
 
 function CardTypeTag({ type }: { type: FlashCard["type"] }) {
-  const label =
-    type === "history" ? "Reframe" : type === "journal" ? "Insight" : "Recall";
+  const label = type === "journal" ? "Insight" : "Recall";
   const color =
-    type === "history"
-      ? "rgba(99,179,237,0.25)"
-      : type === "journal"
-      ? "rgba(154,117,245,0.25)"
-      : "rgba(72,199,142,0.25)";
-  const textColor =
-    type === "history"
-      ? "#63B3ED"
-      : type === "journal"
-      ? "#9A75F5"
-      : "#48C78E";
+    type === "journal" ? "rgba(154,117,245,0.25)" : "rgba(72,199,142,0.25)";
+  const textColor = type === "journal" ? "#9A75F5" : "#48C78E";
 
   return (
     <View style={[styles.tag, { backgroundColor: color }]}>

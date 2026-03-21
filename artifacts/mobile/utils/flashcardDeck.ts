@@ -1,17 +1,11 @@
 /**
- * flashcardDeck — assembles the full belief flashcard deck from three sources:
+ * flashcardDeck — assembles the full belief flashcard deck from two sources:
  *
- * 1. **History cards** — derived from the user's own reframing sessions.
- *    For each history entry, we take each distorted word that the user actually
- *    reframed (has an entry in `reframedWords`) and create a card:
- *      front: "Original thought · distorted word"
- *      back:  the healthy replacement the user chose
- *
- * 2. **Journal cards** — insights extracted from discuss/journal sessions by
+ * 1. **Journal cards** — insights extracted from discuss/journal sessions by
  *    the API's GET /api/discuss/insights endpoint. Each insight becomes a card
  *    with its own front/back pair.
  *
- * 3. **Seed cards** — pre-filled "recall your wins" prompts across life
+ * 2. **Seed cards** — pre-filled "recall your wins" prompts across life
  *    categories (social, career, resilience, etc.). The front asks the user to
  *    recall a time they succeeded; the back lists 2-3 concrete example wins to
  *    remind them they have proof they can do it.
@@ -20,9 +14,8 @@
  * so the same card won't appear twice even across different sessions.
  */
 
-import type { HistoryEntry } from "@/context/HistoryContext";
 
-export type CardType = "history" | "journal" | "seed";
+export type CardType = "journal" | "seed";
 
 export interface FlashCard {
   id: string;
@@ -106,36 +99,6 @@ const SEED_CARDS: FlashCard[] = [
   },
 ];
 
-function buildHistoryCards(entries: HistoryEntry[]): FlashCard[] {
-  const cards: FlashCard[] = [];
-  const seen = new Set<string>();
-
-  for (const entry of entries) {
-    for (const [idxStr, reframe] of Object.entries(entry.reframedWords)) {
-      const idx = Number(idxStr);
-      const word = entry.words[idx];
-      if (!word || word.category === "neutral") continue;
-      if (!reframe || reframe === word.word) continue;
-
-      const front = `"${word.word}" in: ${entry.thought.slice(0, 50)}${entry.thought.length > 50 ? "…" : ""}`;
-      const back = `Replace "${word.word}" with "${reframe}"`;
-
-      const dedupeKey = `${word.word.toLowerCase().trim()}|${reframe.toLowerCase().trim()}`;
-      if (seen.has(dedupeKey)) continue;
-      seen.add(dedupeKey);
-
-      cards.push({
-        id: `history-${entry.id}-${idx}`,
-        type: "history",
-        front,
-        back,
-      });
-    }
-  }
-
-  return cards;
-}
-
 async function fetchJournalCards(baseUrl: string): Promise<FlashCard[]> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 8000);
@@ -173,11 +136,10 @@ export interface DeckResult {
 }
 
 export async function buildDeck(
-  entries: HistoryEntry[],
+  _entries: unknown,
   baseUrl: string
 ): Promise<DeckResult> {
   const journalCards = await fetchJournalCards(baseUrl);
-  const historyCards = buildHistoryCards(entries);
 
   const seen = new Set<string>();
   const dedupe = (card: FlashCard): FlashCard | null => {
@@ -187,7 +149,7 @@ export async function buildDeck(
     return card;
   };
 
-  const pool = [...historyCards, ...journalCards, ...SEED_CARDS];
+  const pool = [...journalCards, ...SEED_CARDS];
   for (let i = pool.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [pool[i], pool[j]] = [pool[j], pool[i]];
