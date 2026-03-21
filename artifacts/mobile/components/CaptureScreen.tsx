@@ -67,10 +67,6 @@ import Animated, {
   withSpring,
   withTiming,
 } from "react-native-reanimated";
-import {
-  ExpoSpeechRecognitionModule,
-  useSpeechRecognitionEvent,
-} from "expo-speech-recognition";
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -81,6 +77,20 @@ import { ThinkingAnimation } from "@/components/ThinkingAnimation";
 import { StreakBadge } from "@/components/StreakBadge";
 import { AnnotatedThought } from "@/components/AnnotatedThought";
 import { GamePanel } from "@/components/GamePanel";
+
+// expo-speech-recognition requires a custom Expo dev client — not available in
+// standard Expo Go. Dynamic require lets the app load without the native module;
+// all mic/speech features are silently disabled when it isn't present.
+const _speechMod = (() => {
+  try { return require("expo-speech-recognition"); } catch { return null; }
+})();
+const SpeechModule: null | {
+  addListener: (event: string, handler: (e: any) => void) => { remove(): void };
+  stop: () => void;
+  requestPermissionsAsync: () => Promise<{ granted: boolean }>;
+  start: (opts: object) => void;
+} = _speechMod?.ExpoSpeechRecognitionModule ?? null;
+const speechAvailable = SpeechModule !== null;
 
 interface CaptureScreenProps {
   onSubmit: (thought: string) => void;
@@ -130,25 +140,36 @@ export function CaptureScreen({
   const micBg = useSharedValue(0);          // Mic background: 0=dark, 1=red
   const micPulse = useSharedValue(1);       // Mic pulse scale while recording
 
-  // Speech recognition: capture interim results while the user speaks
-  useSpeechRecognitionEvent("result", (event) => {
-    if (event.isFinal) {
-      const transcript = event.results[0]?.transcript ?? "";
-      if (transcript) {
-        const base = thoughtRef.current.trim();
-        setThought(base ? `${base} ${transcript}` : transcript);
+  // Speech recognition event listeners — only active when native module is present.
+  // We use useEffect (same hook-call count as useSpeechRecognitionEvent internally)
+  // so React's rules of hooks are satisfied regardless of speechAvailable.
+  useEffect(() => {
+    if (!SpeechModule) return;
+    const sub = SpeechModule.addListener("result", (event: any) => {
+      if (event.isFinal) {
+        const transcript = event.results[0]?.transcript ?? "";
+        if (transcript) {
+          const base = thoughtRef.current.trim();
+          setThought(base ? `${base} ${transcript}` : transcript);
+        }
+        setInterimText("");
+      } else {
+        setInterimText(event.results[0]?.transcript ?? "");
       }
-      setInterimText("");
-    } else {
-      setInterimText(event.results[0]?.transcript ?? "");
-    }
-  });
+    });
+    return () => sub.remove();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  // When recognition ends, update UI state
-  useSpeechRecognitionEvent("end", () => {
-    setIsRecording(false);
-    setInterimText("");
-  });
+  useEffect(() => {
+    if (!SpeechModule) return;
+    const sub = SpeechModule.addListener("end", () => {
+      setIsRecording(false);
+      setInterimText("");
+    });
+    return () => sub.remove();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Animate mic button whenever recording state changes
   useEffect(() => {
@@ -250,15 +271,16 @@ export function CaptureScreen({
 
   /** Toggle the microphone: request permission, start/stop speech recognition. */
   const handleMicPress = async () => {
+    if (!SpeechModule) return;
     if (isRecording) {
-      ExpoSpeechRecognitionModule.stop();
+      SpeechModule.stop();
       return;
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    const { granted } = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+    const { granted } = await SpeechModule.requestPermissionsAsync();
     if (!granted) return;
     setIsRecording(true);
-    ExpoSpeechRecognitionModule.start({
+    SpeechModule.start({
       lang: "en-US",
       interimResults: true,
       continuous: false,
@@ -338,7 +360,9 @@ export function CaptureScreen({
               )}
 
               <View style={styles.toolbar}>
-                {/* Mic button — real speech-to-text, pulses red while recording */}
+                {/* Mic button — only rendered when native speech module is available
+                    (requires custom Expo dev client; hidden in standard Expo Go) */}
+                {speechAvailable && (
                 <Pressable onPress={handleMicPress} hitSlop={8}>
                   <View style={styles.micWrap}>
                     {/* Glow halo behind the button */}
@@ -352,6 +376,7 @@ export function CaptureScreen({
                     </Animated.View>
                   </View>
                 </Pressable>
+                )}
 
                 {/* Send button — icon colour inverts with the background */}
                 <Pressable
