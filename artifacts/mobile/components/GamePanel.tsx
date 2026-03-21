@@ -133,6 +133,7 @@ export function GamePanel() {
   const [wrongAttempts, setWrongAttempts] = useState<WrongAttempt[]>([]);
   const [hintRevealed, setHintRevealed] = useState(false);
   const [fiftyFiftyOptions, setFiftyFiftyOptions] = useState<string[] | null>(null);
+  const fiftyFiftyCorrectRef = useRef<string | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
   const [celebrationWord, setCelebrationWord] = useState("");
   const [timeLeft, setTimeLeft] = useState(TIMER_SECONDS);
@@ -153,6 +154,7 @@ export function GamePanel() {
       setWrongAttempts([]);
       setHintRevealed(false);
       setFiftyFiftyOptions(null);
+      fiftyFiftyCorrectRef.current = null;
       setShowCelebration(false);
       setTimeLeft(TIMER_SECONDS);
       timerProgress.value = 1;
@@ -293,9 +295,9 @@ export function GamePanel() {
 
   const handleFiftyFiftyPick = (option: string) => {
     if (!activeWord) return;
-    const goodReframes = activeWord.reframes.map((r) => r.toLowerCase().trim());
     const optLower = option.toLowerCase().trim();
-    const isCorrect = goodReframes.some((r) => isCloseEnoughToReframe(optLower, r));
+    const correctLower = (fiftyFiftyCorrectRef.current ?? "").toLowerCase().trim();
+    const isCorrect = optLower === correctLower;
 
     if (isCorrect) {
       handleSuccess(option);
@@ -526,10 +528,15 @@ export function GamePanel() {
                     // Use the AI-provided 50/50 pair if available; otherwise construct
                     // a fallback from the hint and the original word
                     const ff = activeWord.fiftyFifty;
+                    const correctAnswer =
+                      Array.isArray(ff) && ff.length >= 2
+                        ? ff[0]
+                        : (activeWord.hint ?? "sometimes");
+                    fiftyFiftyCorrectRef.current = correctAnswer;
                     const opts =
                       Array.isArray(ff) && ff.length >= 2
                         ? [...ff].sort(() => Math.random() - 0.5)
-                        : [activeWord.hint ?? "sometimes", activeWord.word];
+                        : [correctAnswer, activeWord.word];
                     setFiftyFiftyOptions(opts);
                   }}
                   accessibilityLabel="50 50"
