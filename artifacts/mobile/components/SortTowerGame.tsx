@@ -376,7 +376,7 @@ export function SortTowerGame({ visible, entries, onClose }: SortTowerGameProps)
   const [score, setScore] = useState(0);
   const [floors, setFloors] = useState<Floor[]>([]);
   const [timeLeft, setTimeLeft] = useState(GAME_SECONDS);
-  const [phase, setPhase] = useState<"playing" | "done">("playing");
+  const [phase, setPhase] = useState<"playing" | "done" | "empty">("playing");
   const [streak, setStreak] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -393,11 +393,15 @@ export function SortTowerGame({ visible, entries, onClose }: SortTowerGameProps)
     setScore(0);
     setFloors([]);
     setTimeLeft(GAME_SECONDS);
-    setPhase("playing");
     setStreak(0);
     swipeHintOpacity.value = 1;
     timerPulse.value = 1;
     if (timerRef.current) clearInterval(timerRef.current);
+    if (d.length === 0) {
+      setPhase("empty");
+      return;
+    }
+    setPhase("playing");
     timerRef.current = setInterval(() => {
       setTimeLeft((t) => {
         if (t <= 1) {
@@ -531,7 +535,17 @@ export function SortTowerGame({ visible, entries, onClose }: SortTowerGameProps)
 
         {/* Card area */}
         <View style={styles.midArea}>
-          {phase === "playing" && currentWord ? (
+          {phase === "empty" ? (
+            <View style={styles.emptyBox}>
+              <Text style={styles.emptyTitle}>Not Enough Reflections</Text>
+              <Text style={styles.emptyBody}>
+                Complete a few more reflections first, then come back to play.
+              </Text>
+              <Pressable style={styles.emptyCloseBtn} onPress={onClose}>
+                <Text style={styles.emptyCloseBtnText}>Close</Text>
+              </Pressable>
+            </View>
+          ) : phase === "playing" && currentWord ? (
             <>
               <ComboFlash combo={streak} />
               <WordCard key={cardKey} word={currentWord} onSwipe={handleSwipe} />
@@ -854,5 +868,37 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.08)",
     alignItems: "center",
     justifyContent: "center",
+  },
+  emptyBox: {
+    alignItems: "center",
+    paddingHorizontal: 32,
+    gap: 12,
+  },
+  emptyTitle: {
+    color: TEXT_DARK,
+    fontSize: 20,
+    fontFamily: "Inter_700Bold",
+    textAlign: "center",
+    letterSpacing: -0.3,
+  },
+  emptyBody: {
+    color: TEXT_MID,
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+    lineHeight: 20,
+  },
+  emptyCloseBtn: {
+    marginTop: 8,
+    backgroundColor: "#fff",
+    paddingHorizontal: 28,
+    paddingVertical: 13,
+    borderRadius: 100,
+  },
+  emptyCloseBtnText: {
+    color: "#000",
+    fontSize: 15,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: -0.2,
   },
 });
