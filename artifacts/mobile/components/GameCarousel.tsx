@@ -64,6 +64,16 @@ const GAMES: GameDef[] = [
     patternType: "rings",
     available: true,
   },
+  {
+    id: "reword",
+    name: "Reword",
+    category: "LANGUAGE",
+    icon: "swap-horizontal-outline",
+    bg: "#160A1C",
+    patternColor: "#8A2050",
+    patternType: "chevrons",
+    available: true,
+  },
 ];
 
 function ChevronsPattern({ color }: { color: string }) {
