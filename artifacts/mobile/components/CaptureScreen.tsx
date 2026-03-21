@@ -693,7 +693,7 @@ export function CaptureScreen() {
                       { opacity: pressed ? 0.7 : 1 },
                     ]}
                   >
-                    <Text style={styles.checkinBtnAltText}>That's enough for now</Text>
+                    <Text style={styles.checkinBtnAltText}>Enough for now</Text>
                   </Pressable>
                 </View>
               </Animated.View>
