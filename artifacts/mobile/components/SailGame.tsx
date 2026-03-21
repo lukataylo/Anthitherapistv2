@@ -587,9 +587,9 @@ function AnnotationThoughtLine({
 
 // ─── Progress bar (boat advancement) ─────────────────────────────────────────
 
-function ProgressTrack({ xAnim }: { xAnim: Animated.Value }) {
-  const pct = xAnim.interpolate({
-    inputRange: [BOAT_START, BOAT_END],
+function ProgressTrack({ progressAnim }: { progressAnim: Animated.Value }) {
+  const pct = progressAnim.interpolate({
+    inputRange: [0, 1],
     outputRange: ["0%", "100%"],
     extrapolate: "clamp",
   });
@@ -624,6 +624,7 @@ export function SailGame({
   const [annotating, setAnnotating] = useState(false);
 
   const boatX = useRef(new Animated.Value(BOAT_START)).current;
+  const progressAnim = useRef(new Animated.Value(0)).current;
   const feedbackOpacity = useRef(new Animated.Value(0)).current;
   const boatXVal = useRef(BOAT_START);
 
@@ -666,12 +667,21 @@ export function SailGame({
 
   const advanceBoat = useCallback(() => {
     const next = Math.min(BOAT_END, boatXVal.current + STEP);
-    Animated.timing(boatX, {
-      toValue: next,
-      duration: 420,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start();
+    const progress = (next - BOAT_START) / (BOAT_END - BOAT_START);
+    Animated.parallel([
+      Animated.timing(boatX, {
+        toValue: next,
+        duration: 420,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(progressAnim, {
+        toValue: progress,
+        duration: 420,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: false,
+      }),
+    ]).start();
     if (next >= BOAT_END) {
       stopTimer();
       setTimeout(() => {
@@ -681,7 +691,7 @@ export function SailGame({
         }
       }, 500);
     }
-  }, [boatX, stopTimer]);
+  }, [boatX, progressAnim, stopTimer]);
 
   const flashFeedback = useCallback(
     (correct: boolean) => {
@@ -783,11 +793,12 @@ export function SailGame({
     setStreak(0);
     setExplanation(null);
     boatX.setValue(BOAT_START);
+    progressAnim.setValue(0);
     boatXVal.current = BOAT_START;
     phaseRef.current = "playing";
     setPhase("playing");
     startTimer();
-  }, [entries, boatX, startTimer]);
+  }, [entries, boatX, progressAnim, startTimer]);
 
   useEffect(() => {
     if (!visible) {
@@ -858,7 +869,7 @@ export function SailGame({
 
         {/* ── Progress track ── */}
         {phase === "playing" && (
-          <ProgressTrack xAnim={boatX} />
+          <ProgressTrack progressAnim={progressAnim} />
         )}
 
         {/* ── Playing UI ── */}
