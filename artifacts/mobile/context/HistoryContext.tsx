@@ -41,9 +41,11 @@ import React, {
 } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { WordAnalysis } from "@/context/GameContext";
+import { sessionStore } from "@/src/modules/sessionStore";
+import type { Session } from "@/src/types";
 
 /** Versioned storage key — increment if the shape of HistoryEntry ever changes. */
-const STORAGE_KEY = "reframe_history_v1";
+const STORAGE_KEY = "temet_history_ui_adapter";
 
 export interface HistoryEntry {
   id: string;
@@ -81,13 +83,12 @@ export function HistoryProvider({ children }: { children: ReactNode }) {
   const loaded = useRef(false);
 
   useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY)
-      .then((raw) => {
-        if (raw) {
-          const parsed = JSON.parse(raw) as HistoryEntry[];
-          // Guard against corrupted storage containing a non-array value
-          setEntries(Array.isArray(parsed) ? parsed : []);
-        }
+    Promise.all([sessionStore.loadFromStorage(), AsyncStorage.getItem(STORAGE_KEY)])
+      .then(([, raw]) => {
+        if (!raw) return;
+        const parsed = JSON.parse(raw) as HistoryEntry[];
+        // Guard against corrupted storage containing a non-array value
+        setEntries(Array.isArray(parsed) ? parsed : []);
       })
       .catch(() => {
         // Storage read failures are silent — the app works without history
@@ -123,6 +124,18 @@ export function HistoryProvider({ children }: { children: ReactNode }) {
         persist(next);
         return next;
       });
+      const completedSession: Session = {
+        id,
+        createdAt: entry.savedAt,
+        completedAt: entry.savedAt,
+        moodOnOpen: "low",
+        turnCount: words.length > 0 ? words.length : 1,
+        status: "complete",
+        feedbackPayload: null,
+        sessionPhase: "descent",
+        checkInState: "none",
+      };
+      void sessionStore.upsertCompletedSession(completedSession);
       return id;
     },
     [persist]
@@ -148,6 +161,7 @@ export function HistoryProvider({ children }: { children: ReactNode }) {
         persist(next);
         return next;
       });
+      void sessionStore.removeHistorySession(id);
     },
     [persist]
   );

@@ -45,6 +45,7 @@ import React, {
   useCallback,
   ReactNode,
 } from "react";
+import { sessionStore } from "@/src/modules/sessionStore";
 
 /** Four distortion categories assigned by Claude, plus "neutral". */
 export type WordCategory =
@@ -135,7 +136,18 @@ export function GameProvider({ children }: { children: ReactNode }) {
       screen: "cloud",
       activeWordIndex: null,
     }));
-  }, []);
+    // Adapter bridge: mirror the captured thought into the new session store.
+    void (async () => {
+      const snapshot = state.thought.trim();
+      if (!snapshot) return;
+      try {
+        await sessionStore.startSession("low");
+        await sessionStore.addTurn(snapshot, "text");
+      } catch {
+        // Keep legacy context flow unaffected if storage fails.
+      }
+    })();
+  }, [state.thought]);
 
   /** Transition to the game screen for a specific word. */
   const openGame = useCallback((wordIndex: number) => {
@@ -206,6 +218,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       reframedWords: {},
       activeWordIndex: null,
     });
+    void sessionStore.clearSession();
   }, []);
 
   // Derived values — computed outside render to avoid re-computation per render
