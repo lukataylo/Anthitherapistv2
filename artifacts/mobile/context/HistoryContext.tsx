@@ -60,8 +60,11 @@ interface HistoryContextValue {
   entries: HistoryEntry[];
   /** Create a new entry and return its id so GameContext can reference it. */
   addEntry: (thought: string, words: WordAnalysis[]) => string;
-  /** Patch the reframedWords map on an existing entry. */
-  updateEntry: (id: string, reframedWords: Record<number, string>) => void;
+  /**
+   * Patch an existing entry. Provide `reframedWords` to update progress, and
+   * optionally `words` to upgrade the word list (e.g. after LLM enrichment).
+   */
+  updateEntry: (id: string, reframedWords: Record<number, string>, words?: WordAnalysis[]) => void;
   removeEntry: (id: string) => void;
 }
 
@@ -129,11 +132,16 @@ export function HistoryProvider({ children }: { children: ReactNode }) {
   );
 
   const updateEntry = useCallback(
-    (id: string, reframedWords: Record<number, string>) => {
+    (id: string, reframedWords: Record<number, string>, words?: WordAnalysis[]) => {
       setEntries((prev) => {
-        const next = prev.map((e) =>
-          e.id === id ? { ...e, reframedWords } : e
-        );
+        const next = prev.map((e) => {
+          if (e.id !== id) return e;
+          return {
+            ...e,
+            reframedWords,
+            ...(words !== undefined ? { words } : {}),
+          };
+        });
         persist(next);
         return next;
       });

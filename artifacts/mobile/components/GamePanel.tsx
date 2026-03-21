@@ -46,6 +46,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Keyboard,
   KeyboardAvoidingView,
   Modal,
@@ -122,6 +123,7 @@ export function GamePanel() {
     closeGame,
     markReframed,
     skipWord,
+    isEnriching,
   } = useGame();
 
   const isVisible = screen === "game" && activeWordIndex !== null;
@@ -287,6 +289,11 @@ export function GamePanel() {
     const trimmed = reframeText.trim();
     if (!trimmed) return;
 
+    if (isEnriching || !activeWord || activeWord.reframes.length === 0) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      return;
+    }
+
     Keyboard.dismiss();
     const isCorrect = evaluateReframe(trimmed);
 
@@ -294,7 +301,6 @@ export function GamePanel() {
       handleSuccess(trimmed);
     } else {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      // Record the failed attempt with the AI's explainer so the user learns why
       setWrongAttempts((prev) => [
         ...prev,
         {
@@ -500,7 +506,10 @@ export function GamePanel() {
                 </ScrollView>
               )}
 
-              {/* Free-text reframe input — toggled by the REFRAME button */}
+              {/* Free-text reframe input — toggled by the REFRAME button.
+                  Always editable so the user can type ahead while enrichment
+                  is pending. Submit is guarded: if reframes haven't loaded yet,
+                  the attempt is silently held until they arrive. */}
               {showReframeInput ? (
                 <View style={styles.inputRow}>
                   <TextInput
@@ -527,6 +536,14 @@ export function GamePanel() {
                 </View>
               ) : null}
 
+              {/* Enrichment loading indicator — shown while Claude is still processing */}
+              {isEnriching && (
+                <View style={styles.enrichingRow}>
+                  <ActivityIndicator size="small" color={Colors.textSecondary} />
+                  <Text style={styles.enrichingText}>Loading reframes…</Text>
+                </View>
+              )}
+
               {/* Action buttons */}
               <Animated.View style={[styles.actionRow, actionsEnterStyle]}>
                 <Pressable
@@ -550,30 +567,31 @@ export function GamePanel() {
                 <Pressable
                   style={({ pressed }) => [
                     styles.actionBtn,
-                    { backgroundColor: Colors.hintBtn, opacity: pressed ? 0.85 : 1 },
+                    { backgroundColor: Colors.hintBtn, opacity: isEnriching ? 0.4 : pressed ? 0.85 : 1 },
                   ]}
                   onPress={() => {
+                    if (isEnriching) return;
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     setHintRevealed(true);
                     setFiftyFiftyOptions(null);
                   }}
+                  disabled={isEnriching}
                   accessibilityLabel="Hint"
                   accessibilityRole="button"
-                  accessibilityHint="Reveal a hint word to help you reframe"
+                  accessibilityHint={isEnriching ? "Waiting for AI to load hints" : "Reveal a hint word to help you reframe"}
                 >
-                  <Text style={styles.actionBtnText}>HINT</Text>
+                  <Text style={[styles.actionBtnText, isEnriching && { opacity: 0.5 }]}>HINT</Text>
                 </Pressable>
 
                 <Pressable
                   style={({ pressed }) => [
                     styles.actionBtn,
-                    { backgroundColor: Colors.fiftyBtn, opacity: pressed ? 0.85 : 1 },
+                    { backgroundColor: Colors.fiftyBtn, opacity: isEnriching ? 0.4 : pressed ? 0.85 : 1 },
                   ]}
                   onPress={() => {
+                    if (isEnriching) return;
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                     setShowReframeInput(false);
-                    // Use the AI-provided 50/50 pair if available; otherwise construct
-                    // a fallback from the hint and the original word
                     const ff = activeWord.fiftyFifty;
                     const correctAnswer =
                       Array.isArray(ff) && ff.length >= 2
@@ -586,11 +604,12 @@ export function GamePanel() {
                         : [correctAnswer, activeWord.word];
                     setFiftyFiftyOptions(opts);
                   }}
+                  disabled={isEnriching}
                   accessibilityLabel="50 50"
                   accessibilityRole="button"
-                  accessibilityHint="Show two options and pick the better reframe"
+                  accessibilityHint={isEnriching ? "Waiting for AI to load options" : "Show two options and pick the better reframe"}
                 >
-                  <Text style={styles.actionBtnText}>50/50</Text>
+                  <Text style={[styles.actionBtnText, isEnriching && { opacity: 0.5 }]}>50/50</Text>
                 </Pressable>
 
                 <Pressable
@@ -832,5 +851,20 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontSize: 13,
     fontFamily: "Inter_500Medium",
+  },
+  enrichingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    marginBottom: 4,
+  },
+  enrichingText: {
+    color: Colors.textSecondary,
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    fontStyle: "italic",
   },
 });

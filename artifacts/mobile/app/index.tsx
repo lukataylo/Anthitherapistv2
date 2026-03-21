@@ -5,25 +5,33 @@
  * providers, and the CaptureScreen component. It intentionally contains no
  * UI of its own — all rendering is delegated to CaptureScreen.
  *
- * ## User flow
+ * ## Two-phase analysis flow
  *
- *  1. User types a thought and taps Send
- *  2. `handleSubmitThought` stores the text in `pendingThoughtRef` and fires
- *     the React Query mutation (POST /api/reframe)
- *  3. While the request is in-flight, `mutation.isPending` is true and
- *     CaptureScreen renders the ThinkingAnimation loading state
- *  4. `onSuccess` maps the API response into WordAnalysis[], creates a history
- *     entry, records the streak, and hands the words to GameContext via `setWords()`
- *  5. GameContext transitions the screen to "cloud" (annotated thought review)
- *  6. As the user reframes words, GameContext updates `reframedWords`
- *  7. The useEffect on `reframedWords` syncs those changes back to HistoryContext
+ * When the user submits a thought:
  *
- * ## Why refs instead of state for pendingThought and entryId?
+ * Phase 1 — Instant local pattern matching (synchronous, no loader)
+ *  1. `categoriseLocally` tokenises the thought and classifies each word using
+ *     the on-device distortion dictionary.
+ *  2. `setWords(localWords)` is called immediately, transitioning GameContext
+ *     to "cloud" with the locally-matched categories already colour-coded.
+ *  3. `isEnriching` in GameContext is set to `true` (done inside `setWords`).
+ *  4. A history entry is created immediately with the local words so that any
+ *     reframes the user makes before enrichment completes are tracked correctly.
  *
- * `pendingThoughtRef` and `entryIdRef` are mutable refs rather than state
- * because they bridge async boundaries (mutation callbacks, useEffect) where
- * stale closure bugs are common. We don't want a re-render when these values
- * change — we just need to read the latest value inside a callback.
+ * Phase 2 — LLM enrichment (async, in parallel with Phase 1 display)
+ *  5. The React Query mutation fires POST /api/reframe in the background.
+ *  6. `onSuccess` merges the richer API result (reframes, hints, 50-50,
+ *     explainers, corrected categories) over the local result via
+ *     `mergeEnrichedWords`. `isEnriching` becomes `false`.
+ *  7. The history entry's word list is upgraded to the enriched version while
+ *     preserving whatever reframedWords the user has entered so far.
+ *
+ * ## Why refs instead of state for pendingThought, entryId, and reframedWords?
+ *
+ * These are mutable refs rather than state because they bridge async boundaries
+ * (mutation callbacks, useEffect) where stale closure bugs are common. We don't
+ * want a re-render when these values change — we just need to read the latest
+ * value inside a callback.
  *
  * ## Streak animation
  *
@@ -41,24 +49,23 @@ import { useHistory } from "@/context/HistoryContext";
 import { useStreak } from "@/context/StreakContext";
 import { CaptureScreen } from "@/components/CaptureScreen";
 import { useReframeThought, type ReframeResponse } from "@workspace/api-client-react";
+import { categoriseLocally } from "@/utils/localDistortionDictionary";
 
 export default function HomeScreen() {
-  const { setWords, words, reframedWords } = useGame();
+  const { setWords, words, reframedWords, mergeEnrichedWords, setIsEnriching } = useGame();
   const { addEntry, updateEntry } = useHistory();
   const { recordReflection } = useStreak();
-  // The id returned by addEntry, held in a ref so the useEffect below can
-  // always read the latest value without being listed as a dependency
   const entryIdRef = useRef<string | null>(null);
-  // The thought text submitted in the current API request; stored as a ref
-  // rather than state to avoid triggering a re-render on submit
-  const pendingThoughtRef = useRef<string>("");
   const [streakJustIncremented, setStreakJustIncremented] = useState(false);
+
+  // Keep a ref to the latest reframedWords so the onSuccess callback always
+  // reads the current value — avoids stale closure bugs in the async callback.
+  const reframedWordsRef = useRef<Record<number, string>>({});
+  useEffect(() => { reframedWordsRef.current = reframedWords; }, [reframedWords]);
 
   const mutation = useReframeThought({
     mutation: {
       onSuccess(data: ReframeResponse) {
-        // Map API response to the internal WordAnalysis shape, providing
-        // safe defaults for optional fields that Claude might omit
         const mapped = data.words.map((w) => ({
           word: w.word,
           category: w.category ?? "neutral",
@@ -67,15 +74,18 @@ export default function HomeScreen() {
           fiftyFifty: w.fiftyFifty ?? [],
           explainer: w.explainer ?? null,
         }));
-        // Create the history entry first so we have an id to update later
-        const id = addEntry(pendingThoughtRef.current, mapped);
-        entryIdRef.current = id;
+
+        mergeEnrichedWords(mapped);
+
+        if (entryIdRef.current) {
+          updateEntry(entryIdRef.current, reframedWordsRef.current, mapped);
+        }
+
         recordReflection();
         setStreakJustIncremented(true);
-        // Transition GameContext to the "cloud" (annotation review) screen
-        setWords(mapped);
       },
       onError(err: unknown) {
+        setIsEnriching(false);
         const message =
           err instanceof Error ? err.message : "Something went wrong";
         Alert.alert(
@@ -88,12 +98,8 @@ export default function HomeScreen() {
 
   /**
    * Sync reframedWords back to HistoryContext whenever the user completes or
-   * skips a word in the GamePanel. This keeps the history entry's reframedWords
-   * map up to date so the HistoryScreen progress badge is accurate.
-   *
-   * The dep array intentionally omits `entryIdRef` and `updateEntry` because:
-   * - refs don't trigger re-renders
-   * - updateEntry is stable (wrapped in useCallback with no deps)
+   * skips a word in the GamePanel. This keeps the history entry up to date as
+   * the user works through the session.
    */
   useEffect(() => {
     if (entryIdRef.current && words.length > 0) {
@@ -110,16 +116,29 @@ export default function HomeScreen() {
   }, [streakJustIncremented]);
 
   const handleSubmitThought = (text: string) => {
-    pendingThoughtRef.current = text;
+    const localWords = categoriseLocally(text);
+
+    if (localWords.length > 0) {
+      setWords(localWords);
+      const id = addEntry(text, localWords);
+      entryIdRef.current = id;
+    } else {
+      entryIdRef.current = null;
+    }
+
     mutation.mutate({ data: { thought: text } });
   };
+
+  // Only show the full-screen ThinkingAnimation in the edge case where the
+  // local pass produced no words (empty thought) and the API is still pending.
+  const isLoading = mutation.isPending && words.length === 0;
 
   return (
     <View style={styles.root}>
       <StatusBar style="light" />
       <CaptureScreen
         onSubmit={handleSubmitThought}
-        isLoading={mutation.isPending}
+        isLoading={isLoading}
         streakJustIncremented={streakJustIncremented}
         entryId={entryIdRef.current}
       />

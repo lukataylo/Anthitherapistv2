@@ -19,6 +19,10 @@
  *                       HistoryContext after each change via HomeScreen's useEffect.
  * - `activeWordIndex` — the index of the word currently open in the GamePanel,
  *                       or null when the panel is closed.
+ * - `isEnriching`     — true while the LLM enrichment API call is in-flight.
+ *                       The screen transitions to "cloud" immediately with local
+ *                       pattern matches; once isEnriching flips to false the
+ *                       full LLM data (reframes, hints, etc.) is available.
  *
  * ## Screen transitions
  *
@@ -77,12 +81,29 @@ interface GameState {
   /** Key: word index in the `words` array. Value: the chosen reframe string. */
   reframedWords: Record<number, string>;
   activeWordIndex: number | null;
+  /**
+   * True while the LLM enrichment API call is in-flight. The cloud screen is
+   * shown immediately with local pattern-matched categories; reframes/hints/etc.
+   * fill in once this flips to false.
+   */
+  isEnriching: boolean;
 }
 
 interface GameContextValue extends GameState {
   setThought: (thought: string) => void;
-  /** Called after the API responds successfully — loads words and transitions to "cloud". */
+  /**
+   * Phase 1: immediately transition to "cloud" with locally-matched words.
+   * Also sets isEnriching = true so downstream components know enrichment is pending.
+   */
   setWords: (words: WordAnalysis[]) => void;
+  /**
+   * Phase 2: merge the LLM-enriched result over the locally-matched words.
+   * Preserves word order from the local result and fills in reframes, hints,
+   * fiftyFifty, explainer, and any corrected categories. Sets isEnriching = false.
+   */
+  mergeEnrichedWords: (enrichedWords: WordAnalysis[]) => void;
+  /** Set isEnriching flag — used by HomeScreen to signal enrichment start/end. */
+  setIsEnriching: (value: boolean) => void;
   /** Hydrate a past session from HistoryContext (used when tapping a history entry). */
   loadSession: (thought: string, words: WordAnalysis[], reframedWords: Record<number, string>) => void;
   /** Open the GamePanel for the word at the given index. */
@@ -117,6 +138,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     words: [],
     reframedWords: {},
     activeWordIndex: null,
+    isEnriching: false,
   });
 
   const setThought = useCallback((thought: string) => {
@@ -124,7 +146,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
   }, []);
 
   /**
-   * Transition from capture to cloud after the API responds.
+   * Phase 1 — Transition from capture to cloud immediately with locally-matched
+   * words. Sets isEnriching = true so components know enrichment is still pending.
    * Clears any previous reframedWords so the new session starts clean.
    */
   const setWords = useCallback((words: WordAnalysis[]) => {
@@ -134,7 +157,38 @@ export function GameProvider({ children }: { children: ReactNode }) {
       reframedWords: {},
       screen: "cloud",
       activeWordIndex: null,
+      isEnriching: true,
     }));
+  }, []);
+
+  /**
+   * Phase 2 — Merge the LLM-enriched words over the local result.
+   * Preserves word order from the local pass; for each position, upgrades the
+   * category (in case Claude corrects a local guess) and fills in the
+   * previously-empty reframes, hint, fiftyFifty, and explainer.
+   * Sets isEnriching = false once complete.
+   */
+  const mergeEnrichedWords = useCallback((enrichedWords: WordAnalysis[]) => {
+    setState((s) => {
+      const merged: WordAnalysis[] = s.words.map((localWord, idx) => {
+        const enriched = enrichedWords[idx];
+        if (!enriched) return localWord;
+        return {
+          word: localWord.word,
+          category: enriched.category ?? localWord.category,
+          reframes: enriched.reframes ?? localWord.reframes,
+          hint: enriched.hint ?? localWord.hint,
+          fiftyFifty: enriched.fiftyFifty ?? localWord.fiftyFifty,
+          explainer: enriched.explainer ?? localWord.explainer,
+        };
+      });
+      return { ...s, words: merged, isEnriching: false };
+    });
+  }, []);
+
+  /** Expose the isEnriching flag so HomeScreen can set it on error/reset. */
+  const setIsEnriching = useCallback((value: boolean) => {
+    setState((s) => ({ ...s, isEnriching: value }));
   }, []);
 
   /** Transition to the game screen for a specific word. */
@@ -192,6 +246,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         words,
         reframedWords,
         activeWordIndex: null,
+        isEnriching: false,
       });
     },
     []
@@ -205,6 +260,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       words: [],
       reframedWords: {},
       activeWordIndex: null,
+      isEnriching: false,
     });
   }, []);
 
@@ -228,6 +284,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
     ...state,
     setThought,
     setWords,
+    mergeEnrichedWords,
+    setIsEnriching,
     loadSession,
     openGame,
     closeGame,
