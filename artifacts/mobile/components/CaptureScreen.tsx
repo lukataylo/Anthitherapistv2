@@ -65,7 +65,7 @@ export function CaptureScreen({
   const [isRecording, setIsRecording] = React.useState(false);
 
   const sendScale = useSharedValue(1);
-  const sendOpacity = useSharedValue(0.3);
+  const sendActive = useSharedValue(0);
   const nudgeOpacity = useSharedValue(0);
   const reviewProgress = useSharedValue(0);
   const micBg = useSharedValue(0);
@@ -82,7 +82,7 @@ export function CaptureScreen({
   const nudgeText = nudgeMessages[currentStreak % nudgeMessages.length];
 
   useEffect(() => {
-    sendOpacity.value = withTiming(canSend ? 1 : 0.28, { duration: 180 });
+    sendActive.value = withTiming(canSend ? 1 : 0, { duration: 200 });
   }, [canSend]);
 
   useEffect(() => {
@@ -114,7 +114,12 @@ export function CaptureScreen({
 
   const sendBtnStyle = useAnimatedStyle(() => ({
     transform: [{ scale: sendScale.value }],
-    opacity: sendOpacity.value,
+    opacity: 0.35 + sendActive.value * 0.65,
+    backgroundColor: interpolateColor(
+      sendActive.value,
+      [0, 1],
+      ["#3A3A3A", "#FFFFFF"]
+    ),
   }));
 
   const micBtnStyle = useAnimatedStyle(() => ({
@@ -246,7 +251,7 @@ export function CaptureScreen({
                     <Ionicons
                       name="send"
                       size={18}
-                      color="#fff"
+                      color={canSend ? "#000" : "#fff"}
                       style={{ marginLeft: 2 }}
                     />
                   </Animated.View>
@@ -398,6 +403,9 @@ const styles = StyleSheet.create({
     paddingTop: 0,
     paddingBottom: 0,
     letterSpacing: -0.5,
+    // @ts-ignore — web only: remove browser focus ring
+    outlineWidth: 0,
+    outlineStyle: "none",
   },
   toolbar: {
     flexDirection: "row",
@@ -430,7 +438,6 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: "#3A3A3A",
     alignItems: "center",
     justifyContent: "center",
   },
