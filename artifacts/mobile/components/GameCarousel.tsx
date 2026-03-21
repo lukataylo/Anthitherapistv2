@@ -86,8 +86,8 @@ const GAMES: GameDef[] = [
     available: true,
   },
   {
-    id: "thought-check",
-    name: "Thought Check",
+    id: "reality-check",
+    name: "Reality Check",
     category: "AWARENESS",
     icon: "checkmark-circle-outline",
     bg: "#001A14",

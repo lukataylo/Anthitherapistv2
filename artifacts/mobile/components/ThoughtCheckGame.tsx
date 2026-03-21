@@ -36,8 +36,10 @@
  * - `"explain"` is entered when the user wrongly marks a distorted thought
  *   as healthy — they see the highlighted distorted words and an explanation.
  * - `"bonus"` is entered after correctly identifying a distorted thought —
- *   the user taps individual distorted words for +50 bonus points each.
- *   Auto-advances after 4 seconds or when all words are found.
+ *   the user taps individual distorted words to trigger a multiple-choice
+ *   prompt asking them to pick the healthy alternative (+50 on correct).
+ *   The phase stays open until all distorted words are resolved or the
+ *   player taps Continue.
  * - `"false_positive"` is entered when the user incorrectly marks a healthy
  *   thought as distorted — a teach screen explains why it's actually healthy.
  *
@@ -244,6 +246,98 @@ const DISTORTED_FALLBACK: Round[] = [
       `"Never" is fortune-telling — skills and situations change with time and effort.`,
   },
 ];
+
+// ─── Healthy-alternative lookup map ─────────────────────────────────────────
+//
+// Keyed on lowercase distorted word (or phrase root). Each entry has:
+//   correct  — the single healthy rewrite to award points for
+//   options  — 3-4 total choices (includes `correct`) shown to the player
+//
+const HEALTHY_ALTERNATIVES: Record<string, { correct: string; options: string[] }> = {
+  always: {
+    correct: "sometimes",
+    options: ["sometimes", "constantly", "forever", "often"],
+  },
+  never: {
+    correct: "rarely",
+    options: ["rarely", "not once", "definitely not", "seldom"],
+  },
+  ever: {
+    correct: "sometimes",
+    options: ["sometimes", "always", "at any point", "at all"],
+  },
+  everything: {
+    correct: "some things",
+    options: ["some things", "all things", "every detail", "nothing"],
+  },
+  everybody: {
+    correct: "some people",
+    options: ["some people", "the whole group", "every person", "all of them"],
+  },
+  everyone: {
+    correct: "some people",
+    options: ["some people", "all people", "the majority", "nobody"],
+  },
+  nobody: {
+    correct: "not many people",
+    options: ["not many people", "absolutely no one", "everyone", "most people"],
+  },
+  worst: {
+    correct: "difficult",
+    options: ["difficult", "catastrophic", "unbearable", "hopeless"],
+  },
+  completely: {
+    correct: "partly",
+    options: ["partly", "totally", "utterly", "entirely"],
+  },
+  worthless: {
+    correct: "struggling right now",
+    options: ["struggling right now", "permanently worthless", "of no value", "entirely useless"],
+  },
+  useless: {
+    correct: "not helpful here",
+    options: ["not helpful here", "always useless", "completely broken", "a total failure"],
+  },
+  stupid: {
+    correct: "made a mistake",
+    options: ["made a mistake", "always wrong", "not intelligent", "a fool"],
+  },
+  "all my fault": {
+    correct: "partly my responsibility",
+    options: ["partly my responsibility", "entirely my doing", "unavoidable", "no one's fault"],
+  },
+};
+
+// ─── Generic fallback alternatives (for words not in the main map) ────────────
+//
+// Shown when a distorted word has no specific entry in HEALTHY_ALTERNATIVES.
+// One option is always the balanced rewrite; the others are plausible distractors.
+//
+const GENERIC_ALTERNATIVES: Array<{ correct: string; options: string[] }> = [
+  {
+    correct: "sometimes",
+    options: ["sometimes", "always", "never", "constantly"],
+  },
+  {
+    correct: "often",
+    options: ["often", "every time", "never", "always"],
+  },
+  {
+    correct: "difficult",
+    options: ["difficult", "impossible", "unbearable", "catastrophic"],
+  },
+  {
+    correct: "some people",
+    options: ["some people", "everyone", "no one", "the majority"],
+  },
+];
+
+function getAltEntry(key: string, word: string) {
+  const lookup = HEALTHY_ALTERNATIVES[key.toLowerCase()] ??
+    HEALTHY_ALTERNATIVES[word.toLowerCase().replace(/[^a-z]/g, "")];
+  if (lookup) return lookup;
+  return GENERIC_ALTERNATIVES[Math.abs(key.charCodeAt(0) + word.charCodeAt(0)) % GENERIC_ALTERNATIVES.length];
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -594,8 +688,16 @@ export function ThoughtCheckGame({
 
   const [bonusRemaining, setBonusRemaining] = useState<Set<string>>(new Set());
   const [bonusFound, setBonusFound] = useState<Set<string>>(new Set());
-  const bonusTimerAnim = useRef(new Animated.Value(1)).current;
-  const bonusTimerRef = useRef<Animated.CompositeAnimation | null>(null);
+
+  const [altPrompt, setAltPrompt] = useState<{
+    originalWord: string;
+    matchedKey: string;
+    options: string[];
+    correctAnswer: string;
+  } | null>(null);
+  const [altShake, setAltShake] = useState<string | null>(null);
+  const [altRevealed, setAltRevealed] = useState<string | null>(null);
+  const altShakeAnim = useRef(new Animated.Value(0)).current;
 
   const feedbackOpacity = useRef(new Animated.Value(0)).current;
 
@@ -628,6 +730,9 @@ export function ThoughtCheckGame({
     setTrueNeg(0);
     setFalsePos(0);
     setFalseNeg(0);
+    setAltPrompt(null);
+    setAltShake(null);
+    setAltRevealed(null);
   }, [entries]);
 
   const captureDoneStats = useCallback(() => {
@@ -732,33 +837,10 @@ export function ThoughtCheckGame({
     advanceToNext();
   }, [lives, advanceToNext, captureDoneStats]);
 
-  // ── Bonus phase timer ──
-  useEffect(() => {
-    if (phase === "bonus") {
-      bonusTimerAnim.setValue(1);
-      const anim = Animated.timing(bonusTimerAnim, {
-        toValue: 0,
-        duration: 4000,
-        easing: Easing.linear,
-        useNativeDriver: false,
-      });
-      bonusTimerRef.current = anim;
-      anim.start(({ finished }) => {
-        if (finished) {
-          advanceToNext();
-        }
-      });
-      return () => {
-        anim.stop();
-        bonusTimerRef.current = null;
-      };
-    }
-  }, [phase, advanceToNext, bonusTimerAnim]);
-
-  // ── Bonus word tap ──
+  // ── Bonus word tap — opens healthy-alternative prompt ──
   const handleBonusWordTap = useCallback(
     (word: string) => {
-      if (phase !== "bonus" || !currentRound) return;
+      if (phase !== "bonus" || !currentRound || altPrompt) return;
 
       const cleanWord = word.toLowerCase().replace(/[^a-z]/g, "");
 
@@ -771,20 +853,69 @@ export function ThoughtCheckGame({
 
         if (!matchedKey) return prevRemaining;
 
-        setScore((s) => s + 50);
-        setBonusFound((prev) => new Set(prev).add(matchedKey));
-        const newRemaining = new Set(prevRemaining);
-        newRemaining.delete(matchedKey);
+        const altEntry = getAltEntry(matchedKey, word);
+        const shuffled = shuffle([...altEntry.options]);
+        setAltPrompt({
+          originalWord: word,
+          matchedKey,
+          options: shuffled,
+          correctAnswer: altEntry.correct,
+        });
+        setAltShake(null);
+        setAltRevealed(null);
 
-        if (newRemaining.size === 0) {
-          if (bonusTimerRef.current) bonusTimerRef.current.stop();
-          setTimeout(() => advanceToNext(), 300);
-        }
-
-        return newRemaining;
+        return prevRemaining;
       });
     },
-    [phase, currentRound, advanceToNext]
+    [phase, currentRound, altPrompt, advanceToNext]
+  );
+
+  // ── Alternative choice handler ──
+  const handleAltChoice = useCallback(
+    (choice: string) => {
+      if (!altPrompt || altRevealed) return;
+      const isCorrect = choice === altPrompt.correctAnswer;
+      if (isCorrect) {
+        setScore((s) => s + 50);
+        setBonusFound((prev) => new Set(prev).add(altPrompt.matchedKey));
+        setBonusRemaining((prevRemaining) => {
+          const newRemaining = new Set(prevRemaining);
+          newRemaining.delete(altPrompt.matchedKey);
+          if (newRemaining.size === 0) {
+            setAltPrompt(null);
+            setTimeout(() => advanceToNext(), 300);
+          } else {
+            setAltPrompt(null);
+          }
+          return newRemaining;
+        });
+      } else {
+        setAltShake(choice);
+        setAltRevealed(altPrompt.correctAnswer);
+        altShakeAnim.setValue(0);
+        Animated.sequence([
+          Animated.timing(altShakeAnim, { toValue: 8, duration: 50, useNativeDriver: true }),
+          Animated.timing(altShakeAnim, { toValue: -8, duration: 50, useNativeDriver: true }),
+          Animated.timing(altShakeAnim, { toValue: 5, duration: 50, useNativeDriver: true }),
+          Animated.timing(altShakeAnim, { toValue: 0, duration: 50, useNativeDriver: true }),
+        ]).start();
+        setTimeout(() => {
+          setBonusFound((prev) => new Set(prev).add(altPrompt.matchedKey));
+          setBonusRemaining((prevRemaining) => {
+            const newRemaining = new Set(prevRemaining);
+            newRemaining.delete(altPrompt.matchedKey);
+            if (newRemaining.size === 0) {
+              setAltPrompt(null);
+              setTimeout(() => advanceToNext(), 500);
+            } else {
+              setAltPrompt(null);
+            }
+            return newRemaining;
+          });
+        }, 1400);
+      }
+    },
+    [altPrompt, altRevealed, altShakeAnim, advanceToNext]
   );
 
   // ── Reset on hide ──
@@ -792,7 +923,7 @@ export function ThoughtCheckGame({
     if (!visible) {
       setPhase("idle");
       setShowWrong(false);
-      if (bonusTimerRef.current) bonusTimerRef.current.stop();
+      setAltPrompt(null);
     }
   }, [visible]);
 
@@ -933,17 +1064,6 @@ export function ThoughtCheckGame({
               { paddingTop: insets.top + 54, paddingBottom: Math.max(insets.bottom + 24, 32) },
             ]}
           >
-            <Animated.View
-              style={[
-                styles.timerBar,
-                {
-                  width: bonusTimerAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: ["0%", "100%"],
-                  }),
-                },
-              ]}
-            />
             <Text style={styles.bonusLabel}>TAP THE DISTORTED WORDS</Text>
             <Text style={styles.bonusSubLabel}>+50 per word</Text>
             <View style={styles.chipWrap}>
@@ -965,6 +1085,60 @@ export function ThoughtCheckGame({
                 );
               })}
             </View>
+            <Pressable
+              style={styles.continueBtn}
+              onPress={advanceToNext}
+              accessibilityLabel="Continue to next round"
+              accessibilityRole="button"
+            >
+              <Text style={styles.continueBtnTxt}>Continue →</Text>
+            </Pressable>
+
+            {/* Alternative-choice prompt overlay */}
+            {altPrompt && (
+              <View style={styles.altOverlay}>
+                <View style={styles.altCard}>
+                  <Text style={styles.altTitle}>Choose the healthier version:</Text>
+                  <Text style={styles.altOriginal}>"{altPrompt.originalWord}"</Text>
+                  <View style={styles.altOptions}>
+                    {altPrompt.options.map((opt) => {
+                      const isShaking = altShake === opt;
+                      const isRevealedCorrect = altRevealed === opt;
+                      return (
+                        <Animated.View
+                          key={opt}
+                          style={isShaking ? { transform: [{ translateX: altShakeAnim }] } : undefined}
+                        >
+                          <Pressable
+                            onPress={() => handleAltChoice(opt)}
+                            style={[
+                              styles.altChip,
+                              isRevealedCorrect && styles.altChipCorrect,
+                              isShaking && styles.altChipWrong,
+                            ]}
+                            disabled={!!altRevealed}
+                          >
+                            <Text
+                              style={[
+                                styles.altChipText,
+                                isRevealedCorrect && styles.altChipTextCorrect,
+                              ]}
+                            >
+                              {opt}
+                            </Text>
+                          </Pressable>
+                        </Animated.View>
+                      );
+                    })}
+                  </View>
+                  {altRevealed && (
+                    <Text style={styles.altHint}>
+                      The healthier version is "{altRevealed}"
+                    </Text>
+                  )}
+                </View>
+              </View>
+            )}
           </View>
         )}
 
@@ -998,7 +1172,7 @@ export function ThoughtCheckGame({
                 color={C.accent}
                 style={{ marginBottom: 14 }}
               />
-              <Text style={styles.overlayTitle}>Thought Check</Text>
+              <Text style={styles.overlayTitle}>Reality Check</Text>
               <Text style={styles.overlayDesc}>
                 Your own thoughts will appear word by word. Decide if they
                 contain distorted thinking or healthy thinking — and learn
@@ -1215,13 +1389,91 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 16,
   },
-  timerBar: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    height: 3,
-    backgroundColor: C.accent,
-    borderRadius: 2,
+  continueBtn: {
+    marginTop: 8,
+    paddingHorizontal: 28,
+    paddingVertical: 12,
+    borderRadius: 100,
+    borderWidth: 1.2,
+    borderColor: "rgba(255,255,255,0.25)",
+    backgroundColor: "rgba(255,255,255,0.06)",
+  },
+  continueBtnTxt: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    letterSpacing: 0.5,
+  },
+  altOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,26,20,0.88)",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 40,
+  },
+  altCard: {
+    backgroundColor: "#001A14",
+    borderRadius: 18,
+    padding: 24,
+    marginHorizontal: 20,
+    alignItems: "center",
+    gap: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+    maxWidth: 340,
+    width: "100%",
+  },
+  altTitle: {
+    color: C.accent,
+    fontSize: 11,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 2,
+    textAlign: "center",
+  },
+  altOriginal: {
+    color: C.distortHighlight,
+    fontSize: 22,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: -0.5,
+    textAlign: "center",
+    marginBottom: 4,
+  },
+  altOptions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: 10,
+  },
+  altChip: {
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderRadius: 100,
+    borderWidth: 1.2,
+    borderColor: "rgba(255,255,255,0.25)",
+    backgroundColor: "rgba(255,255,255,0.06)",
+  },
+  altChipCorrect: {
+    borderColor: C.accent,
+    backgroundColor: "rgba(0,229,204,0.15)",
+  },
+  altChipWrong: {
+    borderColor: C.distortHighlight,
+    backgroundColor: "rgba(255,77,122,0.15)",
+  },
+  altChipText: {
+    color: "#fff",
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+  },
+  altChipTextCorrect: {
+    color: C.accent,
+  },
+  altHint: {
+    color: "rgba(255,255,255,0.5)",
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+    marginTop: 4,
   },
   bonusLabel: {
     color: C.accent,

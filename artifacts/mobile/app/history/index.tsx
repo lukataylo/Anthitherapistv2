@@ -89,9 +89,9 @@ const GAME_INTROS: Record<string, GameIntroDef> = {
     accentColor: "#00557A",
     bg: "#020D1A",
   },
-  "thought-check": {
-    id: "thought-check",
-    name: "Thought Check",
+  "reality-check": {
+    id: "reality-check",
+    name: "Reality Check",
     icon: "checkmark-circle-outline",
     aim: "Train your awareness by deciding whether each thought is distorted or healthy.",
     mechanics: [
@@ -143,7 +143,7 @@ function openGameById(
 ) {
   if (id === "sort-tower") setters.setPracticeVisible(true);
   if (id === "rocket-reframe") setters.setRocketVisible(true);
-  if (id === "thought-check") setters.setThoughtCheckVisible(true);
+  if (id === "reality-check") setters.setThoughtCheckVisible(true);
   if (id === "mind-voyage") setters.setSailVisible(true);
   if (id === "reword") setters.setRewordVisible(true);
 }
@@ -273,7 +273,7 @@ export default function HistoryScreen() {
       const id = params.game;
       if (id === "sort-tower") setPracticeVisible(true);
       if (id === "rocket-reframe") setRocketVisible(true);
-      if (id === "thought-check") setThoughtCheckVisible(true);
+      if (id === "reality-check") setThoughtCheckVisible(true);
       if (id === "mind-voyage") setSailVisible(true);
       if (id === "reword") setRewordVisible(true);
     }

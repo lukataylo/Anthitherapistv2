@@ -773,8 +773,8 @@ const GAME_SUGGESTIONS: Record<string, GameSuggestion> = {
     reason: "Practice reframing the beliefs that came up",
   },
   pattern: {
-    id: "thought-check",
-    name: "Thought Check",
+    id: "reality-check",
+    name: "Reality Check",
     icon: "checkmark-circle-outline",
     reason: "Spot the patterns you noticed today",
   },
@@ -793,8 +793,8 @@ const GAME_SUGGESTIONS: Record<string, GameSuggestion> = {
 };
 
 const DEFAULT_GAME: GameSuggestion = {
-  id: "thought-check",
-  name: "Thought Check",
+  id: "reality-check",
+  name: "Reality Check",
   icon: "checkmark-circle-outline",
   reason: "Practice spotting distorted thoughts",
 };
