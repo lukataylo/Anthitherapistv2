@@ -249,6 +249,10 @@ function TowerDisplay({ floors }: { floors: Floor[] }) {
         <Text style={styles.targetLabel}>GOAL</Text>
       </View>
 
+      {floors.length === 0 && (
+        <Text style={styles.emptyTowerHint}>Swipe correctly to build your tower</Text>
+      )}
+
       <View style={styles.towerColumn}>
         <Spire visible={hasSpire} />
         {visibleFloors.map((floor, i) => (
@@ -563,7 +567,7 @@ export function SortTowerGame({ visible, entries, onClose }: SortTowerGameProps)
 
   return (
     <Modal visible animationType="fade" statusBarTranslucent>
-      <View style={[styles.root, { paddingTop: insets.top }]}>
+      <View style={[styles.root, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
 
         {/* HUD */}
         <View style={styles.hud}>
@@ -959,6 +963,17 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.08)",
     alignItems: "center",
     justifyContent: "center",
+  },
+  emptyTowerHint: {
+    position: "absolute",
+    top: "40%",
+    left: 0,
+    right: 0,
+    textAlign: "center",
+    color: "rgba(255,255,255,0.18)",
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    letterSpacing: 0.2,
   },
   emptyBox: {
     alignItems: "center",
