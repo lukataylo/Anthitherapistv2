@@ -170,7 +170,7 @@ function buildRounds(entries: HistoryEntry[]): ActiveRound[] {
   for (const e of entries) {
     const dw = e.words.filter((w) => w.category !== "neutral");
     if (!dw.length) continue;
-    const word = dw[0].text.toLowerCase();
+    const word = dw[0].word.toLowerCase();
     const base = ROUNDS.find(
       (r) => r.distorted.toLowerCase() === word.toLowerCase()
     );
