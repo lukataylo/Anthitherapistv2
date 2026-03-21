@@ -562,7 +562,7 @@ export function SortTowerGame({ visible, entries, onClose }: SortTowerGameProps)
   const showToast = useCallback(
     (word: string, explainer: string) => {
       toastOpacity.value = 0;
-      setToastMsg(`«${word}» — ${explainer}`);
+      setToastMsg(`${word} — ${explainer}`);
       toastOpacity.value = withTiming(1, { duration: 150 }, () => {
         toastOpacity.value = withDelay(
           1300,
@@ -999,22 +999,22 @@ const styles = StyleSheet.create({
   toastPill: {
     position: "absolute",
     alignSelf: "center",
-    top: SH * 0.46,
+    top: SH * 0.60,
     maxWidth: SW * 0.78,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 100,
-    backgroundColor: "rgba(255,91,91,0.18)",
+    backgroundColor: "rgba(255,91,91,0.10)",
     borderWidth: 1,
-    borderColor: "rgba(255,91,91,0.35)",
+    borderColor: "rgba(255,91,91,0.18)",
     zIndex: 55,
     alignItems: "center",
     justifyContent: "center",
   },
   toastText: {
     color: "#fff",
-    fontSize: 13,
-    fontFamily: "Inter_600SemiBold",
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
     textAlign: "center",
     letterSpacing: -0.1,
     lineHeight: 18,
