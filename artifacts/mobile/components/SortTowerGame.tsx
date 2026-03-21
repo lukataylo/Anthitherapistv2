@@ -120,6 +120,7 @@ const MAX_VISIBLE_FLOORS = Math.floor((SH * 0.38) / (FLOOR_H + 2));
 interface SortWord {
   text: string;
   isNegative: boolean;
+  explainer: string;
 }
 
 interface Floor {
@@ -137,13 +138,21 @@ function buildDeck(entries: HistoryEntry[]): SortWord[] {
       const k = w.word.toLowerCase().trim();
       if (!seen.has(k)) {
         seen.add(k);
-        words.push({ text: w.word, isNegative: true });
+        words.push({
+          text: w.word,
+          isNegative: true,
+          explainer: "This is a distorted thought",
+        });
       }
       for (const r of w.reframes) {
         const rk = r.toLowerCase().trim();
         if (!seen.has(rk)) {
           seen.add(rk);
-          words.push({ text: r, isNegative: false });
+          words.push({
+            text: r,
+            isNegative: false,
+            explainer: "This is a healthy reframe",
+          });
         }
       }
     }
@@ -458,6 +467,9 @@ export function SortTowerGame({ visible, entries, onClose }: SortTowerGameProps)
   const swipeHintOpacity = useSharedValue(1);
   const timerPulse = useSharedValue(1);
 
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const toastOpacity = useSharedValue(0);
+
   const startGame = useCallback(() => {
     const d = buildDeck(entries);
     deckRef.current = d;
@@ -472,6 +484,8 @@ export function SortTowerGame({ visible, entries, onClose }: SortTowerGameProps)
     setStreak(0);
     swipeHintOpacity.value = 1;
     timerPulse.value = 1;
+    toastOpacity.value = 0;
+    setToastMsg(null);
     if (timerRef.current) clearInterval(timerRef.current);
     if (d.length === 0) {
       setPhase("empty");
@@ -514,6 +528,22 @@ export function SortTowerGame({ visible, entries, onClose }: SortTowerGameProps)
     });
   }, []);
 
+  const showToast = useCallback(
+    (word: string, explainer: string) => {
+      toastOpacity.value = 0;
+      setToastMsg(`«${word}» — ${explainer}`);
+      toastOpacity.value = withTiming(1, { duration: 150 }, () => {
+        toastOpacity.value = withDelay(
+          1300,
+          withTiming(0, { duration: 350 }, () => {
+            runOnJS(setToastMsg)(null);
+          })
+        );
+      });
+    },
+    [toastOpacity]
+  );
+
   const handleSwipe = useCallback(
     (swipedNegative: boolean) => {
       swipeHintOpacity.value = withTiming(0, { duration: 180 });
@@ -541,6 +571,7 @@ export function SortTowerGame({ visible, entries, onClose }: SortTowerGameProps)
       } else {
         streakRef.current = 0;
         setStreak(0);
+        showToast(current.text, current.explainer);
       }
       showFeedback(correct);
 
@@ -555,7 +586,7 @@ export function SortTowerGame({ visible, entries, onClose }: SortTowerGameProps)
         setCardKey((k) => k + 1);
       }, 280);
     },
-    [showFeedback]
+    [showFeedback, showToast]
   );
 
   const timerPct = timeLeft / GAME_SECONDS;
@@ -573,6 +604,10 @@ export function SortTowerGame({ visible, entries, onClose }: SortTowerGameProps)
 
   const timerPulseStyle = useAnimatedStyle(() => ({
     transform: [{ scale: timerPulse.value }],
+  }));
+
+  const toastAnimStyle = useAnimatedStyle(() => ({
+    opacity: toastOpacity.value,
   }));
 
   if (!visible) return null;
@@ -652,6 +687,16 @@ export function SortTowerGame({ visible, entries, onClose }: SortTowerGameProps)
             </View>
           ) : null}
         </View>
+
+        {/* Wrong-answer teaching toast */}
+        {toastMsg !== null && (
+          <Animated.View
+            pointerEvents="none"
+            style={[styles.toastPill, toastAnimStyle]}
+          >
+            <Text style={styles.toastText} numberOfLines={2}>{toastMsg}</Text>
+          </Animated.View>
+        )}
 
         {/* Feedback pill */}
         <Animated.View
@@ -882,6 +927,29 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Inter_400Regular",
     letterSpacing: 0.2,
+  },
+  toastPill: {
+    position: "absolute",
+    alignSelf: "center",
+    top: SH * 0.46,
+    maxWidth: SW * 0.78,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 100,
+    backgroundColor: "rgba(255,91,91,0.18)",
+    borderWidth: 1,
+    borderColor: "rgba(255,91,91,0.35)",
+    zIndex: 55,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  toastText: {
+    color: "#fff",
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    textAlign: "center",
+    letterSpacing: -0.1,
+    lineHeight: 18,
   },
   feedbackPill: {
     position: "absolute",

@@ -418,6 +418,7 @@ export function RocketGame({
   const [answered, setAnswered] = useState(false);
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
   const [bonusText, setBonusText] = useState<string | null>(null);
+  const [revealAnswer, setRevealAnswer] = useState<string | null>(null);
 
   // Animated values
   const rocketTop = useRef(new Animated.Value(R_START)).current;
@@ -613,6 +614,7 @@ export function RocketGame({
     setQIdx(nextIdx);
     answeredRef.current = false;
     setAnswered(false);
+    setRevealAnswer(null);
 
     timerAnim.setValue(1);
     const timer = Animated.timing(timerAnim, {
@@ -677,6 +679,8 @@ export function RocketGame({
         boostRocket();
         setTimeout(() => nextQuestion(), 480);
       } else {
+        setRevealAnswer(q.opts[q.correctIdx]);
+
         const newLives = livesRef.current - 1;
         livesRef.current = newLives;
         setLives(newLives);
@@ -713,6 +717,7 @@ export function RocketGame({
     setLives(MAX_LIVES);
     setAnswered(false);
     setFeedback(null);
+    setRevealAnswer(null);
 
     rocketTop.setValue(R_START);
     rocketTopVal.current = R_START;
@@ -899,6 +904,11 @@ export function RocketGame({
                   <Text style={styles.optTxt}>{opt}</Text>
                 </Pressable>
               ))}
+              {revealAnswer !== null && (
+                <View pointerEvents="none" style={styles.revealBanner}>
+                  <Text style={styles.revealTxt}>Correct: {revealAnswer}</Text>
+                </View>
+              )}
             </View>
           </View>
         )}
@@ -1051,6 +1061,26 @@ const styles = StyleSheet.create({
   },
   optsCol: {
     gap: 10,
+    position: "relative",
+  },
+  revealBanner: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(2,8,16,0.82)",
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 20,
+  },
+  revealTxt: {
+    color: "#fff",
+    fontSize: 17,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: -0.3,
+    textAlign: "center",
   },
   optBtn: {
     backgroundColor: C.btn,
