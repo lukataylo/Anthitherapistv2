@@ -59,6 +59,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { useRouter } from "expo-router";
 import Animated, {
   Easing,
   interpolateColor,
@@ -99,6 +100,8 @@ interface CaptureScreenProps {
   isLoading: boolean;
   /** True for 1.5 s immediately after a successful API response — triggers the StreakBadge animation. */
   streakJustIncremented?: boolean;
+  /** The id of the current history entry, used to navigate to the insight detail screen. */
+  entryId?: string | null;
 }
 
 const PLACEHOLDER = "Capture a thought, a belief, or a prediction...";
@@ -107,7 +110,9 @@ export function CaptureScreen({
   onSubmit,
   isLoading,
   streakJustIncremented = false,
+  entryId = null,
 }: CaptureScreenProps) {
+  const router = useRouter();
   const {
     screen,
     thought,
@@ -492,11 +497,33 @@ export function CaptureScreen({
                 onWordPress={handleWordPress}
               />
 
-              {/* "All reframed" banner appears once every significant word is done */}
+              {/* Completion card — replaces the banner once every word is reframed */}
               {allDone && totalSignificant > 0 && (
-                <View style={styles.doneBanner}>
-                  <Ionicons name="sparkles" size={13} color={Colors.success} />
-                  <Text style={styles.doneText}>All reframed</Text>
+                <View style={styles.completionCard}>
+                  <View style={styles.completionHeader}>
+                    <Ionicons name="sparkles" size={16} color={Colors.success} />
+                    <Text style={styles.completionTitle}>All reframed</Text>
+                  </View>
+                  <Pressable
+                    style={[styles.primaryBtn, !entryId && styles.primaryBtnDisabled]}
+                    disabled={!entryId}
+                    onPress={() => {
+                      if (!entryId) return;
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                      router.push({ pathname: "/history/[id]", params: { id: entryId } });
+                    }}
+                  >
+                    <Text style={styles.primaryBtnText}>View Insight</Text>
+                  </Pressable>
+                  <Pressable
+                    style={styles.secondaryBtn}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      openGame(0);
+                    }}
+                  >
+                    <Text style={styles.secondaryBtnText}>Play a Game</Text>
+                  </Pressable>
                 </View>
               )}
             </ScrollView>
@@ -637,16 +664,53 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     gap: 20,
   },
-  doneBanner: {
+  completionCard: {
+    marginTop: 20,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+    backgroundColor: "rgba(255,255,255,0.04)",
+    padding: 18,
+    gap: 10,
+  },
+  completionHeader: {
     flexDirection: "row",
     alignItems: "center",
     gap: 7,
-    paddingTop: 4,
+    marginBottom: 4,
   },
-  doneText: {
-    fontSize: 13,
-    fontFamily: "Inter_500Medium",
+  completionTitle: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
     color: Colors.success,
     letterSpacing: 0.2,
+  },
+  primaryBtn: {
+    backgroundColor: "#fff",
+    borderRadius: 100,
+    paddingVertical: 13,
+    alignItems: "center",
+  },
+  primaryBtnDisabled: {
+    opacity: 0.4,
+  },
+  primaryBtnText: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    color: "#000",
+    letterSpacing: 0.1,
+  },
+  secondaryBtn: {
+    borderRadius: 100,
+    paddingVertical: 12,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+  },
+  secondaryBtnText: {
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
+    color: "rgba(255,255,255,0.6)",
+    letterSpacing: 0.1,
   },
 });

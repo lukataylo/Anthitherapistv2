@@ -121,6 +121,7 @@ export default function HomeScreen() {
         onSubmit={handleSubmitThought}
         isLoading={mutation.isPending}
         streakJustIncremented={streakJustIncremented}
+        entryId={entryIdRef.current}
       />
     </View>
   );
