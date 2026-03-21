@@ -47,8 +47,10 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import {
+  Alert,
   Keyboard,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -90,7 +92,7 @@ const SpeechModule: null | {
   requestPermissionsAsync: () => Promise<{ granted: boolean }>;
   start: (opts: object) => void;
 } = _speechMod?.ExpoSpeechRecognitionModule ?? null;
-const speechAvailable = SpeechModule !== null;
+const speechAvailable = SpeechModule !== null && typeof SpeechModule.start === "function";
 
 interface CaptureScreenProps {
   onSubmit: (thought: string) => void;
@@ -271,16 +273,35 @@ export function CaptureScreen({
 
   /** Toggle the microphone: request permission, start/stop speech recognition. */
   const handleMicPress = async () => {
-    if (!SpeechModule) return;
+    if (!speechAvailable) {
+      Alert.alert(
+        "Voice capture unavailable",
+        "Voice capture requires a native build. Please install the app via TestFlight or a custom dev client.",
+      );
+      return;
+    }
     if (isRecording) {
-      SpeechModule.stop();
+      SpeechModule!.stop();
       return;
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    const { granted } = await SpeechModule.requestPermissionsAsync();
-    if (!granted) return;
+    const { granted } = await SpeechModule!.requestPermissionsAsync();
+    if (!granted) {
+      Alert.alert(
+        "Microphone permission required",
+        "Please enable microphone access in Settings to use voice capture.",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Open Settings",
+            onPress: () => Linking.openSettings(),
+          },
+        ],
+      );
+      return;
+    }
     setIsRecording(true);
-    SpeechModule.start({
+    SpeechModule!.start({
       lang: "en-US",
       interimResults: true,
       continuous: false,
@@ -360,9 +381,9 @@ export function CaptureScreen({
               )}
 
               <View style={styles.toolbar}>
-                {/* Mic button — only rendered when native speech module is available
-                    (requires custom Expo dev client; hidden in standard Expo Go) */}
-                {speechAvailable && (
+                {/* Mic button — always visible on native (iOS/Android); hidden on web.
+                    If the speech module failed to load, tapping shows an error message. */}
+                {Platform.OS !== "web" && (
                 <Pressable onPress={handleMicPress} hitSlop={8}>
                   <View style={styles.micWrap}>
                     {/* Glow halo behind the button */}
