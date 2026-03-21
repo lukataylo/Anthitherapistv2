@@ -58,7 +58,6 @@ import { SailGame } from "@/components/SailGame";
 import { RewordGame } from "@/components/RewordGame";
 import { GameCarousel } from "@/components/GameCarousel";
 import { GameIntroScreen, type GameIntroDef } from "@/components/GameIntroScreen";
-import { InsightsSection } from "@/components/InsightsSection";
 
 /** Metadata for the intro screen of each mini-game.
  * accent colors and bg values are kept in sync with GameCarousel's GAMES list. */
@@ -405,7 +404,14 @@ export default function HistoryScreen() {
         ]}
         ListHeaderComponent={
           <>
-            <InsightsSection entries={entries} />
+            <Pressable
+              onPress={() => router.push("/history/insights")}
+              style={({ pressed }) => [styles.insightsBtn, pressed && styles.insightsBtnPressed]}
+            >
+              <Ionicons name="analytics" size={18} color="rgba(255,255,255,0.55)" />
+              <Text style={styles.insightsBtnText}>Insights</Text>
+              <Ionicons name="chevron-forward" size={14} color="rgba(255,255,255,0.25)" />
+            </Pressable>
             <GameCarousel onGamePress={handleGamePress} />
           </>
         }
@@ -557,5 +563,27 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.2)",
     textAlign: "center",
     maxWidth: 220,
+  },
+  insightsBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.08)",
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    marginTop: 14,
+    marginBottom: 4,
+    gap: 10,
+  },
+  insightsBtnPressed: {
+    backgroundColor: "rgba(255,255,255,0.09)",
+  },
+  insightsBtnText: {
+    flex: 1,
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    color: "rgba(255,255,255,0.8)",
   },
 });

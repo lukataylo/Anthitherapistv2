@@ -294,7 +294,13 @@ function PatternSkeleton() {
   );
 }
 
-export function InsightsSection({ entries }: { entries: HistoryEntry[] }) {
+export function InsightsSection({
+  entries,
+  alwaysExpanded = false,
+}: {
+  entries: HistoryEntry[];
+  alwaysExpanded?: boolean;
+}) {
   const [expanded, setExpanded] = useState(false);
   const [patterns, setPatterns] = useState<string[]>([]);
   const [patternsLoading, setPatternsLoading] = useState(false);
@@ -460,6 +466,17 @@ export function InsightsSection({ entries }: { entries: HistoryEntry[] }) {
 
   if (totalWords === 0) {
     if (entries.length === 0) return null;
+    if (alwaysExpanded) {
+      return (
+        <View style={styles.noDataState}>
+          <Ionicons name="analytics-outline" size={40} color="rgba(255,255,255,0.12)" />
+          <Text style={styles.noDataTitle}>No patterns yet</Text>
+          <Text style={styles.noDataSubtitle}>
+            Start reframing thoughts to unlock your Insights.
+          </Text>
+        </View>
+      );
+    }
     return (
       <View style={styles.compactRow}>
         <View style={styles.compactIconWrap}>
@@ -481,7 +498,7 @@ export function InsightsSection({ entries }: { entries: HistoryEntry[] }) {
       ? `Top: ${CATEGORY_LABELS[topCategory.category]} (${topCategory.pct}%)`
       : `${totalWords} distortions found`;
 
-  if (!expanded) {
+  if (!alwaysExpanded && !expanded) {
     return (
       <Pressable onPress={toggleExpanded} style={styles.compactRow}>
         <MiniDonut data={donutData} size={36} />
@@ -503,10 +520,12 @@ export function InsightsSection({ entries }: { entries: HistoryEntry[] }) {
 
   return (
     <View style={styles.container}>
-      <Pressable onPress={toggleExpanded} style={styles.expandedHeader}>
-        <Text style={styles.sectionTitle}>Insights</Text>
-        <Ionicons name="chevron-up" size={16} color="rgba(255,255,255,0.4)" />
-      </Pressable>
+      {!alwaysExpanded && (
+        <Pressable onPress={toggleExpanded} style={styles.expandedHeader}>
+          <Text style={styles.sectionTitle}>Insights</Text>
+          <Ionicons name="chevron-up" size={16} color="rgba(255,255,255,0.4)" />
+        </Pressable>
+      )}
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Category Breakdown</Text>
@@ -615,6 +634,25 @@ export function InsightsSection({ entries }: { entries: HistoryEntry[] }) {
 }
 
 const styles = StyleSheet.create({
+  noDataState: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingTop: 60,
+    gap: 12,
+  },
+  noDataTitle: {
+    fontSize: 17,
+    fontFamily: "Inter_600SemiBold",
+    color: "rgba(255,255,255,0.35)",
+  },
+  noDataSubtitle: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: "rgba(255,255,255,0.2)",
+    textAlign: "center",
+    maxWidth: 240,
+    lineHeight: 18,
+  },
   compactRow: {
     flexDirection: "row",
     alignItems: "center",
