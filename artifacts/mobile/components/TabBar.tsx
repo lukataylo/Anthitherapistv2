@@ -1,9 +1,10 @@
-import React, { useEffect, useRef } from "react";
+import React, { useRef } from "react";
 import {
   Animated,
   Platform,
   Pressable,
   StyleSheet,
+  Text,
   View,
 } from "react-native";
 import { BlurView } from "expo-blur";
@@ -59,25 +60,7 @@ function TabItem({
   onPress: () => void;
   hasBadge?: boolean;
 }) {
-  const dotScale = useRef(new Animated.Value(isFocused ? 1 : 0)).current;
-  const dotOpacity = useRef(new Animated.Value(isFocused ? 1 : 0)).current;
   const iconScale = useRef(new Animated.Value(1)).current;
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.spring(dotScale, {
-        toValue: isFocused ? 1 : 0,
-        tension: 120,
-        friction: 10,
-        useNativeDriver: true,
-      }),
-      Animated.timing(dotOpacity, {
-        toValue: isFocused ? 1 : 0,
-        duration: 180,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [isFocused]);
 
   const handlePress = () => {
     Animated.sequence([
@@ -112,13 +95,10 @@ function TabItem({
           {hasBadge && <View style={styles.badge} />}
         </View>
 
-        {/* Active dot */}
-        <Animated.View
-          style={[
-            styles.dot,
-            { opacity: dotOpacity, transform: [{ scale: dotScale }] },
-          ]}
-        />
+        {/* Label */}
+        <Text style={[styles.label, isFocused && styles.labelFocused]}>
+          {tab.label}
+        </Text>
       </Animated.View>
     </Pressable>
   );
@@ -290,10 +270,12 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: "#000",
   },
-  dot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: "#fff",
+  label: {
+    fontSize: 10,
+    fontWeight: "500",
+    color: "rgba(255,255,255,0.38)",
+  },
+  labelFocused: {
+    color: "#fff",
   },
 });
