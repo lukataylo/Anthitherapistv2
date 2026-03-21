@@ -2,54 +2,41 @@
  * TabBar — custom bottom navigation bar replacing Expo Router's default.
  *
  * Renders a floating "pill" with a glassmorphic blur effect (expo-blur on
- * native; CSS backdrop-filter on web). Three tabs: Reframe, History, and Discuss.
+ * native; CSS backdrop-filter on web). Three tabs: Speak, Shape, Own.
  *
  * ## Tab item animations
  *
- * Each `TabItem` handles two independent animations using React Native's
- * built-in `Animated` API (not Reanimated — the animations are simple enough
- * that the overhead of Reanimated isn't justified here):
- *
- *  - **Active dot** — a small white dot below the icon that springs in/out
- *    when focus changes. The dot's scale goes 0→1 (spring) and opacity 0→1
- *    (timed) simultaneously. Giving both values their own Animated.Value keeps
- *    them independently interpolatable even though they run in parallel.
- *
+ * Each `TabItem` handles one animation:
  *  - **Icon press bounce** — when the user taps a tab, the icon squishes to
- *    0.82× scale and bounces back. This provides immediate tactile feedback
- *    before the navigation transition completes.
+ *    0.82× scale and bounces back. Immediate tactile feedback before the
+ *    navigation transition completes.
  *
  * ## Active highlight pill
  *
  * A rounded rectangle (rgba white, 9% opacity) is rendered behind the icon
- * when the tab is focused. This is conditionally mounted (not animated) because
- * the pill itself only needs to appear/disappear — the icon scale animation
+ * when the tab is focused. Conditionally mounted — the icon scale animation
  * already draws the eye during the transition.
  *
  * ## Streak badge dot
  *
- * An orange dot appears on the Reframe tab icon when `currentStreak > 0 AND
- * !reflectedToday`. This nudges the user to keep their streak alive. The dot
- * disappears immediately after they submit a thought (StreakContext updates
- * `reflectedToday` to true). No animation on the badge — it relies on the
- * ambient orange colour to attract attention without being distracting.
+ * An orange dot appears on the Speak tab icon when `currentStreak > 0 AND
+ * !reflectedToday`. Nudges the user to keep their streak alive without a
+ * full notification. No animation — relies on the orange colour to attract
+ * attention without being distracting.
  *
  * ## Cross-platform blur
  *
  * `BlurView` from expo-blur only works on iOS and Android. On web, a fallback
- * `View` with CSS `backdropFilter: "blur(24px)"` is used instead. The `@ts-ignore`
- * comment suppresses a TypeScript error since React Native's StyleSheet type
- * doesn't know about web-only CSS properties.
+ * `View` with CSS `backdropFilter: "blur(24px)"` is used instead.
  *
  * ## Navigation emission
  *
  * Rather than calling `navigation.navigate()` directly, the tab bar emits a
  * `tabPress` event and checks `event.defaultPrevented`. This mirrors Expo
- * Router's default behaviour and allows screens to intercept tab presses (e.g.
- * to confirm navigation away from an unsaved state).
+ * Router's default behaviour and allows screens to intercept tab presses.
  */
 
-import React, { useEffect, useRef } from "react";
+import React, { useRef } from "react";
 import {
   Animated,
   Platform,
@@ -73,26 +60,26 @@ type TabDef = {
 /**
  * Static tab configuration. Each entry maps an Expo Router route name to an
  * icon renderer. The filled vs outline variant of each icon provides a
- * secondary visual cue for the active tab beyond the dot indicator.
+ * visual cue for the active tab.
  */
 const TABS: TabDef[] = [
   {
     name: "index",
-    label: "Reframe",
+    label: "Speak",
     renderIcon: (focused) => (
       <MaterialCommunityIcons
-        name={focused ? "head-cog" : "head-cog-outline"}
-        size={25}
+        name={focused ? "form-textbox" : "form-textbox"}
+        size={24}
         color={focused ? "#fff" : "rgba(255,255,255,0.38)"}
       />
     ),
   },
   {
     name: "history",
-    label: "History",
+    label: "Shape",
     renderIcon: (focused) => (
       <Ionicons
-        name={focused ? "time" : "time-outline"}
+        name={focused ? "create" : "create-outline"}
         size={24}
         color={focused ? "#fff" : "rgba(255,255,255,0.38)"}
       />
@@ -100,10 +87,10 @@ const TABS: TabDef[] = [
   },
   {
     name: "flashcards",
-    label: "Practice",
+    label: "Own",
     renderIcon: (focused) => (
       <Ionicons
-        name={focused ? "sunny" : "sunny-outline"}
+        name={focused ? "repeat" : "repeat-outline"}
         size={24}
         color={focused ? "#fff" : "rgba(255,255,255,0.38)"}
       />
@@ -128,27 +115,7 @@ function TabItem({
   onPress: () => void;
   hasBadge?: boolean;
 }) {
-  // Independent Animated.Values for spring/timing control on each property
-  const dotScale = useRef(new Animated.Value(isFocused ? 1 : 0)).current;
-  const dotOpacity = useRef(new Animated.Value(isFocused ? 1 : 0)).current;
   const iconScale = useRef(new Animated.Value(1)).current;
-
-  useEffect(() => {
-    // Animate the active dot when focus changes
-    Animated.parallel([
-      Animated.spring(dotScale, {
-        toValue: isFocused ? 1 : 0,
-        tension: 120,
-        friction: 10,
-        useNativeDriver: true,
-      }),
-      Animated.timing(dotOpacity, {
-        toValue: isFocused ? 1 : 0,
-        duration: 180,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [isFocused]);
 
   const handlePress = () => {
     // Squish-and-bounce press feedback on the icon
@@ -191,13 +158,6 @@ function TabItem({
           {hasBadge && <View style={styles.badge} />}
         </View>
 
-        {/* Active indicator dot below the icon */}
-        <Animated.View
-          style={[
-            styles.dot,
-            { opacity: dotOpacity, transform: [{ scale: dotScale }] },
-          ]}
-        />
       </Animated.View>
     </Pressable>
   );
@@ -369,11 +329,5 @@ const styles = StyleSheet.create({
     backgroundColor: "#FF9500",
     borderWidth: 1.5,
     borderColor: "#000",
-  },
-  dot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: "#fff",
   },
 });
