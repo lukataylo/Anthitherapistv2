@@ -11,12 +11,6 @@
  *    0.82× scale and bounces back. Immediate tactile feedback before the
  *    navigation transition completes.
  *
- * ## Active highlight pill
- *
- * A rounded rectangle (rgba white, 9% opacity) is rendered behind the icon
- * when the tab is focused. Conditionally mounted — the icon scale animation
- * already draws the eye during the transition.
- *
  * ## Streak badge dot
  *
  * An orange dot appears on the Speak tab icon when `currentStreak > 0 AND
@@ -148,11 +142,6 @@ function TabItem({
       <Animated.View
         style={[styles.tabInner, { transform: [{ scale: iconScale }] }]}
       >
-        {/* Active highlight pill — conditionally mounted (no animation needed) */}
-        {isFocused && (
-          <View style={styles.activeHighlight} />
-        )}
-
         <View style={styles.iconWrap}>
           {tab.renderIcon(isFocused)}
           {/* Orange dot — visible when streak needs attention */}
@@ -292,15 +281,6 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     gap: 4,
     position: "relative",
-  },
-  activeHighlight: {
-    position: "absolute",
-    width: 56,
-    height: 44,
-    top: 2,
-    alignSelf: "center",
-    borderRadius: 22,
-    backgroundColor: "rgba(255,255,255,0.09)",
   },
   iconWrap: {
     position: "relative",
