@@ -11,19 +11,19 @@
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0A0A0F"
+      "backgroundColor": "#000000"
     },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.antitherapist.app"
     },
     "android": {
-      "backgroundColor": "#0A0A0F",
+      "backgroundColor": "#000000",
       "package": "com.antitherapist.app"
     },
     "web": {
       "favicon": "./assets/images/icon.png",
-      "backgroundColor": "#0A0A0F"
+      "backgroundColor": "#000000"
     },
     "plugins": [
       [
