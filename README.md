@@ -1,7 +1,7 @@
 # Antitherapist — AI-Powered CBT in Five Mini-Games
 
 > **Your thoughts, word by word. Your patterns, turned into play.**
-> Antitherapist uses Claude AI to identify cognitive distortions at the word level, colour-code them in real time, and transform your own thinking patterns into five personalised mini-games — so you actually *want* to practise CBT.
+> Antitherapist uses Claude AI to identify cognitive distortions at the word level, colour-code them in real time, and turn your thinking patterns into five personalised mini-games — so you actually *want* to practise CBT.
 
 ---
 
@@ -15,34 +15,25 @@ The practice is brutal. Paper diaries collect dust. Plain-text apps offer no fee
 
 ---
 
-## Why It Works
+## Why It Works (and Why Not Just a Chatbot)
 
-- **Word-level precision, not thought-level vagueness.** Instead of asking "was this thought helpful?", Antitherapist asks "which specific word is doing the distorting?" That precision is what actually trains the skill.
-- **Your data powers your training.** The mini-games pull from your own captured thoughts — you practise on *your* patterns, not made-up examples.
-- **Instant, visual feedback.** Every word in your thought is colour-coded by distortion type the moment you submit it. No waiting. No ambiguity.
+Apps like Woebot and Youper offer AI conversation — but conversation alone doesn't build the skill. Antitherapist is different:
 
----
+- **Word-level precision, not thought-level vagueness.** Claude doesn't label your *thought* as distorted — it labels each *word*. You see exactly which part of the sentence is doing the damage. Chatbots work at the paragraph level; Antitherapist works at the word level.
+- **Your data powers your training.** The mini-games draw exclusively from your own captured thoughts — you practise on *your* patterns, not generic exercises.
+- **Instant, visual feedback.** Every word is colour-coded by distortion type the moment you submit. No waiting. No ambiguity.
 
-## Why Not Just a Chatbot?
-
-Apps like Woebot and Youper offer AI conversation — but conversation alone doesn't build the skill. Antitherapist is different in two concrete ways:
-
-1. **Word-level precision.** Claude doesn't label your *thought* as distorted — it labels each *word*, individually. You see exactly which part of the sentence is doing the damage. Chatbots work at the paragraph level; Antitherapist works at the word level.
-2. **Personalised game data.** The five mini-games draw exclusively from your own captured history. Every round you play uses words you personally wrote, in distortions you personally produced. Chatbots give you generic exercises; Antitherapist gives you a mirror.
-
-The result is a tighter feedback loop: annotate → reframe → play games built from your own patterns → improve.
+The result: annotate → reframe → play games built from your own patterns → improve.
 
 ---
 
-## Try This First — 90-Second Demo Flow
+## Try This First — 90-Second Demo
 
-Follow these five steps to see the core experience:
-
-1. **Speak tab → type a negative thought.** Try something like: *"I always mess everything up and everyone can tell."* Hit send.
-2. **Watch the AI annotate.** In a few seconds, distorted words light up in colour: red chips for beliefs, purple for fears, amber for absolutes, pink for self-judgements. Neutral words stay plain.
-3. **Tap a coloured word.** The GamePanel slides up. Hit **HINT** to see what Claude suggests, then type a reframe or use **50/50** to choose between two options.
-4. **Shape tab → open Sort Tower.** Swipe word cards left (distorted) or right (healthy) — the words are from *your* thought. Watch the tower grow with each correct swipe.
-5. **Open Thought Check.** Read a thought and decide: DISTORTED or HEALTHY? If you get it wrong, the distorted words are highlighted with an explanation — a teaching moment, not just a score.
+1. **Speak tab → type a negative thought.** Try: *"I always mess everything up and everyone can tell."* Hit send.
+2. **Watch the AI annotate.** Distorted words light up in colour: red for beliefs, purple for fears, orange for absolutes, pink for self-judgements. Neutral words stay plain.
+3. **Tap a coloured word.** A reframe panel slides up. Hit **HINT** for Claude's suggestion, then type your own reframe or use **50/50** to pick between two options.
+4. **Shape tab → open Sort Tower.** Swipe word cards left (distorted) or right (healthy) — the words are from *your* thought.
+5. **Open Reality Check.** Read a thought and decide: DISTORTED or HEALTHY? Get it wrong and the distorted words are highlighted with an explanation — a teaching moment, not just a score.
 
 ---
 
@@ -50,27 +41,27 @@ Follow these five steps to see the core experience:
 
 | Feature | What it does |
 |---|---|
-| **AI thought capture** | Claude classifies every word as a named cognitive distortion or neutral — rendered inline with colour-coded annotation |
+| **AI thought capture** | Claude classifies every word as a named cognitive distortion or neutral, rendered inline with colour-coded chips |
 | **Word reframing** | Tap any distorted word for AI-generated healthier alternatives; choose one to log your reframe |
-| **History feed** | Full chronological log of thoughts with a per-entry progress badge |
-| **Entry insights** | Tap any entry for a word-by-word breakdown and an LLM-generated narrative insight |
+| **History feed** | Chronological log of thoughts with per-entry progress badges |
+| **Entry insights** | Tap any entry for a word-by-word breakdown and an AI-generated narrative insight |
 | **Streak tracking** | Daily-use streak, best streak, and total-reflections counters |
 | **Five mini-games** | Carousel of CBT games that draw from your own captured history |
-| **Socratic Discuss mode** | Chat with Claude in a Socratic coaching mode — questions only, no labels, no diagnoses |
+| **Discuss mode** | Socratic coaching chat with Claude — questions only, no labels, no diagnoses |
+| **Optional auth** | Self-hosted login with JWT — enable it to sync data across devices |
 
 ---
 
 ## Navigation
 
-The app has three tabs:
+Three tabs plus one hidden screen:
 
-| Tab | What it does |
+| Tab | Purpose |
 |---|---|
-| **Speak** | Capture a thought, get word-level AI annotation, and reframe distorted words |
-| **Shape** | Browse your reflection history and launch the five CBT mini-games |
-| **Own** | Work through a deck of belief flashcards built from your own history |
-
-Discuss (Socratic coaching chat with Claude) is accessible from within the app but does not appear in the tab bar.
+| **Speak** | Capture a thought, get word-level AI annotation, reframe distorted words |
+| **Shape** | Browse reflection history and launch the five CBT mini-games |
+| **Own** | Swipe through belief flashcards built from your own history |
+| **Discuss** *(hidden)* | Socratic coaching session with Claude — accessible in-app, not in the tab bar |
 
 ---
 
@@ -80,30 +71,17 @@ Each game launches full-screen from the Shape tab and draws rounds from your own
 
 | # | Game | Skill trained |
 |---|---|---|
-| 1 | **Sort Tower** — Swipe cards left or right to sort distorted vs. healthy words into a growing stack | Rapid automatic categorisation |
+| 1 | **Sort Tower** — Swipe cards left or right to sort distorted vs. healthy words into a growing stack | Rapid categorisation |
 | 2 | **Rocket Reframe** — A word is blanked in your thought; pick the best replacement to fire the rocket | Active word substitution |
-| 3 | **Thought Check** — Is this whole thought distorted? If so, which category? | Whole-thought awareness |
-| 4 | **Mind Voyage** — One word is highlighted in your thought; tap ERROR or VALID to sail across a moonlit sea | Word-level precision |
-| 5 | **Reword** — A distorted word sits at the root of a branching tree; choose the branch that best replaces it | Language and vocabulary |
-
----
-
-## Discuss Mode
-
-Accessible from within the app, **Discuss** opens a Socratic coaching session with Claude. The AI is prompted to:
-
-- Ask only one question at a time
-- Never name or diagnose a cognitive distortion directly
-- Guide you to your own realisations through self-reflection
-- Use curious, empathetic language throughout
-
-The session starts immediately with a Claude-generated opening question. No setup required.
+| 3 | **Reality Check** — Is this whole thought distorted? If so, which category? | Whole-thought awareness |
+| 4 | **Mind Voyage** — One word is highlighted; tap ERROR or VALID to sail across a moonlit sea | Word-level precision |
+| 5 | **Reword** — A distorted word sits at the root of a branching tree; choose the branch that best replaces it | Vocabulary building |
 
 ---
 
 ## Cognitive Distortion Categories
 
-The app uses four distortion categories, each with a distinct colour, to annotate words in your thoughts:
+Four categories, each with a distinct colour:
 
 | Category | Colour | Example words | CBT concepts covered |
 |---|---|---|---|
@@ -112,21 +90,19 @@ The app uses four distortion categories, each with a distinct colour, to annotat
 | `absolute` | 🟠 Orange `#F97316` | "always", "never", "everyone", "impossible" | Overgeneralising, all-or-nothing thinking, should-statements |
 | `self_judgment` | 🩷 Pink `#EC4899` | "stupid", "pathetic", "failure", "weak" | Negative self-talk, self-labelling, harsh self-criticism |
 
-Words not in any category are rendered as plain text (`neutral`).
+Words not in any category render as plain text (`neutral`).
 
 ---
 
-## How We Built It — AI Tools & Workflow
+## How We Built It
 
-This project was built using a staged multi-tool AI workflow, with each tool chosen for where it adds the most leverage:
+A staged multi-tool AI workflow — each tool chosen for where it adds the most leverage:
 
 | Stage | Tool | Why |
 |---|---|---|
-| **Initial prototyping** | Google AI Studio | Its multimodality made it easy to reason about UI layouts, colour systems, and component design using screenshots and sketches alongside text prompts. It produced strong frontend outputs that accelerated early design decisions. |
-| **Backend** | Claude Code | Claude Code's reasoning depth was well-suited to API design, CBT logic modelling, and system architecture, making it the right tool for building out the backend. |
-| **Games & interactive experiences** | Replit | Replit's integrated AI agent and collaborative environment made it the ideal choice for building the games and interactive experiences within the app. |
-
-The handoff — from Google AI Studio for early prototyping → Claude Code for the backend → Replit for games and interactive experiences — let each tool do what it does best.
+| **Prototyping** | Google AI Studio | Multimodal reasoning over screenshots and sketches accelerated UI and colour-system decisions |
+| **Backend** | Claude Code | Strong at API design, CBT logic modelling, and system architecture |
+| **Games** | Replit | Integrated AI agent and live preview made it ideal for interactive game development |
 
 ---
 
@@ -141,15 +117,16 @@ The handoff — from Google AI Studio for early prototyping → Claude Code for 
 | Gestures | react-native-gesture-handler |
 | Local storage | AsyncStorage |
 | API server | Express 5 + TypeScript |
-| AI | Claude Sonnet via Replit AI Integrations |
-| API contracts | OpenAPI 3.0 (orval codegen → React Query hooks + Zod) |
+| AI | Claude Sonnet 4.6 via Anthropic SDK |
+| API contracts | OpenAPI 3.1 (orval codegen → React Query hooks + Zod) |
+| Auth | JWT + bcrypt (optional self-hosted login) |
 | Monorepo | pnpm workspaces |
 
 ---
 
 ## Getting Started
 
-**Prerequisites:** Node.js 20+, pnpm 10+, Expo Go on your phone, a Replit account (for the AI proxy)
+**Prerequisites:** Node.js 20+, pnpm 10+, Expo Go on your phone, an Anthropic API key
 
 ```bash
 git clone https://github.com/lukataylo/Antitherapistv2.git
