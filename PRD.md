@@ -122,7 +122,7 @@ Implemented in `StreakContext` (AsyncStorage persistence, key `reframe_streak_v1
   - The original thought text (truncated to 3 lines).
   - A relative timestamp ("just now", "5m ago", "3h ago", "yesterday", "4d ago").
   - A `ProgressBadge` showing the reframe fraction (e.g. "2/5") or a "Complete" pill.
-- **Tap** — navigates to the History detail screen (`/history/[id]`) for that entry.
+- **Tap** — navigates to the Shape detail screen (`/history/[id]`) for that entry.
 - **Long-press** — prompts deletion via an Alert.
 
 ### 6. Shape Detail Screen (`/history/[id]`)
