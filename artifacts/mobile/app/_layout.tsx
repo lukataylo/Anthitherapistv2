@@ -65,6 +65,8 @@ import { JournalSessionProvider } from "@/context/JournalSessionContext";
 import { applyReminderPreference } from "@/utils/notifications";
 import { SpiritAnimalProvider } from "@/context/SpiritAnimalContext";
 import { JourneyProvider } from "@/context/JourneyContext";
+import { ChapterProvider } from "@/context/ChapterContext";
+import { ChapterCelebration } from "@/components/ChapterCelebration";
 
 // Configure the API client before any hooks can run
 const domain = process.env.EXPO_PUBLIC_DOMAIN;
@@ -123,6 +125,7 @@ export default function RootLayout() {
                 <GameProvider>
                   <JournalSessionProvider>
                     <JourneyProvider>
+                    <ChapterProvider>
                     <SpiritAnimalProvider>
                       <Tabs
                         tabBar={(props) => {
@@ -131,17 +134,21 @@ export default function RootLayout() {
                           return <TabBar {...props} />;
                         }}
                         screenOptions={{ headerShown: false }}
-                        initialRouteName="history"
+                        initialRouteName="index"
                       >
-                        <Tabs.Screen name="index" options={{ title: "Speak" }} />
-                        <Tabs.Screen name="history" options={{ title: "Shape" }} />
-                        <Tabs.Screen name="flashcards" options={{ title: "Own" }} />
+                        <Tabs.Screen name="index" options={{ title: "Today" }} />
+                        <Tabs.Screen name="story" options={{ title: "Story" }} />
+                        <Tabs.Screen name="mirror" options={{ title: "Mirror" }} />
+                        <Tabs.Screen name="history" options={{ title: "History", href: null }} />
+                        <Tabs.Screen name="flashcards" options={{ title: "Own", href: null }} />
                         <Tabs.Screen name="discuss" options={{ title: "Discuss", href: null }} />
                         <Tabs.Screen name="journal" options={{ title: "Journal", href: null }} />
                         <Tabs.Screen name="journal-feedback" options={{ title: "Session Complete", href: null }} />
                         <Tabs.Screen name="spirit-animal-quiz" options={{ title: "Spirit Animal", href: null }} />
                       </Tabs>
+                      <ChapterCelebration />
                     </SpiritAnimalProvider>
+                    </ChapterProvider>
                     </JourneyProvider>
                   </JournalSessionProvider>
                 </GameProvider>

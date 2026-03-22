@@ -58,33 +58,33 @@ type TabDef = {
 const TABS: TabDef[] = [
   {
     name: "index",
-    label: "Speak",
+    label: "Today",
     renderIcon: (focused) => (
       <Ionicons
-        name={focused ? "create" : "create-outline"}
-        size={28}
+        name={focused ? "book" : "book-outline"}
+        size={26}
         color={focused ? "#fff" : "rgba(255,255,255,0.38)"}
       />
     ),
   },
   {
-    name: "history",
-    label: "Shape",
+    name: "story",
+    label: "Story",
     renderIcon: (focused) => (
       <Ionicons
-        name={focused ? "repeat" : "repeat-outline"}
-        size={28}
+        name={focused ? "map" : "map-outline"}
+        size={26}
         color={focused ? "#fff" : "rgba(255,255,255,0.38)"}
       />
     ),
   },
   {
-    name: "flashcards",
-    label: "Own",
+    name: "mirror",
+    label: "Mirror",
     renderIcon: (focused) => (
       <Ionicons
-        name={focused ? "infinite" : "infinite-outline"}
-        size={28}
+        name={focused ? "analytics" : "analytics-outline"}
+        size={26}
         color={focused ? "#fff" : "rgba(255,255,255,0.38)"}
       />
     ),
