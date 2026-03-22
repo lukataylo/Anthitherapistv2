@@ -42,8 +42,10 @@ export function verifyToken(token: string): TokenPayload | null {
     const [header, body, sig] = parts;
 
     const expected = crypto.createHmac("sha256", JWT_SECRET).update(`${header}.${body}`).digest("base64url");
-    const sigBuf = Buffer.from(sig);
-    const expectedBuf = Buffer.from(expected);
+    // Compare the raw HMAC bytes (decode base64url → binary) for a
+    // constant-time check that doesn't leak signature length via encoding.
+    const sigBuf = Buffer.from(sig, "base64url");
+    const expectedBuf = Buffer.from(expected, "base64url");
     if (sigBuf.length !== expectedBuf.length) return null;
     if (!crypto.timingSafeEqual(sigBuf, expectedBuf)) return null;
 

@@ -261,7 +261,7 @@ export default function ProfileScreen() {
                   />
                   <View style={styles.passwordRow}>
                     <TextInput
-                      style={[styles.input, { flex: 1 }]}
+                      style={[styles.input, { flex: 1, paddingRight: 48 }]}
                       placeholder="Password"
                       placeholderTextColor="rgba(255,255,255,0.25)"
                       secureTextEntry={!showPassword}

@@ -70,7 +70,14 @@ router.post("/auth/signup", async (req, res) => {
       token,
       user: { id: user.id, email: user.email, displayName: user.displayName },
     });
-  } catch (err) {
+  } catch (err: any) {
+    // Handle race condition: two concurrent signups with same email both
+    // pass the SELECT check but one fails at the DB unique constraint.
+    // PostgreSQL error code 23505 = unique_violation.
+    if (err?.code === "23505") {
+      res.status(409).json({ error: "An account with this email already exists" });
+      return;
+    }
     req.log.error({ err }, "Signup error");
     res.status(500).json({ error: "Internal server error" });
   }

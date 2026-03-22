@@ -19,8 +19,9 @@
  *              HistoryProvider ← outermost data provider (no dependencies)
  *                StreakProvider ← reads history-independent streak data
  *                  GameProvider ← innermost — can read history/streak if needed
- *                    SpiritAnimalProvider
- *                      Tabs + TabBar
+ *                    AuthProvider       ← optional self-hosted login (JWT in AsyncStorage)
+ *                      SpiritAnimalProvider
+ *                        Tabs + TabBar
  *
  * 3. **API base URL** — `setBaseUrl()` is called at module load time (before
  *    any component mounts) so the React Query hooks can construct correct URLs
