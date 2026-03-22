@@ -43,7 +43,9 @@ import { StatusBar } from "expo-status-bar";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { SvgXml } from "react-native-svg";
 import { useHistory, type HistoryEntry } from "@/context/HistoryContext";
+import { useSpiritAnimal } from "@/context/SpiritAnimalContext";
 import { SortTowerGame } from "@/components/SortTowerGame";
 import { RocketGame } from "@/components/RocketGame";
 import { ThoughtCheckGame } from "@/components/ThoughtCheckGame";
@@ -254,6 +256,33 @@ function EmptyState() {
   );
 }
 
+/** Spirit animal button — compact top-right header button for both states. */
+function SpiritAnimalButton({ onPress }: { onPress: () => void }) {
+  const { spiritAnimal } = useSpiritAnimal();
+
+  if (spiritAnimal) {
+    return (
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => [styles.spiritBtn, pressed && styles.spiritBtnPressed]}
+      >
+        <View style={styles.spiritBtnAvatar}>
+          <SvgXml xml={spiritAnimal.svg} width={18} height={18} />
+        </View>
+      </Pressable>
+    );
+  }
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.spiritBtn, pressed && styles.spiritBtnPressed]}
+    >
+      <Ionicons name="sparkles-outline" size={18} color="rgba(255,255,255,0.5)" />
+    </Pressable>
+  );
+}
+
 export default function HistoryScreen() {
   const insets = useSafeAreaInsets();
   const { entries, removeEntry } = useHistory();
@@ -306,6 +335,11 @@ export default function HistoryScreen() {
     setIntroGameId(null);
     if (id) openGameById(id, gameSetters);
   }, [introGameId]);
+
+  /** Navigate to the spirit animal quiz. */
+  const handleSpiritAnimalPress = useCallback(() => {
+    router.push("/spirit-animal-quiz");
+  }, [router]);
 
   /** Navigate to the detail screen for this history entry. */
   const handlePress = useCallback(
@@ -381,6 +415,7 @@ export default function HistoryScreen() {
                 : ""}
             </Text>
           </View>
+          <SpiritAnimalButton onPress={handleSpiritAnimalPress} />
         </View>
       </View>
 
@@ -422,7 +457,7 @@ const styles = StyleSheet.create({
   },
   titleRow: {
     flexDirection: "row",
-    alignItems: "flex-start",
+    alignItems: "center",
     justifyContent: "space-between",
   },
   title: {
@@ -511,5 +546,24 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.2)",
     textAlign: "center",
     maxWidth: 220,
+  },
+  spiritBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.1)",
+  },
+  spiritBtnPressed: {
+    backgroundColor: "rgba(255,255,255,0.12)",
+  },
+  spiritBtnAvatar: {
+    width: 24,
+    height: 24,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

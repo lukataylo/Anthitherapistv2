@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
+import { SvgXml } from "react-native-svg";
+import { useSpiritAnimal } from "@/context/SpiritAnimalContext";
 import {
   Alert,
   Keyboard,
@@ -135,6 +137,7 @@ type SummaryData = {
 export function CaptureScreen() {
   const insets = useSafeAreaInsets();
   const { recordReflection } = useStreak();
+  const { spiritAnimal } = useSpiritAnimal();
   const {
     session,
     turns,
@@ -638,7 +641,11 @@ export function CaptureScreen() {
             style={styles.questionRow}
           >
             <View style={styles.avatar}>
-              <Text style={styles.avatarText}>t</Text>
+              {spiritAnimal ? (
+                <SvgXml xml={spiritAnimal.svg} width={22} height={22} />
+              ) : (
+                <Text style={styles.avatarText}>t</Text>
+              )}
             </View>
             <Text style={styles.questionText}>
               {isWrapping ? currentWrapQuestion : suggestedQuestion}
@@ -649,7 +656,11 @@ export function CaptureScreen() {
         {!suggestedQuestion && !currentWrapQuestion && !showCheckin && turns.length === 0 && (
           <View style={styles.questionRow}>
             <View style={styles.avatar}>
-              <Text style={styles.avatarText}>t</Text>
+              {spiritAnimal ? (
+                <SvgXml xml={spiritAnimal.svg} width={22} height={22} />
+              ) : (
+                <Text style={styles.avatarText}>t</Text>
+              )}
             </View>
             <Text style={styles.hintText}>
               Write whatever comes up. I'll listen.

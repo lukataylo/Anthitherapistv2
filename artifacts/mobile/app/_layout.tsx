@@ -19,7 +19,8 @@
  *              HistoryProvider ← outermost data provider (no dependencies)
  *                StreakProvider ← reads history-independent streak data
  *                  GameProvider ← innermost — can read history/streak if needed
- *                    Tabs + TabBar
+ *                    SpiritAnimalProvider
+ *                      Tabs + TabBar
  *
  * 3. **API base URL** — `setBaseUrl()` is called at module load time (before
  *    any component mounts) so the React Query hooks can construct correct URLs
@@ -29,6 +30,11 @@
  *    `headerShown: false` gives each screen full control over its header area.
  *    The custom `TabBar` component replaces Expo Router's default tab bar with
  *    the glassmorphic design that matches the app's dark aesthetic.
+ *
+ * 5. **Full-screen modal routes** — routes like `spirit-animal-quiz` are
+ *    registered with `href: null` so they don't appear in the tab bar. The
+ *    custom `TabBar` hides itself when such routes are active, giving a true
+ *    full-screen experience.
  */
 
 import {
@@ -57,6 +63,7 @@ import { StreakProvider } from "@/context/StreakContext";
 import { seedIfEmpty } from "@/utils/seedData";
 import { JournalSessionProvider } from "@/context/JournalSessionContext";
 import { applyReminderPreference } from "@/utils/notifications";
+import { SpiritAnimalProvider } from "@/context/SpiritAnimalContext";
 
 // Configure the API client before any hooks can run
 const domain = process.env.EXPO_PUBLIC_DOMAIN;
@@ -71,6 +78,9 @@ setBaseUrl(domain ? `https://${domain}` : "");
 // Keep the native splash screen up while fonts load
 SplashScreen.preventAutoHideAsync();
 seedIfEmpty();
+
+// Routes where the TabBar should be hidden to allow full-screen presentation
+const HIDDEN_TAB_BAR_ROUTES = new Set(["spirit-animal-quiz"]);
 
 // A single QueryClient instance for the app lifetime — React Query manages
 // caching, deduplication, and background refetching for API calls
@@ -111,18 +121,25 @@ export default function RootLayout() {
               <StreakProvider>
                 <GameProvider>
                   <JournalSessionProvider>
-                    <Tabs
-                      tabBar={(props) => <TabBar {...props} />}
-                      screenOptions={{ headerShown: false }}
-                      initialRouteName="history"
-                    >
-                      <Tabs.Screen name="index" options={{ title: "Speak" }} />
-                      <Tabs.Screen name="history" options={{ title: "Shape" }} />
-                      <Tabs.Screen name="flashcards" options={{ title: "Own" }} />
-                      <Tabs.Screen name="discuss" options={{ title: "Discuss", href: null }} />
-                      <Tabs.Screen name="journal" options={{ title: "Journal", href: null }} />
-                      <Tabs.Screen name="journal-feedback" options={{ title: "Session Complete", href: null }} />
-                    </Tabs>
+                    <SpiritAnimalProvider>
+                      <Tabs
+                        tabBar={(props) => {
+                          const routeName = props.state.routes[props.state.index]?.name ?? "";
+                          if (HIDDEN_TAB_BAR_ROUTES.has(routeName)) return null;
+                          return <TabBar {...props} />;
+                        }}
+                        screenOptions={{ headerShown: false }}
+                        initialRouteName="history"
+                      >
+                        <Tabs.Screen name="index" options={{ title: "Speak" }} />
+                        <Tabs.Screen name="history" options={{ title: "Shape" }} />
+                        <Tabs.Screen name="flashcards" options={{ title: "Own" }} />
+                        <Tabs.Screen name="discuss" options={{ title: "Discuss", href: null }} />
+                        <Tabs.Screen name="journal" options={{ title: "Journal", href: null }} />
+                        <Tabs.Screen name="journal-feedback" options={{ title: "Session Complete", href: null }} />
+                        <Tabs.Screen name="spirit-animal-quiz" options={{ title: "Spirit Animal", href: null }} />
+                      </Tabs>
+                    </SpiritAnimalProvider>
                   </JournalSessionProvider>
                 </GameProvider>
               </StreakProvider>
