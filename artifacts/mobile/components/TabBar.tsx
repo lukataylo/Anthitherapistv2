@@ -1,8 +1,10 @@
 /**
  * TabBar — custom bottom navigation bar replacing Expo Router's default.
  *
- * Renders a floating "pill" with a glassmorphic blur effect (expo-blur on
- * native; CSS backdrop-filter on web). Three tabs: Speak, Shape, Own.
+ * Renders a row of three tabs: Speak, Shape, Own. The bar background matches
+ * the app background colour (`Colors.background`) on both native and web so
+ * there is no visible colour or brightness difference between the bar and the
+ * screen content behind it.
  *
  * ## Tab item animations
  *
@@ -17,11 +19,6 @@
  * !reflectedToday`. Nudges the user to keep their streak alive without a
  * full notification. No animation — relies on the orange colour to attract
  * attention without being distracting.
- *
- * ## Cross-platform blur
- *
- * `BlurView` from expo-blur only works on iOS and Android. On web, a fallback
- * `View` with CSS `backdropFilter: "blur(24px)"` is used instead.
  *
  * ## Navigation emission
  *
@@ -39,12 +36,13 @@ import {
   Text,
   View,
 } from "react-native";
-import { BlurView } from "expo-blur";
+
 import { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useStreak } from "@/context/StreakContext";
+import { Colors } from "@/constants/colors";
 
 type TabDef = {
   name: string;
@@ -178,14 +176,14 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
           />
         </View>
       ) : (
-        <BlurView intensity={80} tint="dark" style={styles.bar}>
+        <View style={styles.bar}>
           <TabRow
             state={state}
             navigation={navigation}
             currentStreak={currentStreak}
             reflectedToday={reflectedToday}
           />
-        </BlurView>
+        </View>
       )}
       {/* Subtle top separator line */}
       <View style={styles.topBorder} pointerEvents="none" />
@@ -240,24 +238,18 @@ function TabRow({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "#000",
+    backgroundColor: Colors.background,
     position: "relative",
   },
   bar: {
     width: "100%",
     paddingTop: 6,
+    backgroundColor: Colors.background,
   },
   barFallback: {
     width: "100%",
     paddingTop: 6,
-    backgroundColor: "rgba(18, 18, 20, 0.92)",
-    ...Platform.select({
-      web: {
-        // @ts-ignore — CSS-only backdrop blur for web rendering
-        backdropFilter: "blur(24px)",
-        WebkitBackdropFilter: "blur(24px)",
-      },
-    }),
+    backgroundColor: Colors.background,
   },
   topBorder: {
     ...StyleSheet.absoluteFillObject,
