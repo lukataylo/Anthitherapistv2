@@ -37,6 +37,20 @@ The practice is brutal. Paper diaries collect dust. Plain-text apps offer no fee
 
 ---
 
+## Navigation
+
+The app has three tabs:
+
+| Tab | What it does |
+|---|---|
+| **Speak** | Capture a thought, get word-level AI annotation, and reframe distorted words |
+| **Shape** | Browse your reflection history and launch the five CBT mini-games |
+| **Own** | Work through a deck of belief flashcards built from your own history |
+
+Discuss (Socratic coaching chat with Claude) is accessible from within the app but does not appear in the tab bar.
+
+---
+
 ## The 5 Mini-Games
 
 Each game launches full-screen from the Shape tab and draws rounds from your own captured thoughts.

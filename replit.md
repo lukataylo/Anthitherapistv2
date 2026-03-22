@@ -16,7 +16,7 @@ Reframe (internal name: Antitherapist) is a mobile-first CBT (Cognitive Behaviou
 - Daily streak tracking (AsyncStorage)
 - Socratic Discuss mode (chat with Claude)
 - Insights dashboard with donut/trend charts and AI-generated pattern observations
-- **Belief flashcard Practice tab** — sequential deck of cards built from reframing history, journal insights (via `/api/discuss/insights`), and open-ended belief prompts. Users flip cards, type answers for prompts, and use Previous/Next navigation to drill positive beliefs. Progress is tracked via a position indicator (e.g. 3/12).
+- **Belief flashcard Own tab** — sequential deck of cards built from reframing history, journal insights (via `/api/discuss/insights`), and open-ended belief prompts. Users flip cards, type answers for prompts, and use Previous/Next navigation to drill positive beliefs. Progress is tracked via a position indicator (e.g. 3/12).
 - Dark glassmorphic visual design throughout
 
 **Monorepo workspace structure:**
