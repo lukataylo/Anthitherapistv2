@@ -50,6 +50,15 @@
         }
       ]
     ],
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/YOUR_PROJECT_ID",
+      "requestHeaders": {
+        "expo-channel-name": "production"
+      }
+    },
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true

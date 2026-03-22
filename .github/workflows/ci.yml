@@ -1,0 +1,57 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# CI Pipeline — runs on every push and pull request
+#
+# Steps:
+#   1. Install pnpm + Node 20
+#   2. Install workspace dependencies (cached)
+#   3. Prettier format check (all TS/TSX files)
+#   4. TypeScript type checking (libs first, then artifacts)
+#   5. Run test suites (vitest — currently api-server auth tests)
+#
+# The pipeline uses pnpm's built-in caching via setup-node's cache option.
+# On Linux CI, the rollup native binary overrides in pnpm-workspace.yaml
+# are not an issue because linux-x64-gnu is not suppressed.
+# ──────────────────────────────────────────────────────────────────────────────
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: Lint, Typecheck, Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check formatting
+        run: pnpm format:check
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Run tests
+        run: pnpm test

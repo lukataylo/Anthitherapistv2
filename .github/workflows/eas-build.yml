@@ -1,0 +1,116 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# EAS Build Pipeline — builds iOS and Android app binaries via Expo EAS
+#
+# Triggers:
+#   - Push to main (automatic preview build)
+#   - Manual dispatch (choose profile: development / preview / production)
+#
+# Prerequisites:
+#   1. Run `eas init` locally to link the project and get a project ID
+#   2. Update app.json "updates.url" with the real project ID
+#   3. Set EXPO_TOKEN as a GitHub repository secret:
+#      - Go to https://expo.dev/accounts/[account]/settings/access-tokens
+#      - Create a robot token
+#      - Add it as a secret in GitHub repo settings → Secrets → Actions
+#   4. For production iOS builds: configure Apple credentials via `eas credentials`
+#   5. For production Android builds: upload a service account key via `eas credentials`
+#
+# Profiles (defined in eas.json):
+#   - development: Debug build with dev client, iOS simulator only
+#   - preview:     Release build distributed internally (TestFlight / internal track)
+#   - production:  Release build for App Store / Play Store submission
+# ──────────────────────────────────────────────────────────────────────────────
+
+name: EAS Build
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: "Build profile"
+        required: true
+        default: preview
+        type: choice
+        options:
+          - development
+          - preview
+          - production
+      platform:
+        description: "Platform to build"
+        required: true
+        default: all
+        type: choice
+        options:
+          - all
+          - ios
+          - android
+
+concurrency:
+  group: eas-build-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # Run CI checks first — don't waste EAS build minutes on broken code
+  ci:
+    name: Pre-build checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+
+  build:
+    name: EAS Build
+    needs: ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    defaults:
+      run:
+        working-directory: artifacts/mobile
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Setup Expo
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        working-directory: .
+
+      - name: Build (push to main)
+        if: github.event_name == 'push'
+        run: eas build --non-interactive --platform all --profile preview
+
+      - name: Build (manual dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        run: >-
+          eas build
+          --non-interactive
+          --platform ${{ inputs.platform }}
+          --profile ${{ inputs.profile }}
