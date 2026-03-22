@@ -92,7 +92,7 @@ Fully implemented. The game plays end-to-end with deck building, swipe gestures 
 
 ### Known Pending Work
 
-- **Category-colored floors + legend:** Currently all floors cycle through a fixed 10-colour palette regardless of distortion category. The plan is to colour each floor by the category of the word that produced it, and add a legend so users understand what each colour means.
+- **Category-colored floors + legend:** Cancelled. Floors continue to cycle through the fixed 10-colour palette (`FLOOR_PALETTE`). Category colouring and a legend will not be added.
 
 ---
 
@@ -199,7 +199,7 @@ Fully implemented with explanation phase for wrong answers on distorted rounds.
 
 ### Known Pending Work
 
-- **Bonus phase:** A bonus round at the end of the Thought Check session is pending implementation. This would trigger after the main 10-round deck is exhausted (or lives are still > 0) before showing the final score.
+None currently tracked. The bonus phase (a bonus round after the main 10-round deck is exhausted when lives remain, before showing the final score) was implemented in Task #24 and is live.
 
 ---
 

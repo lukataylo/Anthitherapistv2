@@ -1,7 +1,7 @@
-# Antitherapist — Turn Your Negative Thoughts Into a Game
+# Antitherapist — AI-Powered CBT in Five Mini-Games
 
-> **CBT therapy shouldn't feel like homework.**
-> Antitherapist uses Claude AI to analyse your thoughts word by word, colour-code every cognitive distortion, and turn your own thinking patterns into five interactive mini-games — so you actually *want* to practise the skill.
+> **Your thoughts, word by word. Your patterns, turned into play.**
+> Antitherapist uses Claude AI to identify cognitive distortions at the word level, colour-code them in real time, and transform your own thinking patterns into five personalised mini-games — so you actually *want* to practise CBT.
 
 ---
 
@@ -20,6 +20,29 @@ The practice is brutal. Paper diaries collect dust. Plain-text apps offer no fee
 - **Word-level precision, not thought-level vagueness.** Instead of asking "was this thought helpful?", Antitherapist asks "which specific word is doing the distorting?" That precision is what actually trains the skill.
 - **Your data powers your training.** The mini-games pull from your own captured thoughts — you practise on *your* patterns, not made-up examples.
 - **Instant, visual feedback.** Every word in your thought is colour-coded by distortion type the moment you submit it. No waiting. No ambiguity.
+
+---
+
+## Why Not Just a Chatbot?
+
+Apps like Woebot and Youper offer AI conversation — but conversation alone doesn't build the skill. Antitherapist is different in two concrete ways:
+
+1. **Word-level precision.** Claude doesn't label your *thought* as distorted — it labels each *word*, individually. You see exactly which part of the sentence is doing the damage. Chatbots work at the paragraph level; Antitherapist works at the word level.
+2. **Personalised game data.** The five mini-games draw exclusively from your own captured history. Every round you play uses words you personally wrote, in distortions you personally produced. Chatbots give you generic exercises; Antitherapist gives you a mirror.
+
+The result is a tighter feedback loop: annotate → reframe → play games built from your own patterns → improve.
+
+---
+
+## Try This First — 90-Second Demo Flow
+
+Follow these five steps to see the core experience:
+
+1. **Speak tab → type a negative thought.** Try something like: *"I always mess everything up and everyone can tell."* Hit send.
+2. **Watch the AI annotate.** In a few seconds, distorted words light up in colour: red chips for beliefs, purple for fears, amber for absolutes, pink for self-judgements. Neutral words stay plain.
+3. **Tap a coloured word.** The GamePanel slides up. Hit **HINT** to see what Claude suggests, then type a reframe or use **50/50** to choose between two options.
+4. **Shape tab → open Sort Tower.** Swipe word cards left (distorted) or right (healthy) — the words are from *your* thought. Watch the tower grow with each correct swipe.
+5. **Open Thought Check.** Read a thought and decide: DISTORTED or HEALTHY? If you get it wrong, the distorted words are highlighted with an explanation — a teaching moment, not just a score.
 
 ---
 
@@ -78,6 +101,21 @@ The session starts immediately with a Claude-generated opening question. No setu
 
 ---
 
+## Cognitive Distortion Categories
+
+The app uses four distortion categories, each with a distinct colour, to annotate words in your thoughts:
+
+| Category | Colour | Example words | CBT concepts covered |
+|---|---|---|---|
+| `belief` | 🔴 Red `#FF5B5B` | "worthless", "broken", "unlovable" | Core beliefs, labelling, personalisation |
+| `fear` | 🟣 Purple `#9B5CF6` | "terrified", "catastrophe", "doomed" | Catastrophising, fortune-telling, threat overestimation |
+| `absolute` | 🟠 Orange `#F97316` | "always", "never", "everyone", "impossible" | Overgeneralising, all-or-nothing thinking, should-statements |
+| `self_judgment` | 🩷 Pink `#EC4899` | "stupid", "pathetic", "failure", "weak" | Negative self-talk, self-labelling, harsh self-criticism |
+
+Words not in any category are rendered as plain text (`neutral`).
+
+---
+
 ## Tech Stack
 
 | Layer | Technology |
@@ -100,8 +138,8 @@ The session starts immediately with a Claude-generated opening question. No setu
 **Prerequisites:** Node.js 20+, pnpm 10+, Expo Go on your phone, a Replit account (for the AI proxy)
 
 ```bash
-git clone https://github.com/lukataylo/Anthitherapistv2.git
-cd Anthitherapistv2
+git clone https://github.com/lukataylo/Antitherapistv2.git
+cd Antitherapistv2
 pnpm install
 ```
 
@@ -114,24 +152,6 @@ PORT=18115 pnpm --filter @workspace/mobile run dev
 ```
 
 Scan the QR code with Expo Go, or press `w` for web preview.
-
----
-
-## Cognitive Distortion Reference
-
-| Category | Description | Example |
-|---|---|---|
-| `catastrophizing` | Assuming the worst possible outcome | "This will ruin everything" |
-| `overgeneralizing` | Drawing sweeping conclusions from one event | "I always fail" |
-| `mind-reading` | Assuming you know what others think | "They must think I'm stupid" |
-| `fortune-telling` | Predicting negative outcomes as fact | "I'll never get better at this" |
-| `emotional-reasoning` | Treating feelings as facts | "I feel worthless, so I am" |
-| `labeling` | Applying a global negative label to self or others | "I'm a complete failure" |
-| `should-statements` | Inflexible rules about how things must be | "I should be able to handle this" |
-| `personalization` | Taking excessive blame for external events | "It's all my fault" |
-| `magnification` | Exaggerating the importance of a negative event | "This is the worst thing that's happened" |
-| `minimization` | Downplaying positives or strengths | "Anyone could have done that" |
-| `neutral` | Not distorted — used as foil in games | — |
 
 ---
 

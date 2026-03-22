@@ -31,7 +31,7 @@ Adults who are broadly familiar with CBT concepts (either through therapy, self-
 | Property | Value |
 |---|---|
 | Colour palette | Deep blacks (#000, #020810), near-black cards (#1A1A1A), accent colours per distortion category |
-| Distortion categories | `belief` (red, #EF4444), `fear` (purple, #8B5CF6), `absolute` (amber, #F59E0B), `self_judgment` (pink, #EC4899) |
+| Distortion categories | `belief` (red, #FF5B5B), `fear` (purple, #9B5CF6), `absolute` (orange, #F97316), `self_judgment` (pink, #EC4899) |
 | Typography | Inter (400 Regular, 500 Medium, 600 SemiBold, 700 Bold) — loaded from Google Fonts |
 | Visual language | Dark glassmorphic: floating pills, frosted-glass blur (BlurView on iOS/Android, CSS backdrop-filter on web), translucent borders, low-opacity geometric patterns |
 | Success colour | #00E5A0 / #4ADE80 (teal-green) |
@@ -82,9 +82,9 @@ A detail view (`/history/[id]`) is a pushed route inside the Shape tab. Discuss 
 
 | Category | Background | Foreground |
 |---|---|---|
-| `belief` | `beliefDim` | `#EF4444` (red) |
-| `fear` | `fearDim` | `#8B5CF6` (purple) |
-| `absolute` | `absoluteDim` | `#F59E0B` (amber) |
+| `belief` | `beliefDim` | `#FF5B5B` (red) |
+| `fear` | `fearDim` | `#9B5CF6` (purple) |
+| `absolute` | `absoluteDim` | `#F97316` (orange) |
 | `self_judgment` | `self_judgmentDim` | `#EC4899` (pink) |
 
 ### 3. GamePanel — Per-Word Reframing
@@ -189,7 +189,19 @@ User types thought
 
 ---
 
+## Demo Flow / Wow Moments
+
+These are the five beats most likely to land with a judge in a short live demo:
+
+1. **The annotation reveal** — type a negative thought (e.g. *"I always ruin everything and everyone knows it"*) and hit send. Within seconds, individual words light up in four distinct colours — amber "always", red "ruin", pink "everyone knows it" — making the distortion landscape instantly visible without any explanation needed.
+2. **Tap-to-reframe with AI hints** — tap a highlighted word and the GamePanel slides up. Hit HINT and Claude surfaces a context-aware suggestion ("try 'sometimes' instead of 'always'"). Choose it, and the word in the thought turns green in real time. The whole thought can be reframed word by word.
+3. **Sort Tower with your own words** — launch Sort Tower from the Shape tab immediately after the first thought. The swipe deck contains words from the thought just captured. The tower grows floor by floor as the judge swipes — the personalisation loop is visible in under 30 seconds.
+4. **Thought Check teaching moment** — get one wrong in Thought Check. The wrong-answer explanation highlights the exact distorted words in pink and explains the distortion in plain language. It reads as a feature, not a failure.
+5. **History insight** — navigate to the history feed and tap the entry just created. The Shape detail screen fetches a Claude-generated narrative insight about the specific distortion pattern in that thought — personalised, not generic.
+
+---
+
 ## Known In-Progress Work
 
-- **Sort Tower category-colored floors + legend** — floors currently cycle through a fixed 10-colour palette regardless of distortion category. The plan is to colour each floor by the word's distortion category and add a legend.
-- **Thought Check bonus phase** — a bonus round at the end of Thought Check is pending implementation. This would trigger after the main 10-round deck is exhausted (or lives are still > 0) before showing the final score.
+- **Sort Tower category-colored floors + legend** — cancelled. Floors continue to cycle through the fixed 10-colour palette; no category colouring or legend will be added.
+- **Thought Check bonus phase** — implemented (Task #24). A bonus round triggers after the main 10-round deck is exhausted when lives remain, before showing the final score.
