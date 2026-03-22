@@ -118,7 +118,7 @@ const WRAP_UP_QUESTIONS = [
   "What do you want to remember from this?",
 ];
 
-type ScreenMode = "mood-select" | "journaling" | "wrapping" | "loading-summary" | "summary";
+type ScreenMode = "mood-select" | "journaling" | "wrapping" | "loading-summary" | "summary" | "summary-error";
 
 type InsightCard = {
   id: string;
@@ -173,6 +173,9 @@ export function CaptureScreen() {
   const [questionKey, setQuestionKey] = useState(0);
   const [wrapQuestionIndex, setWrapQuestionIndex] = useState(0);
   const pendingAnalysesRef = useRef(new Set<string>());
+  const reflectionRecordedRef = useRef(false);
+
+  const [failedAnalyses, setFailedAnalyses] = useState<Record<string, { turnId: string; sessionId: string; rawText: string }>>({});
 
   const [isRecording, setIsRecording] = useState(false);
   const [interimText, setInterimText] = useState("");
@@ -327,12 +330,18 @@ export function CaptureScreen() {
     setQuestionKey((k) => k + 1);
 
     if (activeSession) {
+      const sessionId = activeSession.id;
       pendingAnalysesRef.current.add(turn.id);
-      callAnalyseTurn(turn.id, activeSession.id, text).then((analysis) => {
+      callAnalyseTurn(turn.id, sessionId, text).then((analysis) => {
         pendingAnalysesRef.current.delete(turn.id);
-        if (analysis) storeAnalysis(analysis);
+        if (analysis) {
+          storeAnalysis(analysis);
+        } else {
+          setFailedAnalyses((prev) => ({ ...prev, [turn.id]: { turnId: turn.id, sessionId, rawText: text } }));
+        }
       }).catch(() => {
         pendingAnalysesRef.current.delete(turn.id);
+        setFailedAnalyses((prev) => ({ ...prev, [turn.id]: { turnId: turn.id, sessionId, rawText: text } }));
       });
     }
 
@@ -383,8 +392,6 @@ export function CaptureScreen() {
 
     const savedTurns = [...turns];
     setSummaryTurns(savedTurns);
-    recordReflection();
-    setStreakJustIncremented(true);
     const payload = wrapSession();
 
     if (!payload) {
@@ -394,29 +401,61 @@ export function CaptureScreen() {
 
     setFeedbackPayload(payload);
 
+    let summary: SummaryData | null = null;
     try {
-      const summary = await callSummariseSession(
+      const result = await callSummariseSession(
         payload.sessionId,
         savedTurns,
         payload.dominantEmotions,
       );
 
-      if (summary?.overallSummary && Array.isArray(summary?.insights)) {
-        setSummaryData(summary);
-      } else {
-        setSummaryData({
-          overallSummary: payload.dominantEmotions.length > 0
-            ? `You explored feelings of ${payload.dominantEmotions.slice(0, 3).join(", ")}.`
-            : "You took time to reflect today.",
-          insights: [],
-        });
+      if (result?.overallSummary && Array.isArray(result?.insights)) {
+        summary = result;
       }
     } catch {
-      setSummaryData({
-        overallSummary: "You took time to reflect today.",
-        insights: [],
-      });
+      // handled below
     }
+
+    if (!summary) {
+      setMode("summary-error");
+      return;
+    }
+
+    if (!reflectionRecordedRef.current) {
+      reflectionRecordedRef.current = true;
+      recordReflection();
+      setStreakJustIncremented(true);
+    }
+    setSummaryData(summary);
+    setMode("summary");
+  };
+
+  const handleRetrySummarise = async () => {
+    if (!feedbackPayload) return;
+    setMode("loading-summary");
+    let summary: SummaryData | null = null;
+    try {
+      const result = await callSummariseSession(
+        feedbackPayload.sessionId,
+        summaryTurns,
+        feedbackPayload.dominantEmotions,
+      );
+      if (result?.overallSummary && Array.isArray(result?.insights)) {
+        summary = result;
+      }
+    } catch {
+      // handled below
+    }
+    if (!summary) {
+      setMode("summary-error");
+      return;
+    }
+    if (!reflectionRecordedRef.current) {
+      reflectionRecordedRef.current = true;
+      recordReflection();
+      setStreakJustIncremented(true);
+    }
+    setSummaryData(summary);
     setMode("summary");
   };
 
@@ -431,12 +470,36 @@ export function CaptureScreen() {
     handleWrapUp();
   };
 
+  const handleRetryAnalysis = (turnId: string) => {
+    const failed = failedAnalyses[turnId];
+    if (!failed) return;
+    setFailedAnalyses((prev) => {
+      const next = { ...prev };
+      delete next[turnId];
+      return next;
+    });
+    pendingAnalysesRef.current.add(turnId);
+    callAnalyseTurn(failed.turnId, failed.sessionId, failed.rawText).then((analysis) => {
+      pendingAnalysesRef.current.delete(turnId);
+      if (analysis) {
+        storeAnalysis(analysis);
+      } else {
+        setFailedAnalyses((prev) => ({ ...prev, [turnId]: failed }));
+      }
+    }).catch(() => {
+      pendingAnalysesRef.current.delete(turnId);
+      setFailedAnalyses((prev) => ({ ...prev, [turnId]: failed }));
+    });
+  };
+
   const handleStartFresh = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setFeedbackPayload(null);
     setSummaryTurns([]);
     setSummaryData(null);
     setInsightResponses({});
+    setFailedAnalyses({});
+    reflectionRecordedRef.current = false;
     setMode("mood-select");
     setInputText("");
     setSuggestedQuestion(null);
@@ -505,6 +568,32 @@ export function CaptureScreen() {
         analyses={analyses}
         insets={insets}
       />
+    );
+  }
+
+  if (mode === "summary-error") {
+    return (
+      <View
+        style={[
+          styles.screen,
+          {
+            paddingTop: insets.top + 14,
+            paddingBottom: Math.max(insets.bottom, 16),
+            alignItems: "center",
+            justifyContent: "center",
+          },
+        ]}
+      >
+        <Ionicons name="cloud-offline-outline" size={44} color="rgba(255,255,255,0.2)" />
+        <Text style={styles.errorTitle}>Couldn't load your summary</Text>
+        <Text style={styles.errorSubtitle}>Check your connection and try again.</Text>
+        <Pressable
+          onPress={handleRetrySummarise}
+          style={({ pressed }) => [styles.retryBtn, { opacity: pressed ? 0.7 : 1 }]}
+        >
+          <Text style={styles.retryBtnText}>Try again</Text>
+        </Pressable>
+      </View>
     );
   }
 
@@ -663,6 +752,8 @@ export function CaptureScreen() {
                 turn={turn}
                 isLast={i === 0}
                 fadeLevel={i}
+                hasFailed={!!failedAnalyses[turn.id]}
+                onRetry={() => handleRetryAnalysis(turn.id)}
               />
             ))}
 
@@ -711,10 +802,14 @@ function TurnBubble({
   turn,
   isLast,
   fadeLevel,
+  hasFailed,
+  onRetry,
 }: {
   turn: Turn;
   isLast: boolean;
   fadeLevel: number;
+  hasFailed?: boolean;
+  onRetry?: () => void;
 }) {
   const opacity = Math.max(0.12, 1 - fadeLevel * 0.25);
   const uniqueLabels = Array.from(
@@ -740,6 +835,18 @@ function TurnBubble({
               </Text>
             </View>
           ))}
+        </View>
+      )}
+      {hasFailed && (
+        <View style={styles.analyseErrorRow}>
+          <Text style={styles.analyseErrorText}>Analysis unavailable.</Text>
+          <Pressable
+            onPress={onRetry}
+            hitSlop={8}
+            style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+          >
+            <Text style={styles.analyseRetryText}>Try again</Text>
+          </Pressable>
         </View>
       )}
     </Animated.View>
@@ -1553,5 +1660,52 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: "Inter_400Regular",
     color: "rgba(255,255,255,0.25)",
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontFamily: "Inter_600SemiBold",
+    color: "rgba(255,255,255,0.55)",
+    marginTop: 16,
+    marginBottom: 6,
+    letterSpacing: -0.2,
+  },
+  errorSubtitle: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    color: "rgba(255,255,255,0.3)",
+    marginBottom: 24,
+    textAlign: "center",
+    maxWidth: 260,
+    lineHeight: 20,
+  },
+  retryBtn: {
+    paddingHorizontal: 28,
+    paddingVertical: 12,
+    borderRadius: 100,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+  },
+  retryBtnText: {
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+    color: "rgba(255,255,255,0.7)",
+  },
+  analyseErrorRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 6,
+  },
+  analyseErrorText: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: "rgba(255,100,100,0.6)",
+  },
+  analyseRetryText: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    color: "rgba(255,255,255,0.45)",
+    textDecorationLine: "underline",
   },
 });

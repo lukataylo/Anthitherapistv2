@@ -509,7 +509,15 @@ export function InsightsSection({
           ))
         )}
       </ScrollView>
-      {cardCount > 1 && (
+      {patternsError && (
+        <View style={styles.errorRow}>
+          <Text style={styles.errorText}>Couldn't load patterns.</Text>
+          <Pressable onPress={loadPatterns} hitSlop={8} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
+            <Text style={styles.errorRetry}>Try again</Text>
+          </Pressable>
+        </View>
+      )}
+      {cardCount > 1 && !patternsError && (
         <View style={styles.dots}>
           {Array.from({ length: cardCount }).map((_, i) => (
             <View
@@ -637,5 +645,23 @@ const styles = StyleSheet.create({
     padding: 12,
     justifyContent: "space-between",
     backgroundColor: "rgba(255,255,255,0.07)",
+  },
+  errorRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 24,
+    marginTop: 6,
+  },
+  errorText: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    color: "rgba(255,255,255,0.3)",
+  },
+  errorRetry: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    color: "rgba(255,255,255,0.5)",
+    textDecorationLine: "underline",
   },
 });

@@ -62,6 +62,8 @@ type ChatMessage = {
   id: string;
   role: "user" | "assistant";
   content: string;
+  isError?: boolean;
+  retryHistory?: ChatMessage[] | null;
 };
 
 const WELCOME_SEED: DiscussMessage = {
@@ -110,8 +112,30 @@ function TypingIndicator() {
   );
 }
 
-function ChatBubble({ message }: { message: ChatMessage }) {
+function ChatBubble({
+  message,
+  onRetry,
+}: {
+  message: ChatMessage;
+  onRetry?: (history: ChatMessage[] | null) => void;
+}) {
   const isUser = message.role === "user";
+  if (message.isError) {
+    return (
+      <View style={styles.bubbleRowLeft}>
+        <View style={[styles.bubble, styles.bubbleAssistant, styles.bubbleError]}>
+          <Text style={styles.bubbleTextError}>{message.content}</Text>
+          <Pressable
+            onPress={() => onRetry?.(message.retryHistory ?? null)}
+            hitSlop={8}
+            style={({ pressed }) => [styles.retryBtn, { opacity: pressed ? 0.6 : 1 }]}
+          >
+            <Text style={styles.retryBtnText}>Try again</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
   return (
     <View style={isUser ? styles.bubbleRowRight : styles.bubbleRowLeft}>
       <View
@@ -181,13 +205,15 @@ export default function DiscussScreen() {
     setTimeout(() => scrollToBottom(), 100);
   };
 
-  const appendError = (forSession: number) => {
+  const appendError = (forSession: number, history: ChatMessage[] | null) => {
     if (forSession !== sessionRef.current) return;
     setIsWaiting(false);
     const errMsg: ChatMessage = {
       id: nextId(),
       role: "assistant",
-      content: "Something went wrong. Please try again.",
+      content: "Something went wrong.",
+      isError: true,
+      retryHistory: history,
     };
     setMessages((prev) => [...prev, errMsg]);
   };
@@ -198,10 +224,12 @@ export default function DiscussScreen() {
 
   const sendToAPI = (history: ChatMessage[]) => {
     const forSession = sessionRef.current;
-    const apiMessages: DiscussMessage[] = history.map((m) => ({
-      role: m.role,
-      content: m.content,
-    }));
+    const apiMessages: DiscussMessage[] = history
+      .filter((m) => !m.isError)
+      .map((m) => ({
+        role: m.role,
+        content: m.content,
+      }));
     mutation.mutate(
       {
         data: {
@@ -215,7 +243,7 @@ export default function DiscussScreen() {
         },
         onError(err) {
           console.error("Discuss error:", err);
-          appendError(forSession);
+          appendError(forSession, history);
         },
       }
     );
@@ -234,10 +262,24 @@ export default function DiscussScreen() {
         },
         onError(err) {
           console.error("Discuss error:", err);
-          appendError(forSession);
+          appendError(forSession, null);
         },
       }
     );
+  };
+
+  const handleRetry = (history: ChatMessage[] | null) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (history === null) {
+      setMessages([]);
+      startNewSession([WELCOME_SEED]);
+      return;
+    }
+    const withoutError = history.filter((m) => !m.isError);
+    setMessages(withoutError);
+    setIsWaiting(true);
+    setTimeout(() => scrollToBottom(), 60);
+    sendToAPI(withoutError);
   };
 
   useEffect(() => {
@@ -306,7 +348,11 @@ export default function DiscussScreen() {
           onContentSizeChange={() => scrollToBottom()}
         >
           {messages.map((msg) => (
-            <ChatBubble key={msg.id} message={msg} />
+            <ChatBubble
+              key={msg.id}
+              message={msg}
+              onRetry={handleRetry}
+            />
           ))}
           {isWaiting && <TypingIndicator />}
         </ScrollView>
@@ -485,5 +531,28 @@ const styles = StyleSheet.create({
     borderRadius: 19,
     alignItems: "center",
     justifyContent: "center",
+  },
+  bubbleError: {
+    gap: 8,
+  },
+  bubbleTextError: {
+    fontSize: 15,
+    fontFamily: "Inter_400Regular",
+    color: "rgba(255,180,180,0.8)",
+    lineHeight: 22,
+  },
+  retryBtn: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 100,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+  },
+  retryBtnText: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    color: "rgba(255,255,255,0.6)",
   },
 });
