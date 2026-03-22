@@ -122,11 +122,11 @@ This project was built using a staged multi-tool AI workflow, with each tool cho
 
 | Stage | Tool | Why |
 |---|---|---|
-| **Frontend ideation** | Google Gemini AI Studio | Multimodal input made it easy to reason about UI layouts, colour systems, and component design using screenshots and sketches alongside text prompts. Its strong frontend instincts accelerated early design decisions. |
-| **Backend & architecture** | Claude (via Claude.ai) + Cursor | Claude's reasoning depth was well-suited to API design, CBT logic modelling, and system architecture. Cursor handled in-editor code generation and refactoring across the codebase during this phase. |
-| **Collaboration & shipping** | Replit | Once the project was in a stable state, we imported it from GitHub into Replit. Replit's multiplayer environment let the team work on the same codebase simultaneously in real time, and its integrated AI agent accelerated feature delivery significantly. |
+| **Initial prototyping** | Google AI Studio | Its multimodality made it easy to reason about UI layouts, colour systems, and component design using screenshots and sketches alongside text prompts. It produced strong frontend outputs that accelerated early design decisions. |
+| **Backend** | Claude Code | Claude Code's reasoning depth was well-suited to API design, CBT logic modelling, and system architecture, making it the right tool for building out the backend. |
+| **Games & interactive experiences** | Replit | Replit's integrated AI agent and collaborative environment made it the ideal choice for building the games and interactive experiences within the app. |
 
-The handoff — from Gemini for visual thinking → Claude/Cursor for depth → Replit for collaboration and speed — let each tool do what it does best.
+The handoff — from Google AI Studio for early prototyping → Claude Code for the backend → Replit for games and interactive experiences — let each tool do what it does best.
 
 ---
 
