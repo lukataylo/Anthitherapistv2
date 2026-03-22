@@ -8,6 +8,7 @@ import {
   UIManager,
   View,
 } from "react-native";
+import Svg, { Rect } from "react-native-svg";
 import { Ionicons } from "@expo/vector-icons";
 import { getPatterns } from "@workspace/api-client-react";
 import type { HistoryEntry } from "@/context/HistoryContext";
@@ -38,6 +39,12 @@ const SIGNIFICANT_CATEGORIES: SignificantCategory[] = [
   "absolute",
   "self_judgment",
 ];
+
+type WeekBucket = {
+  weekKey: string;
+  counts: Record<SignificantCategory, number>;
+  total: number;
+};
 
 function getWeekKey(date: Date): string {
   const d = new Date(date);
@@ -109,6 +116,55 @@ function ErrorCard({ onRetry, grid }: { onRetry: () => void; grid?: boolean }) {
   );
 }
 
+function ProgressChartCard({
+  weeklyData,
+  grid,
+}: {
+  weeklyData: WeekBucket[];
+  grid?: boolean;
+}) {
+  const chartW = grid ? 80 : 88;
+  const chartH = 52;
+  const barGap = 4;
+  const weeks = weeklyData.slice(-6);
+  const barW = weeks.length > 0 ? Math.max(6, Math.floor((chartW - barGap * (weeks.length - 1)) / weeks.length)) : 8;
+  const maxTotal = Math.max(...weeks.map((w) => w.total), 1);
+  const lastIdx = weeks.length - 1;
+
+  return (
+    <View style={[grid ? styles.gridCard : styles.card]} accessibilityLabel="Weekly activity">
+      <View style={{ flex: 1, justifyContent: "flex-end" }}>
+        <Svg width={chartW} height={chartH}>
+          {weeks.map((week, wi) => {
+            const x = wi * (barW + barGap);
+            const barH = Math.max(3, Math.round((week.total / maxTotal) * chartH));
+            const isLatest = wi === lastIdx;
+            return (
+              <Rect
+                key={week.weekKey}
+                x={x}
+                y={chartH - barH}
+                width={barW}
+                height={barH}
+                fill={isLatest ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.2)"}
+                rx={3}
+              />
+            );
+          })}
+        </Svg>
+      </View>
+      <View style={styles.cardBottom}>
+        <Text style={styles.label} numberOfLines={1}>
+          Weekly activity
+        </Text>
+        <Text style={styles.sublabel} numberOfLines={1}>
+          {weeks.length} weeks
+        </Text>
+      </View>
+    </View>
+  );
+}
+
 function useInsightsData(entries: HistoryEntry[]) {
   const [patterns, setPatterns] = useState<string[]>([]);
   const [patternsLoading, setPatternsLoading] = useState(false);
@@ -152,9 +208,9 @@ function useInsightsData(entries: HistoryEntry[]) {
     return top ? top : null;
   }, [donutData]);
 
-  const { trendSummary, trendDelta, trendDir } = useMemo(() => {
+  const { trendSummary, trendDelta, trendDir, weeklyData } = useMemo(() => {
     if (entries.length === 0) {
-      return { trendSummary: null as string | null, trendDelta: 0, trendDir: "down" as "up" | "down" };
+      return { trendSummary: null as string | null, trendDelta: 0, trendDir: "down" as "up" | "down", weeklyData: [] as WeekBucket[] };
     }
 
     const weekMap: Map<string, Record<SignificantCategory, number>> = new Map();
@@ -172,6 +228,12 @@ function useInsightsData(entries: HistoryEntry[]) {
     }
 
     const sortedWeeks = Array.from(weekMap.keys()).sort();
+    const weeklyData: WeekBucket[] = sortedWeeks.map((wk) => {
+      const counts = weekMap.get(wk)!;
+      const total = SIGNIFICANT_CATEGORIES.reduce((s, c) => s + counts[c], 0);
+      return { weekKey: wk, counts, total };
+    });
+
     let summary: string | null = null;
     let delta = 0;
     let dir: "up" | "down" = "down";
@@ -205,7 +267,7 @@ function useInsightsData(entries: HistoryEntry[]) {
       }
     }
 
-    return { trendSummary: summary, trendDelta: delta, trendDir: dir };
+    return { trendSummary: summary, trendDelta: delta, trendDir: dir, weeklyData };
   }, [entries]);
 
   const thoughtSamples = useMemo(() => {
@@ -315,6 +377,8 @@ function useInsightsData(entries: HistoryEntry[]) {
     patternsLoading,
     patternsError,
     loadPatterns,
+    weeklyData,
+    trendSummary,
   };
 }
 
@@ -332,7 +396,11 @@ export function InsightsSection({
     patternsLoading,
     patternsError,
     loadPatterns,
+    weeklyData,
+    trendSummary,
   } = useInsightsData(entries);
+
+  const showProgressChart = weeklyData.length >= 2;
 
   const allCards = useMemo(() => [...staticCards, ...patternCards], [staticCards, patternCards]);
 
@@ -354,13 +422,36 @@ export function InsightsSection({
     return null;
   }
 
+  const trendCardIdx = staticCards.findIndex((c) => c.id === "trend");
+  const totalCardIdx = staticCards.findIndex((c) => c.id === "total");
+  const chartInsertIdx = trendCardIdx >= 0 ? trendCardIdx + 1 : totalCardIdx >= 0 ? totalCardIdx : staticCards.length;
+
+  const cardsBeforeChart = staticCards.slice(0, chartInsertIdx);
+  const cardsAfterChart = staticCards.slice(chartInsertIdx);
+
+  const progressChartExtra = showProgressChart ? 1 : 0;
+
+  function renderOrderedCards(grid: boolean) {
+    return (
+      <>
+        {cardsBeforeChart.map((card) => (
+          <InsightCard key={card.id} card={card} grid={grid} />
+        ))}
+        {showProgressChart && (
+          <ProgressChartCard weeklyData={weeklyData} grid={grid} />
+        )}
+        {cardsAfterChart.map((card) => (
+          <InsightCard key={card.id} card={card} grid={grid} />
+        ))}
+      </>
+    );
+  }
+
   if (alwaysExpanded) {
     return (
       <View style={styles.gridContainer}>
         <View style={styles.gridWrap}>
-          {staticCards.map((card) => (
-            <InsightCard key={card.id} card={card} grid />
-          ))}
+          {renderOrderedCards(true)}
           {patternsLoading ? (
             <>
               <SkeletonCard grid />
@@ -380,10 +471,10 @@ export function InsightsSection({
   }
 
   const cardCount = patternsLoading
-    ? staticCards.length + 3
+    ? staticCards.length + progressChartExtra + 3
     : patternsError
-      ? staticCards.length + 1
-      : allCards.length;
+      ? staticCards.length + progressChartExtra + 1
+      : allCards.length + progressChartExtra;
 
   return (
     <View style={styles.section}>
@@ -402,9 +493,7 @@ export function InsightsSection({
         }}
         scrollEventThrottle={16}
       >
-        {staticCards.map((card) => (
-          <InsightCard key={card.id} card={card} />
-        ))}
+        {renderOrderedCards(false)}
 
         {patternsLoading ? (
           <>
