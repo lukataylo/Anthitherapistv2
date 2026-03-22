@@ -1,8 +1,8 @@
-# Reframe — replit.md
+# Antitherapist — replit.md
 
 ## Overview
 
-Reframe (internal name: Antitherapist) is a mobile-first CBT (Cognitive Behavioural Therapy) self-practice app. Users type or speak a negative thought; the app uses Claude AI (Anthropic) to analyse it word-by-word, tagging each word with a cognitive distortion category. Distorted words are shown as coloured tappable chips inline in the thought. Users then work through reframing those words via an interactive GamePanel or five standalone mini-games, all of which are personalised using the user's own captured history.
+Antitherapist is a mobile-first CBT (Cognitive Behavioural Therapy) self-practice app. Users type or speak a negative thought; the app uses Claude AI (Anthropic) to analyse it word-by-word, tagging each word with a cognitive distortion category. Distorted words are shown as coloured tappable chips inline in the thought. Users then work through reframing those words via an interactive GamePanel or five standalone mini-games, all of which are personalised using the user's own captured history.
 
 **Key features:**
 - Multi-turn journal mode on home screen with U-shaped therapeutic conversation (descent → threshold → ascent)

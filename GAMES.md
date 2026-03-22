@@ -1,6 +1,6 @@
-# Reframe — Games Reference
+# Antitherapist — Games Reference
 
-This document provides a detailed per-game breakdown of every mini-game implemented in the Reframe app. All five games live in `artifacts/mobile/components/` and are launched from the Shape tab's game carousel (`GameCarousel.tsx`). They are rendered as full-screen `Modal` components and receive `entries: HistoryEntry[]` and `onClose: () => void` as props.
+This document provides a detailed per-game breakdown of every mini-game implemented in the Antitherapist app. All five games live in `artifacts/mobile/components/` and are launched from the Shape tab's game carousel (`GameCarousel.tsx`). They are rendered as full-screen `Modal` components and receive `entries: HistoryEntry[]` and `onClose: () => void` as props.
 
 ---
 

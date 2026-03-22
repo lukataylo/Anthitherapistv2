@@ -1,7 +1,7 @@
-# Reframe — Turn Your Negative Thoughts Into a Game
+# Antitherapist — Turn Your Negative Thoughts Into a Game
 
 > **CBT therapy shouldn't feel like homework.**
-> Reframe uses Claude AI to analyse your thoughts word by word, colour-code every cognitive distortion, and turn your own thinking patterns into five interactive mini-games — so you actually *want* to practise the skill.
+> Antitherapist uses Claude AI to analyse your thoughts word by word, colour-code every cognitive distortion, and turn your own thinking patterns into five interactive mini-games — so you actually *want* to practise the skill.
 
 ---
 
@@ -11,13 +11,13 @@ Cognitive Behavioural Therapy is one of the most evidence-backed treatments for 
 
 The practice is brutal. Paper diaries collect dust. Plain-text apps offer no feedback. People quit before the skill sticks.
 
-**Reframe closes that loop** — with AI precision, word-level annotation, and games that run on your own history.
+**Antitherapist closes that loop** — with AI precision, word-level annotation, and games that run on your own history.
 
 ---
 
 ## Why It Works
 
-- **Word-level precision, not thought-level vagueness.** Instead of asking "was this thought helpful?", Reframe asks "which specific word is doing the distorting?" That precision is what actually trains the skill.
+- **Word-level precision, not thought-level vagueness.** Instead of asking "was this thought helpful?", Antitherapist asks "which specific word is doing the distorting?" That precision is what actually trains the skill.
 - **Your data powers your training.** The mini-games pull from your own captured thoughts — you practise on *your* patterns, not made-up examples.
 - **Instant, visual feedback.** Every word in your thought is colour-coded by distortion type the moment you submit it. No waiting. No ambiguity.
 

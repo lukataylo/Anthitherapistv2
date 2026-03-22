@@ -1,18 +1,17 @@
-# Reframe — Product Requirements Document
+# Antitherapist — Product Requirements Document
 
 ## Overview
 
-**App name:** Reframe  
-**Package / internal name:** Antitherapist  
+**App name:** Antitherapist  
 **Platform:** iOS and Android (React Native via Expo)
 
-Reframe is a mobile app that lowers the friction of Cognitive Behavioural Therapy (CBT) self-practice. It uses AI-powered word-level annotation to help users identify cognitive distortions in their own thoughts, then engages them in five gamified mini-games that build the skills needed to reframe those thoughts. Daily habit mechanics (streak tracking, score chasing) encourage the user to return every day.
+Antitherapist is a mobile app that lowers the friction of Cognitive Behavioural Therapy (CBT) self-practice. It uses AI-powered word-level annotation to help users identify cognitive distortions in their own thoughts, then engages them in five gamified mini-games that build the skills needed to reframe those thoughts. Daily habit mechanics (streak tracking, score chasing) encourage the user to return every day.
 
 ---
 
 ## Core Value Proposition
 
-Traditional CBT homework is high-effort and low-engagement. Reframe reduces that friction by:
+Traditional CBT homework is high-effort and low-engagement. Antitherapist reduces that friction by:
 
 1. **AI-first capture** — the user types (or speaks) a thought; Claude Sonnet analyses it word-by-word and labels each word's cognitive distortion category in real time.
 2. **Annotation-first review** — distorted words appear as coloured tappable chips inline in the thought text, making the distortion landscape immediately visible.
