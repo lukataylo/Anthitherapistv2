@@ -42,27 +42,28 @@ Adults who are broadly familiar with CBT concepts (either through therapy, self-
 
 ## Navigation Structure
 
-The app has three tabs managed by Expo Router, rendered inside a custom floating glassmorphic tab bar (a `BlurView`-backed pill that floats over the screen content):
+The app has three visible tabs managed by Expo Router. Additional routes (Discuss, Journal, Journal Feedback) exist in the router but are hidden from the tab bar (`href: null`). The default tab on launch is **Shape**.
 
 | Tab | Route | Screen |
 |---|---|---|
-| Reframe | `/` (`app/index.tsx`) | Thought capture + annotated review + GamePanel |
-| History | `/history` (`app/history/index.tsx`) | Mini-game carousel + reflection entry feed |
-| Discuss | `/discuss` (`app/discuss.tsx`) | Socratic AI coaching chat |
+| Speak | `/` (`app/index.tsx`) | Thought capture + annotated review + GamePanel |
+| Shape | `/history` (`app/history/index.tsx`) | Mini-game carousel + reflection entry feed |
+| Own | `/flashcards` (`app/flashcards.tsx`) | Belief flashcard practice deck |
 
-A fourth screen, the History detail view (`/history/[id]`), is a pushed route inside the History tab.
+A detail view (`/history/[id]`) is a pushed route inside the Shape tab. Discuss (`/discuss`) is reachable from within the app but is not shown in the tab bar.
 
 ### Tab Bar Details
 
-- Renders as a floating pill with `BlurView` blur at the bottom of every screen.
-- Each tab item has a press-bounce animation (icon squishes to 0.82×) and a spring-in active dot beneath the icon.
-- An orange dot appears on the Reframe tab icon when `currentStreak > 0 AND !reflectedToday`, nudging the user to maintain their streak.
+- Renders as a dark-background strip (`backgroundColor: "#000"`) at the bottom of every screen. The inner bar uses `BlurView` (intensity 80, tint "dark") on native; CSS `backdropFilter: "blur(24px)"` on web.
+- Each tab item has a press-bounce animation (icon squishes to 0.82×).
+- Tab icons use Ionicons: Speak uses `create` / `create-outline`, Shape uses `repeat` / `repeat-outline`, Own uses `infinite` / `infinite-outline`.
+- An orange dot (`#FF9500`) appears on the **Speak** tab icon when `currentStreak > 0 AND !reflectedToday`, nudging the user to maintain their streak.
 
 ---
 
 ## Features
 
-### 1. Thought Capture (Home / Reframe tab)
+### 1. Thought Capture (Home / Speak tab)
 
 - **Text input** — multiline, 400 character cap, dark card background. Placeholder: *"Capture a thought, a belief, or a prediction..."*
 - **Voice capture** — mic button using `expo-speech-recognition` (requires custom Expo dev client). Button pulses red while listening; transcribed text is appended to any existing thought text. Gracefully hidden in standard Expo Go.
@@ -113,7 +114,7 @@ Implemented in `StreakContext` (AsyncStorage persistence, key `reframe_streak_v1
 - **`reflectedToday`** — derived boolean, used by CaptureScreen and TabBar to conditionally show nudge UI.
 - **`StreakBadge`** — flame icon + numeric counter pill in the top-left of the capture screen. Dims to 50% opacity when not reflected today; springs to 1.4× scale for 1.5 seconds after a new reflection is recorded.
 
-### 5. History Tab
+### 5. Shape Tab
 
 - **Stats header** — three cards showing: current streak, best streak, and total reflections count.
 - **Game carousel** — horizontally scrollable snap-scrolling row of five game launcher cards. Each card has a distinct colour palette, decorative geometric background pattern, icon, name, and category label. Position dots below the carousel indicate scroll position.
@@ -124,16 +125,16 @@ Implemented in `StreakContext` (AsyncStorage persistence, key `reframe_streak_v1
 - **Tap** — navigates to the History detail screen (`/history/[id]`) for that entry.
 - **Long-press** — prompts deletion via an Alert.
 
-### 6. History Detail Screen (`/history/[id]`)
+### 6. Shape Detail Screen (`/history/[id]`)
 
 A full-screen detail view for a single past session. Sections:
 
 1. **Annotated thought** — the original text with distorted words highlighted and chosen reframes shown beneath as green replacements.
 2. **What changed** — per-word breakdown card for each reframed word: original, category badge, chosen reframe, and AI explainer.
 3. **Insight** — an LLM-generated paragraph (from `POST /api/reflect`) fetched fresh on mount. Rendered with a loading skeleton while fetching and a graceful error state.
-4. **Continue session** button — only visible for incomplete entries; loads the session into GameContext and navigates to the Reframe tab.
+4. **Continue session** button — only visible for incomplete entries; loads the session into GameContext and navigates to the Speak tab.
 
-### 7. Discuss Tab — Socratic Coaching
+### 7. Discuss — Socratic Coaching
 
 A chat-style interface where Claude acts as a Socratic coach.
 
@@ -191,6 +192,5 @@ User types thought
 
 ## Known In-Progress Work
 
-- **Game done/summary screens** (task #21) — end-of-game summary views are not yet implemented.
-- **Sort Tower category-colored floors + legend** (task #23) — floors currently cycle through a fixed colour palette; the plan is to colour floors by the word's distortion category and add a legend.
-- **Thought Check bonus phase** (task #24) — a bonus round at the end of Thought Check is pending implementation.
+- **Sort Tower category-colored floors + legend** — floors currently cycle through a fixed 10-colour palette regardless of distortion category. The plan is to colour each floor by the word's distortion category and add a legend.
+- **Thought Check bonus phase** — a bonus round at the end of Thought Check is pending implementation. This would trigger after the main 10-round deck is exhausted (or lives are still > 0) before showing the final score.

@@ -39,7 +39,7 @@ The practice is brutal. Paper diaries collect dust. Plain-text apps offer no fee
 
 ## The 5 Mini-Games
 
-Each game launches full-screen from the History tab and draws rounds from your own captured thoughts.
+Each game launches full-screen from the Shape tab and draws rounds from your own captured thoughts.
 
 | # | Game | Skill trained |
 |---|---|---|
@@ -53,7 +53,7 @@ Each game launches full-screen from the History tab and draws rounds from your o
 
 ## Discuss Mode
 
-A third tab opens a **Socratic coaching session** with Claude. The AI is prompted to:
+Accessible from within the app, **Discuss** opens a Socratic coaching session with Claude. The AI is prompted to:
 
 - Ask only one question at a time
 - Never name or diagnose a cognitive distortion directly
@@ -71,7 +71,7 @@ The session starts immediately with a Claude-generated opening question. No setu
 | Mobile framework | Expo SDK 54, Expo Router 6 |
 | Language | TypeScript (strict) |
 | UI | React Native, custom StyleSheet |
-| Animations | React Native Reanimated 3, Animated API |
+| Animations | React Native Reanimated 4, Animated API |
 | Gestures | react-native-gesture-handler |
 | Local storage | AsyncStorage |
 | API server | Express 5 + TypeScript |

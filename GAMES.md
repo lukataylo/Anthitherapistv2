@@ -1,6 +1,6 @@
 # Reframe — Games Reference
 
-This document provides a detailed per-game breakdown of every mini-game implemented in the Reframe app. All five games live in `artifacts/mobile/components/` and are launched from the History tab's game carousel (`GameCarousel.tsx`). They are rendered as full-screen `Modal` components and receive `entries: HistoryEntry[]` and `onClose: () => void` as props.
+This document provides a detailed per-game breakdown of every mini-game implemented in the Reframe app. All five games live in `artifacts/mobile/components/` and are launched from the Shape tab's game carousel (`GameCarousel.tsx`). They are rendered as full-screen `Modal` components and receive `entries: HistoryEntry[]` and `onClose: () => void` as props.
 
 ---
 
@@ -31,7 +31,7 @@ Every game calls a `buildDeck` / `buildQuestions` / `buildRounds` function that 
 
 ### Game Done / Summary Screens
 
-End-of-game states are currently handled inline within each game component (e.g. a `"done"` phase renders a score card and a Play Again button inside the same modal). A dedicated game summary screen design is in progress (task #21).
+End-of-game states are currently handled inline within each game component (e.g. a `"done"` phase renders a score card and a Play Again button inside the same modal).
 
 ---
 
@@ -92,7 +92,7 @@ Fully implemented. The game plays end-to-end with deck building, swipe gestures 
 
 ### Known Pending Work
 
-- **Task #23:** Category-colored floors + legend. Currently all floors cycle through a fixed 10-colour palette regardless of distortion category. The plan is to colour each floor by the category of the word that produced it, and add a legend so users understand what each colour means.
+- **Category-colored floors + legend:** Currently all floors cycle through a fixed 10-colour palette regardless of distortion category. The plan is to colour each floor by the category of the word that produced it, and add a legend so users understand what each colour means.
 
 ---
 
@@ -199,7 +199,7 @@ Fully implemented with explanation phase for wrong answers on distorted rounds.
 
 ### Known Pending Work
 
-- **Task #24:** A bonus phase at the end of the Thought Check session is pending implementation. This would trigger after the main 10-round deck is exhausted (or lives are still > 0) before showing the final score.
+- **Bonus phase:** A bonus round at the end of the Thought Check session is pending implementation. This would trigger after the main 10-round deck is exhausted (or lives are still > 0) before showing the final score.
 
 ---
 
