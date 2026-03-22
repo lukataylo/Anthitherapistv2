@@ -23,6 +23,8 @@
  *                       The screen transitions to "cloud" immediately with local
  *                       pattern matches; once isEnriching flips to false the
  *                       full LLM data (reframes, hints, etc.) is available.
+ * - `offlineMode`     — true when the API call failed and local pattern matching
+ *                       was used as a fallback. Reset to false on each new session.
  *
  * ## Screen transitions
  *
@@ -49,6 +51,9 @@ import React, {
   useCallback,
   ReactNode,
 } from "react";
+import { matchPatterns } from "@/utils/patternMatcher";
+import { getPatternById } from "@/utils/patternLibrary";
+import type { PatternCategory } from "@/types/journal";
 
 /** Four distortion categories assigned by Claude, plus "neutral". */
 export type WordCategory =
@@ -74,6 +79,93 @@ export interface WordAnalysis {
 /** The three screens the app can be on within the Home tab. */
 export type AppScreen = "capture" | "cloud" | "game";
 
+/** Timeout in ms for the /api/reframe call before falling back to local patterns. */
+const REFRAME_TIMEOUT_MS = 15000;
+
+/** Base URL for API calls. */
+const domain = process.env.EXPO_PUBLIC_DOMAIN;
+const API_BASE = domain ? `https://${domain}` : "";
+
+/**
+ * Maps a PatternCategory (from local pattern library) to the WordCategory
+ * used by the API and the rest of the UI.
+ */
+function patternCategoryToWordCategory(cat: PatternCategory): WordCategory {
+  switch (cat) {
+    case "temporal_universalising":
+    case "social_universalising":
+      return "absolute";
+    case "capability_foreclosure":
+    case "fixed_nature":
+    case "should_statement":
+    case "external_causation":
+    case "mind_reading":
+      return "belief";
+    case "fortune_telling":
+    case "catastrophising":
+      return "fear";
+    case "identity_fusion":
+    case "minimisation":
+    case "self_dismissal":
+    case "unfavourable_comparison":
+      return "self_judgment";
+    default:
+      return "belief";
+  }
+}
+
+/**
+ * Build a word-by-word analysis from the raw thought string using local
+ * pattern matching only. All words start as neutral; matched patterns upgrade
+ * the first token they cover to a significant category.
+ */
+function buildLocalWords(thought: string): WordAnalysis[] {
+  const tokens = thought.trim().split(/\s+/);
+  const flags = matchPatterns(thought);
+
+  const words: WordAnalysis[] = tokens.map((token) => ({
+    word: token.replace(/[^a-z0-9']/gi, "").toLowerCase() || token,
+    category: "neutral" as WordCategory,
+    reframes: [],
+    hint: null,
+    fiftyFifty: [],
+    explainer: null,
+  }));
+
+  for (const flag of flags) {
+    const matchedLower = flag.matchedText.toLowerCase();
+    const category = patternCategoryToWordCategory(flag.category);
+    const pattern = getPatternById(flag.patternId);
+
+    for (let i = 0; i < words.length; i++) {
+      const raw = tokens[i];
+      const norm = raw.replace(/[^a-z0-9' ]/gi, "").toLowerCase().trim();
+      if (
+        words[i].category === "neutral" &&
+        matchedLower.includes(norm) &&
+        norm.length > 1
+      ) {
+        words[i] = {
+          word: raw,
+          category,
+          reframes: pattern ? [pattern.reframeHint] : [],
+          hint: pattern ? pattern.reframeHint : null,
+          fiftyFifty: [],
+          explainer: pattern
+            ? `This may reflect ${pattern.categoryLabel.toLowerCase()} thinking.`
+            : null,
+        };
+        break;
+      }
+    }
+  }
+
+  return words.map((w, i) => ({
+    ...w,
+    word: tokens[i],
+  }));
+}
+
 interface GameState {
   screen: AppScreen;
   thought: string;
@@ -87,6 +179,11 @@ interface GameState {
    * fill in once this flips to false.
    */
   isEnriching: boolean;
+  /**
+   * True when the API call failed and local pattern matching was used as a
+   * fallback. Cleared when a new session starts.
+   */
+  offlineMode: boolean;
 }
 
 interface GameContextValue extends GameState {
@@ -104,6 +201,12 @@ interface GameContextValue extends GameState {
   mergeEnrichedWords: (enrichedWords: WordAnalysis[]) => void;
   /** Set isEnriching flag — used by HomeScreen to signal enrichment start/end. */
   setIsEnriching: (value: boolean) => void;
+  /**
+   * Full analysis flow: locally match patterns → transition to cloud → call
+   * /api/reframe → merge enriched result. On API failure or timeout, falls back
+   * to the local pattern result and sets offlineMode = true.
+   */
+  analyseThought: (thought: string) => Promise<void>;
   /** Hydrate a past session from HistoryContext (used when tapping a history entry). */
   loadSession: (thought: string, words: WordAnalysis[], reframedWords: Record<number, string>) => void;
   /** Open the GamePanel for the word at the given index. */
@@ -139,6 +242,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     reframedWords: {},
     activeWordIndex: null,
     isEnriching: false,
+    offlineMode: false,
   });
 
   const setThought = useCallback((thought: string) => {
@@ -158,6 +262,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       screen: "cloud",
       activeWordIndex: null,
       isEnriching: true,
+      offlineMode: false,
     }));
   }, []);
 
@@ -189,6 +294,71 @@ export function GameProvider({ children }: { children: ReactNode }) {
   /** Expose the isEnriching flag so HomeScreen can set it on error/reset. */
   const setIsEnriching = useCallback((value: boolean) => {
     setState((s) => ({ ...s, isEnriching: value }));
+  }, []);
+
+  /**
+   * Full analysis flow for a new thought:
+   *  1. Build initial words from local pattern matching
+   *  2. Transition to cloud view immediately (setWords)
+   *  3. POST to /api/reframe with a 15 s timeout
+   *  4a. On success: merge the enriched result over the local words
+   *  4b. On failure/timeout: use the local pattern result as-is, set offlineMode
+   *
+   * This ensures the spinner always clears — even when there is no network.
+   */
+  const analyseThought = useCallback(async (thought: string): Promise<void> => {
+    const localWords = buildLocalWords(thought);
+
+    setState((s) => ({
+      ...s,
+      thought,
+      words: localWords,
+      reframedWords: {},
+      screen: "cloud",
+      activeWordIndex: null,
+      isEnriching: true,
+      offlineMode: false,
+    }));
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), REFRAME_TIMEOUT_MS);
+
+    try {
+      const res = await fetch(`${API_BASE}/api/reframe`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ thought }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+
+      const data = await res.json() as { words: WordAnalysis[] };
+
+      setState((s) => {
+        const enrichedWords: WordAnalysis[] = data.words ?? [];
+        const merged: WordAnalysis[] = s.words.map((localWord, idx) => {
+          const enriched = enrichedWords[idx];
+          if (!enriched) return localWord;
+          return {
+            word: localWord.word,
+            category: enriched.category ?? localWord.category,
+            reframes: enriched.reframes ?? localWord.reframes,
+            hint: enriched.hint ?? localWord.hint,
+            fiftyFifty: enriched.fiftyFifty ?? localWord.fiftyFifty,
+            explainer: enriched.explainer ?? localWord.explainer,
+          };
+        });
+        return { ...s, words: merged, isEnriching: false, offlineMode: false };
+      });
+    } catch {
+      clearTimeout(timeoutId);
+      setState((s) => ({ ...s, isEnriching: false, offlineMode: true }));
+    }
   }, []);
 
   /** Transition to the game screen for a specific word. */
@@ -247,6 +417,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         reframedWords,
         activeWordIndex: null,
         isEnriching: false,
+        offlineMode: false,
       });
     },
     []
@@ -261,6 +432,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       reframedWords: {},
       activeWordIndex: null,
       isEnriching: false,
+      offlineMode: false,
     });
   }, []);
 
@@ -286,6 +458,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     setWords,
     mergeEnrichedWords,
     setIsEnriching,
+    analyseThought,
     loadSession,
     openGame,
     closeGame,

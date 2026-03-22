@@ -221,7 +221,7 @@ export default function HistoryDetailScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { entries } = useHistory();
-  const { loadSession } = useGame();
+  const { loadSession, analyseThought } = useGame();
 
   const entry = entries.find((e) => e.id === id);
 
@@ -246,6 +246,11 @@ export default function HistoryDetailScreen() {
 
   const handleContinue = () => {
     loadSession(entry.thought, entry.words, entry.reframedWords);
+    router.push("/");
+  };
+
+  const handleReanalyse = () => {
+    analyseThought(entry.thought);
     router.push("/");
   };
 
@@ -310,6 +315,14 @@ export default function HistoryDetailScreen() {
             <Text style={styles.continueBtnText}>Continue session</Text>
           </Pressable>
         )}
+
+        <Pressable
+          onPress={handleReanalyse}
+          style={({ pressed }) => [styles.reanalyseBtn, pressed && styles.reanalyseBtnPressed]}
+        >
+          <Ionicons name="refresh-outline" size={15} color="rgba(255,255,255,0.55)" />
+          <Text style={styles.reanalyseBtnText}>Re-analyse</Text>
+        </Pressable>
       </ScrollView>
     </View>
   );
@@ -511,6 +524,26 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: "Inter_600SemiBold",
     color: "#000",
+  },
+  reanalyseBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderRadius: 14,
+    paddingVertical: 14,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+    marginTop: 8,
+  },
+  reanalyseBtnPressed: {
+    backgroundColor: "rgba(255,255,255,0.09)",
+  },
+  reanalyseBtnText: {
+    fontSize: 15,
+    fontFamily: "Inter_500Medium",
+    color: "rgba(255,255,255,0.55)",
   },
   notFoundText: {
     fontSize: 17,
