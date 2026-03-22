@@ -38,11 +38,11 @@ The result is a tighter feedback loop: annotate → reframe → play games built
 
 Follow these five steps to see the core experience:
 
-1. **Speak tab → type a negative thought.** Try something like: *"I always mess everything up and everyone can tell."* Hit send.
-2. **Watch the AI annotate.** In a few seconds, distorted words light up in colour: red chips for beliefs, purple for fears, amber for absolutes, pink for self-judgements. Neutral words stay plain.
-3. **Tap a coloured word.** The GamePanel slides up. Hit **HINT** to see what Claude suggests, then type a reframe or use **50/50** to choose between two options.
-4. **Shape tab → open Sort Tower.** Swipe word cards left (distorted) or right (healthy) — the words are from *your* thought. Watch the tower grow with each correct swipe.
-5. **Open Thought Check.** Read a thought and decide: DISTORTED or HEALTHY? If you get it wrong, the distorted words are highlighted with an explanation — a teaching moment, not just a score.
+1. **Speak tab → pick your mood.** The app opens with a "How are you feeling?" prompt. Tap any emoji (Good, Okay, Sad, Stressed, Angry) to begin a session.
+2. **Enter a negative thought.** Type something like: *"I always mess everything up and everyone can tell."* Or tap the mic button to speak it — the recording is transcribed automatically. Hit send.
+3. **Watch the AI annotate.** In a few seconds, distorted words light up in colour: red chips for beliefs, purple for fears, amber for absolutes, pink for self-judgements. Neutral words stay plain.
+4. **Tap a coloured word.** The GamePanel slides up. Hit **HINT** to see what Claude suggests, then type a reframe or use **50/50** to choose between two options. Work through as many words as you like.
+5. **Shape tab → try a mini-game.** Open Sort Tower from the game carousel and swipe word cards left (distorted) or right (healthy) — the words come from *your* thought. Tap Reality Check to read a thought and decide: DISTORTED or HEALTHY? Wrong answers show an explanation, turning mistakes into learning moments.
 
 ---
 
