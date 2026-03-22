@@ -138,11 +138,19 @@ const FALLBACK = [
   { original: "weak", better: "finding it hard" },
 ];
 
-type Pair = { original: string; better: string };
+const ROCKET_CATEGORY_LABELS: Record<string, string> = {
+  belief: "All-or-Nothing",
+  fear: "Fear",
+  absolute: "Absolute Thinking",
+  self_judgment: "Self-Judgment",
+};
+
+type Pair = { original: string; better: string; category?: string };
 type Question = {
   prompt: string;
   opts: [string, string];
   correctIdx: 0 | 1;
+  category?: string;
 };
 type Phase = "idle" | "playing" | "done";
 
@@ -162,7 +170,7 @@ function extractPairs(entries: HistoryEntry[]): Pair[] {
       if (e.words[i].category !== "neutral") {
         const r = e.reframedWords?.[String(i)];
         if (r && r.length <= 28)
-          pairs.push({ original: e.words[i].word, better: r });
+          pairs.push({ original: e.words[i].word, better: r, category: e.words[i].category });
       }
     }
   }
@@ -184,6 +192,7 @@ function buildQuestions(pairs: Pair[]): Question[] {
       prompt: pair.original,
       opts: flip ? [pair.better, wrong] : [wrong, pair.better],
       correctIdx: (flip ? 0 : 1) as 0 | 1,
+      category: pair.category,
     };
   });
 }
@@ -444,6 +453,7 @@ export function RocketGame({
   const star1 = useRef(new Animated.Value(0)).current;
   const star2 = useRef(new Animated.Value(0)).current;
   const star3 = useRef(new Animated.Value(0)).current;
+  const categoryLabelOpacity = useRef(new Animated.Value(0)).current;
 
   // Mutable refs (avoid stale closures in animation callbacks)
   const phaseRef = useRef<Phase>("idle");
@@ -474,6 +484,21 @@ export function RocketGame({
       timerAnim.removeListener(id2);
     };
   }, [rocketTop, timerAnim]);
+
+  // Category label fade-in when answered
+  useEffect(() => {
+    if (answered) {
+      categoryLabelOpacity.setValue(0);
+      Animated.timing(categoryLabelOpacity, {
+        toValue: 1,
+        duration: 130,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }).start();
+    } else {
+      categoryLabelOpacity.setValue(0);
+    }
+  }, [answered, categoryLabelOpacity]);
 
   // Flame pulse loop
   useEffect(() => {
@@ -968,6 +993,11 @@ export function RocketGame({
 
             <Text style={styles.promptLabel}>use this instead:</Text>
             <Text style={styles.promptWord}>{currentQ.prompt}</Text>
+            {answered && currentQ.category && ROCKET_CATEGORY_LABELS[currentQ.category] && (
+              <Animated.Text style={[styles.categoryLabel, { opacity: categoryLabelOpacity }]}>
+                {ROCKET_CATEGORY_LABELS[currentQ.category]}
+              </Animated.Text>
+            )}
 
             <View style={styles.optsCol}>
               {currentQ.opts.map((opt, i) => (
@@ -1327,5 +1357,13 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.07)",
     alignItems: "center",
     justifyContent: "center",
+  },
+  categoryLabel: {
+    color: C.textDim,
+    fontSize: 11,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 1.2,
+    textAlign: "center",
+    textTransform: "uppercase",
   },
 });

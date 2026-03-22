@@ -117,10 +117,18 @@ const FLOOR_MIN_W = Math.round(FLOOR_BASE_W * 0.52);
 const TAPER_PX = 4;
 const MAX_VISIBLE_FLOORS = Math.floor((SH * 0.38) / (FLOOR_H + 2));
 
+const CATEGORY_LABELS: Record<string, string> = {
+  belief: "All-or-Nothing",
+  fear: "Fear",
+  absolute: "Absolute Thinking",
+  self_judgment: "Self-Judgment",
+};
+
 interface SortWord {
   text: string;
   isNegative: boolean;
   explainer: string;
+  category?: string;
 }
 
 interface Floor {
@@ -142,6 +150,7 @@ function buildDeck(entries: HistoryEntry[]): SortWord[] {
           text: w.word,
           isNegative: true,
           explainer: "This is a distorted thought",
+          category: w.category !== "neutral" ? w.category : undefined,
         });
       }
       for (const r of w.reframes) {
@@ -490,6 +499,27 @@ export function SortTowerGame({ visible, entries, onClose }: SortTowerGameProps)
   const [toastIsHealthy, setToastIsHealthy] = useState(false);
   const toastOpacity = useSharedValue(0);
 
+  const [categoryBadge, setCategoryBadge] = useState<string | null>(null);
+  const categoryBadgeOpacity = useSharedValue(0);
+
+  const showCategoryBadge = useCallback(
+    (category: string) => {
+      const label = CATEGORY_LABELS[category];
+      if (!label) return;
+      categoryBadgeOpacity.value = 0;
+      setCategoryBadge(label);
+      categoryBadgeOpacity.value = withTiming(1, { duration: 120 }, () => {
+        categoryBadgeOpacity.value = withDelay(
+          800,
+          withTiming(0, { duration: 280 }, () => {
+            runOnJS(setCategoryBadge)(null);
+          })
+        );
+      });
+    },
+    [categoryBadgeOpacity]
+  );
+
   const startGame = useCallback(() => {
     const d = buildDeck(entries);
     deckRef.current = d;
@@ -518,6 +548,8 @@ export function SortTowerGame({ visible, entries, onClose }: SortTowerGameProps)
     timerPulse.value = 1;
     toastOpacity.value = 0;
     setToastMsg(null);
+    categoryBadgeOpacity.value = 0;
+    setCategoryBadge(null);
     if (timerRef.current) clearInterval(timerRef.current);
     if (d.length === 0) {
       setPhase("empty");
@@ -611,6 +643,7 @@ export function SortTowerGame({ visible, entries, onClose }: SortTowerGameProps)
         correctCountRef.current += 1;
         if (current.isNegative) negCorrectRef.current += 1;
         else posCorrectRef.current += 1;
+        if (current.category) showCategoryBadge(current.category);
       } else {
         streakRef.current = 0;
         setStreak(0);
@@ -642,7 +675,7 @@ export function SortTowerGame({ visible, entries, onClose }: SortTowerGameProps)
         setCardKey((k) => k + 1);
       }, 280);
     },
-    [showFeedback, showToast]
+    [showFeedback, showToast, showCategoryBadge]
   );
 
   const timerPct = timeLeft / GAME_SECONDS;
@@ -664,6 +697,11 @@ export function SortTowerGame({ visible, entries, onClose }: SortTowerGameProps)
 
   const toastAnimStyle = useAnimatedStyle(() => ({
     opacity: toastOpacity.value,
+  }));
+
+  const categoryBadgeStyle = useAnimatedStyle(() => ({
+    opacity: categoryBadgeOpacity.value,
+    transform: [{ scale: interpolate(categoryBadgeOpacity.value, [0, 1], [0.85, 1]) }],
   }));
 
   if (!visible) return null;
@@ -698,6 +736,16 @@ export function SortTowerGame({ visible, entries, onClose }: SortTowerGameProps)
 
         {/* Tower */}
         <TowerDisplay floors={floors} />
+
+        {/* Category badge — fades in above card area on correct swipe */}
+        {categoryBadge !== null && (
+          <Animated.View
+            pointerEvents="none"
+            style={[styles.categoryBadge, categoryBadgeStyle]}
+          >
+            <Text style={styles.categoryBadgeText}>{categoryBadge}</Text>
+          </Animated.View>
+        )}
 
         {/* Divider line */}
         <View style={styles.divider} />
@@ -1197,5 +1245,23 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: "Inter_700Bold",
     letterSpacing: -0.2,
+  },
+  categoryBadge: {
+    position: "absolute",
+    alignSelf: "center",
+    bottom: SH * 0.36 + 20,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 100,
+    backgroundColor: "rgba(255,255,255,0.10)",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.22)",
+    zIndex: 52,
+  },
+  categoryBadgeText: {
+    color: "rgba(255,255,255,0.80)",
+    fontSize: 11,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 1.0,
   },
 });

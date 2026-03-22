@@ -150,6 +150,21 @@ const EXPLAIN: Record<string, string> = {
   fortune_telling: "predicts a negative outcome as if it were certain.",
 };
 
+// ─── Category human-readable labels ──────────────────────────────────────────
+
+const CATEGORY_DISPLAY: Record<string, string> = {
+  overgeneralization: "Overgeneralization",
+  catastrophizing: "Catastrophizing",
+  black_white: "Black & White",
+  mind_reading: "Mind Reading",
+  labeling: "Labeling",
+  emotional_reasoning: "Emotional Reasoning",
+  magnification: "Magnification",
+  personalization: "Personalization",
+  should_statements: "Should Statements",
+  fortune_telling: "Fortune Telling",
+};
+
 // ─── Category → highlight color map ─────────────────────────────────────────
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -629,6 +644,7 @@ export function SailGame({
   const [missedItems, setMissedItems] = useState<{ highlight: string; thought: string }[]>([]);
   const [distancePct, setDistancePct] = useState(0);
   const [mostFlaggedCat, setMostFlaggedCat] = useState<string | null>(null);
+  const [topCategories, setTopCategories] = useState<{ key: string; count: number }[]>([]);
 
   const correctCountRef = useRef(0);
   const wrongCountRef = useRef(0);
@@ -636,6 +652,7 @@ export function SailGame({
   const bestStreakRef = useRef(0);
   const missedItemsRef = useRef<{ highlight: string; thought: string }[]>([]);
   const flaggedCatsRef = useRef<Record<string, number>>({});
+  const distortionCatCountRef = useRef<Record<string, number>>({});
 
   const boatX = useRef(new Animated.Value(BOAT_START)).current;
   const progressAnim = useRef(new Animated.Value(0)).current;
@@ -739,6 +756,15 @@ export function SailGame({
       const correct = answerError === round.isError;
       flashFeedback(correct);
 
+      if (round.allWords) {
+        for (const aw of round.allWords) {
+          if (aw.category && aw.category !== "neutral") {
+            distortionCatCountRef.current[aw.category] =
+              (distortionCatCountRef.current[aw.category] ?? 0) + 1;
+          }
+        }
+      }
+
       if (correct) {
         correctCountRef.current += 1;
         const ns = streakRef2.current + 1;
@@ -806,12 +832,17 @@ export function SailGame({
     const pct = Math.round(((boatXVal.current - BOAT_START) / (BOAT_END - BOAT_START)) * 100);
     const cats = flaggedCatsRef.current;
     const topCat = Object.entries(cats).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+    const distortionEntries = Object.entries(distortionCatCountRef.current)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([key, count]) => ({ key, count }));
     setCorrectCount(correctCountRef.current);
     setWrongCount(wrongCountRef.current);
     setBestStreak(bestStreakRef.current);
     setMissedItems([...missedItemsRef.current]);
     setDistancePct(Math.min(100, Math.max(0, pct)));
     setMostFlaggedCat(topCat);
+    setTopCategories(distortionEntries);
   }, []);
   captureDoneStatsRef.current = captureDoneStats;
 
@@ -852,12 +883,14 @@ export function SailGame({
     bestStreakRef.current = 0;
     missedItemsRef.current = [];
     flaggedCatsRef.current = {};
+    distortionCatCountRef.current = {};
     setCorrectCount(0);
     setWrongCount(0);
     setBestStreak(0);
     setMissedItems([]);
     setDistancePct(0);
     setMostFlaggedCat(null);
+    setTopCategories([]);
     startTimer();
   }, [entries, boatX, progressAnim, startTimer]);
 
@@ -1045,6 +1078,25 @@ export function SailGame({
                   </Text>
                 )}
               </View>
+              {topCategories.length > 0 && (
+                <View style={styles.doneCatBreakdown}>
+                  <Text style={styles.doneCatBreakdownLabel}>DISTORTION BREAKDOWN</Text>
+                  {topCategories.map((c) => (
+                    <View key={c.key} style={styles.doneCatRow}>
+                      <View
+                        style={[
+                          styles.doneCatDot,
+                          { backgroundColor: CATEGORY_COLORS[c.key] ?? "rgba(255,255,255,0.35)" },
+                        ]}
+                      />
+                      <Text style={styles.doneCatName}>
+                        {CATEGORY_DISPLAY[c.key] ?? c.key}
+                      </Text>
+                      <Text style={styles.doneCatCount}>{c.count}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
               {missedItems.length > 0 && (
                 <View style={styles.doneMissed}>
                   <Text style={styles.doneMissedLabel}>WORDS TO REVIEW</Text>
@@ -1330,5 +1382,47 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.88)",
     alignItems: "center",
     justifyContent: "center",
+  },
+  doneCatBreakdown: {
+    marginTop: 8,
+    alignItems: "stretch",
+    gap: 5,
+    width: "100%",
+    paddingHorizontal: 4,
+  },
+  doneCatBreakdownLabel: {
+    color: "rgba(255,255,255,0.45)",
+    fontSize: 9,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 2,
+    marginBottom: 2,
+    textAlign: "center",
+  },
+  doneCatRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 8,
+    backgroundColor: "rgba(255,255,255,0.06)",
+  },
+  doneCatDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  doneCatName: {
+    flex: 1,
+    color: "rgba(255,255,255,0.80)",
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    letterSpacing: -0.1,
+  },
+  doneCatCount: {
+    color: "rgba(255,255,255,0.45)",
+    fontSize: 12,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: -0.2,
   },
 });
