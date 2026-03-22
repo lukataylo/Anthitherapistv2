@@ -116,6 +116,20 @@ Words not in any category are rendered as plain text (`neutral`).
 
 ---
 
+## How We Built It — AI Tools & Workflow
+
+This project was built using a staged multi-tool AI workflow, with each tool chosen for where it adds the most leverage:
+
+| Stage | Tool | Why |
+|---|---|---|
+| **Frontend ideation** | Google Gemini AI Studio | Multimodal input made it easy to reason about UI layouts, colour systems, and component design using screenshots and sketches alongside text prompts. Its strong frontend instincts accelerated early design decisions. |
+| **Backend & architecture** | Claude (via Claude.ai) + Cursor | Claude's reasoning depth was well-suited to API design, CBT logic modelling, and system architecture. Cursor handled in-editor code generation and refactoring across the codebase during this phase. |
+| **Collaboration & shipping** | Replit | Once the project was in a stable state, we imported it from GitHub into Replit. Replit's multiplayer environment let the team work on the same codebase simultaneously in real time, and its integrated AI agent accelerated feature delivery significantly. |
+
+The handoff — from Gemini for visual thinking → Claude/Cursor for depth → Replit for collaboration and speed — let each tool do what it does best.
+
+---
+
 ## Tech Stack
 
 | Layer | Technology |

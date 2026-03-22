@@ -36,6 +36,16 @@ Package manager: **pnpm** (enforced via preinstall hook). TypeScript throughout.
 
 ---
 
+## AI Tools & Development Workflow
+
+This project was built using a staged multi-tool AI workflow:
+
+- **Frontend ideation — Google Gemini AI Studio:** Used for early UI/UX ideation due to its multimodal nature and strong frontend reasoning. Screenshots and sketches were used alongside text prompts to drive design decisions on layouts, colour systems, and component structure.
+- **Backend & architecture — Claude + Cursor:** Claude (via Claude.ai) was used for API design, CBT logic modelling, and system architecture. Cursor handled in-editor code generation and refactoring.
+- **Collaboration & shipping — Replit:** The project was imported from GitHub into Replit once stable. Replit's multiplayer environment enabled real-time team collaboration on the same codebase, with the integrated AI agent accelerating feature delivery.
+
+---
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
