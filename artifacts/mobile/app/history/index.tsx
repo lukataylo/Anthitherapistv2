@@ -46,6 +46,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { SvgXml } from "react-native-svg";
 import { useHistory, type HistoryEntry } from "@/context/HistoryContext";
 import { useSpiritAnimal } from "@/context/SpiritAnimalContext";
+import { useAuth } from "@/context/AuthContext";
 import { SortTowerGame } from "@/components/SortTowerGame";
 import { RocketGame } from "@/components/RocketGame";
 import { ThoughtCheckGame } from "@/components/ThoughtCheckGame";
@@ -256,9 +257,12 @@ function EmptyState() {
   );
 }
 
-/** Spirit animal button — compact top-right header button for both states. */
-function SpiritAnimalButton({ onPress }: { onPress: () => void }) {
+/** Profile button — compact top-right header button.
+ *  Shows spirit animal SVG if one exists, otherwise a person icon.
+ *  Navigates to the unified profile screen (login + spirit animal). */
+function ProfileButton({ onPress }: { onPress: () => void }) {
   const { spiritAnimal } = useSpiritAnimal();
+  const { user } = useAuth();
 
   if (spiritAnimal) {
     return (
@@ -278,7 +282,11 @@ function SpiritAnimalButton({ onPress }: { onPress: () => void }) {
       onPress={onPress}
       style={({ pressed }) => [styles.spiritBtn, pressed && styles.spiritBtnPressed]}
     >
-      <Ionicons name="sparkles-outline" size={18} color="rgba(255,255,255,0.5)" />
+      <Ionicons
+        name={user ? "person" : "person-outline"}
+        size={18}
+        color="rgba(255,255,255,0.5)"
+      />
     </Pressable>
   );
 }
@@ -336,9 +344,9 @@ export default function HistoryScreen() {
     if (id) openGameById(id, gameSetters);
   }, [introGameId]);
 
-  /** Navigate to the spirit animal quiz. */
-  const handleSpiritAnimalPress = useCallback(() => {
-    router.push("/spirit-animal-quiz");
+  /** Navigate to the profile screen (login + spirit animal). */
+  const handleProfilePress = useCallback(() => {
+    router.push("/profile");
   }, [router]);
 
   /** Navigate to the detail screen for this history entry. */
@@ -415,7 +423,7 @@ export default function HistoryScreen() {
                 : ""}
             </Text>
           </View>
-          <SpiritAnimalButton onPress={handleSpiritAnimalPress} />
+          <ProfileButton onPress={handleProfilePress} />
         </View>
       </View>
 

@@ -87,6 +87,16 @@ const spiritAnimalLimiter = rateLimit({
 });
 app.use("/api/spirit-animal", spiritAnimalLimiter);
 
+// Rate limit auth endpoints to prevent brute-force attacks
+const authLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many requests, please try again shortly" },
+});
+app.use("/api/auth", authLimiter);
+
 app.use("/api", router);
 
 app.use("/", landingRouter);

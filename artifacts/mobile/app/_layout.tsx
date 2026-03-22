@@ -49,8 +49,10 @@ import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Tabs } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import React, { useEffect, useState } from "react";
 import { View } from "react-native";
+import { useRouter } from "expo-router";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { setBaseUrl } from "@workspace/api-client-react";
@@ -64,6 +66,7 @@ import { seedIfEmpty } from "@/utils/seedData";
 import { JournalSessionProvider } from "@/context/JournalSessionContext";
 import { applyReminderPreference } from "@/utils/notifications";
 import { SpiritAnimalProvider } from "@/context/SpiritAnimalContext";
+import { AuthProvider } from "@/context/AuthContext";
 
 // Configure the API client before any hooks can run
 const domain = process.env.EXPO_PUBLIC_DOMAIN;
@@ -80,7 +83,7 @@ SplashScreen.preventAutoHideAsync();
 seedIfEmpty();
 
 // Routes where the TabBar should be hidden to allow full-screen presentation
-const HIDDEN_TAB_BAR_ROUTES = new Set(["spirit-animal-quiz"]);
+const HIDDEN_TAB_BAR_ROUTES = new Set(["spirit-animal-quiz", "onboarding", "profile"]);
 
 // A single QueryClient instance for the app lifetime — React Query manages
 // caching, deduplication, and background refetching for API calls
@@ -96,6 +99,9 @@ export default function RootLayout() {
     ...MaterialCommunityIcons.font,
   });
 
+  const router = useRouter();
+  const [onboardingChecked, setOnboardingChecked] = useState(false);
+
   useEffect(() => {
     // Hide the splash screen once fonts are loaded or have definitively failed.
     // Waiting for fontError too avoids an infinite splash screen if the CDN
@@ -104,6 +110,17 @@ export default function RootLayout() {
       SplashScreen.hideAsync();
       applyReminderPreference().catch(() => {});
     }
+  }, [fontsLoaded, fontError]);
+
+  // Check if user has completed onboarding — redirect if not
+  useEffect(() => {
+    if (!fontsLoaded && !fontError) return;
+    AsyncStorage.getItem("onboarding_completed").then((val) => {
+      if (!val) {
+        router.replace("/onboarding");
+      }
+      setOnboardingChecked(true);
+    }).catch(() => setOnboardingChecked(true));
   }, [fontsLoaded, fontError]);
 
   // Show a solid black view while fonts are still loading to prevent a
@@ -121,6 +138,7 @@ export default function RootLayout() {
               <StreakProvider>
                 <GameProvider>
                   <JournalSessionProvider>
+                    <AuthProvider>
                     <SpiritAnimalProvider>
                       <Tabs
                         tabBar={(props) => {
@@ -138,8 +156,11 @@ export default function RootLayout() {
                         <Tabs.Screen name="journal" options={{ title: "Journal", href: null }} />
                         <Tabs.Screen name="journal-feedback" options={{ title: "Session Complete", href: null }} />
                         <Tabs.Screen name="spirit-animal-quiz" options={{ title: "Spirit Animal", href: null }} />
+                        <Tabs.Screen name="profile" options={{ title: "Profile", href: null }} />
+                        <Tabs.Screen name="onboarding" options={{ title: "Welcome", href: null }} />
                       </Tabs>
                     </SpiritAnimalProvider>
+                    </AuthProvider>
                   </JournalSessionProvider>
                 </GameProvider>
               </StreakProvider>

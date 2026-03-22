@@ -25,6 +25,7 @@ import patternsRouter from "./patterns";
 import analyseTurnRouter from "./analyse-turn";
 import summariseSessionRouter from "./summarise-session";
 import spiritAnimalRouter from "./spirit-animal";
+import authRouter from "./auth";
 
 const router: IRouter = Router();
 
@@ -36,5 +37,6 @@ router.use(patternsRouter);
 router.use(analyseTurnRouter);
 router.use(summariseSessionRouter);
 router.use(spiritAnimalRouter);
+router.use(authRouter);
 
 export default router;
