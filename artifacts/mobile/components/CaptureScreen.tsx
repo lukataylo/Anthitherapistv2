@@ -533,7 +533,7 @@ export function CaptureScreen() {
         style={[
           styles.screen,
           {
-            paddingTop: insets.top + 14,
+            paddingTop: insets.top + 44,
             paddingBottom: Math.max(insets.bottom, 16),
           },
         ]}
@@ -577,7 +577,7 @@ export function CaptureScreen() {
         style={[
           styles.screen,
           {
-            paddingTop: insets.top + 14,
+            paddingTop: insets.top + 44,
             paddingBottom: Math.max(insets.bottom, 16),
             alignItems: "center",
             justifyContent: "center",
@@ -625,36 +625,11 @@ export function CaptureScreen() {
         style={[
           styles.screen,
           {
-            paddingTop: insets.top + 14,
+            paddingTop: insets.top + 44,
             paddingBottom: Math.max(insets.bottom, 16),
           },
         ]}
       >
-        <View style={styles.topBar}>
-          {turns.length >= 2 && !isWrapping && (
-            <Pressable
-              onPress={handleWrapUp}
-              hitSlop={12}
-              style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
-            >
-              <View style={styles.endBtn}>
-                <Text style={styles.endBtnText}>Wrap up</Text>
-              </View>
-            </Pressable>
-          )}
-          {isWrapping && (
-            <Pressable
-              onPress={finishSession}
-              hitSlop={12}
-              style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
-            >
-              <View style={styles.endBtn}>
-                <Text style={styles.endBtnText}>Skip</Text>
-              </View>
-            </Pressable>
-          )}
-        </View>
-
         {(suggestedQuestion || currentWrapQuestion) && !showCheckin && (
           <Animated.View
             key={questionKey}
@@ -793,6 +768,33 @@ export function CaptureScreen() {
               </Animated.View>
             )}
           </ScrollView>
+
+        {(turns.length >= 2 && !isWrapping) && (
+          <View style={styles.aboveInputRow}>
+            <Pressable
+              onPress={handleWrapUp}
+              hitSlop={12}
+              style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+            >
+              <View style={styles.endBtn}>
+                <Text style={styles.endBtnText}>Wrap up</Text>
+              </View>
+            </Pressable>
+          </View>
+        )}
+        {isWrapping && (
+          <View style={styles.aboveInputRow}>
+            <Pressable
+              onPress={finishSession}
+              hitSlop={12}
+              style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+            >
+              <View style={styles.endBtn}>
+                <Text style={styles.endBtnText}>Skip</Text>
+              </View>
+            </Pressable>
+          </View>
+        )}
       </View>
     </KeyboardAvoidingView>
   );
@@ -938,7 +940,7 @@ function ReflectionLoadingScreen({
       style={[
         styles.screen,
         {
-          paddingTop: insets.top + 14,
+          paddingTop: insets.top + 44,
           paddingBottom: Math.max(insets.bottom, 16),
         },
       ]}
@@ -1036,7 +1038,7 @@ function SummaryScreen({
       style={[
         styles.screen,
         {
-          paddingTop: insets.top + 14,
+          paddingTop: insets.top + 44,
           paddingBottom: Math.max(insets.bottom, 16),
           backgroundColor: "#000",
         },
@@ -1187,6 +1189,14 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 12,
     minHeight: 34,
+  },
+  aboveInputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 8,
+    marginBottom: 4,
+    paddingHorizontal: 2,
   },
   endBtn: {
     paddingHorizontal: 18,
