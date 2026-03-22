@@ -35,6 +35,14 @@
       "expo-font",
       "expo-web-browser",
       [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#000000",
+          "defaultChannel": "daily-reminder"
+        }
+      ],
+      [
         "expo-speech-recognition",
         {
           "microphonePermission": "Allow Reframe to use your microphone to capture thoughts by voice.",

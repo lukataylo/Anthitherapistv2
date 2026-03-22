@@ -56,6 +56,7 @@ import { TabBar } from "@/components/TabBar";
 import { StreakProvider } from "@/context/StreakContext";
 import { seedIfEmpty } from "@/utils/seedData";
 import { JournalSessionProvider } from "@/context/JournalSessionContext";
+import { applyReminderPreference } from "@/utils/notifications";
 
 // Configure the API client before any hooks can run
 const domain = process.env.EXPO_PUBLIC_DOMAIN;
@@ -91,6 +92,7 @@ export default function RootLayout() {
     // is unavailable; the app will render with system fonts instead.
     if (fontsLoaded || fontError) {
       SplashScreen.hideAsync();
+      applyReminderPreference().catch(() => {});
     }
   }, [fontsLoaded, fontError]);
 
