@@ -48,7 +48,7 @@ Preferred communication style: Simple, everyday language.
 
 **Framework:** Expo SDK 54, React Native 0.81, Expo Router 6 (file-based routing).
 
-**Navigation:** Three visible tabs (Speak `/`, Shape `/history`, Own `/flashcards`) managed by Expo Router, plus hidden routes for Discuss, Journal, and Journal Feedback (all set to `href: null`). The default tab is **Shape** (`initialRouteName="history"`). A custom `TabBar` component renders the tab bar as a dark-background strip (`backgroundColor: "#000"`) with a `BlurView`-backed inner bar on native (CSS `backdropFilter` on web). Tab routes are defined in `app/_layout.tsx`. Insights (charts, trends, AI patterns) are embedded in the Shape tab header via the `InsightsSection` component.
+**Navigation:** Three visible tabs (Speak `/`, Shape `/history`, Own `/flashcards`) managed by Expo Router, plus hidden routes for Discuss, Journal, and Journal Feedback (all set to `href: null`). The default tab is **Shape** (`initialRouteName="history"`). A custom `TabBar` component renders the tab bar as a solid dark strip using `Colors.background` (`#0A0A0F`) on all platforms — no blur effect. Tab routes are defined in `app/_layout.tsx`. Insights (charts, trends, AI patterns) are embedded in the Shape tab header via the `InsightsSection` component.
 
 **Tab icons (Ionicons):**
 - **Speak** (`index`): `create` / `create-outline` — streak badge dot (orange, `#FF9500`) appears when `currentStreak > 0 AND !reflectedToday`

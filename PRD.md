@@ -54,7 +54,7 @@ A detail view (`/history/[id]`) is a pushed route inside the Shape tab. Discuss 
 
 ### Tab Bar Details
 
-- Renders as a dark-background strip (`backgroundColor: "#000"`) at the bottom of every screen. The inner bar uses `BlurView` (intensity 80, tint "dark") on native; CSS `backdropFilter: "blur(24px)"` on web.
+- Renders as a solid dark strip using `Colors.background` (`#0A0A0F`) on all platforms — no blur effect. The background matches the rest of the app, making the tab bar flush with the screen rather than appearing as a floating overlay.
 - Each tab item has a press-bounce animation (icon squishes to 0.82×).
 - Tab icons use Ionicons: Speak uses `create` / `create-outline`, Shape uses `repeat` / `repeat-outline`, Own uses `infinite` / `infinite-outline`.
 - An orange dot (`#FF9500`) appears on the **Speak** tab icon when `currentStreak > 0 AND !reflectedToday`, nudging the user to maintain their streak.
