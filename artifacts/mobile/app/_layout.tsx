@@ -64,6 +64,7 @@ import { seedIfEmpty } from "@/utils/seedData";
 import { JournalSessionProvider } from "@/context/JournalSessionContext";
 import { applyReminderPreference } from "@/utils/notifications";
 import { SpiritAnimalProvider } from "@/context/SpiritAnimalContext";
+import { JourneyProvider } from "@/context/JourneyContext";
 
 // Configure the API client before any hooks can run
 const domain = process.env.EXPO_PUBLIC_DOMAIN;
@@ -121,6 +122,7 @@ export default function RootLayout() {
               <StreakProvider>
                 <GameProvider>
                   <JournalSessionProvider>
+                    <JourneyProvider>
                     <SpiritAnimalProvider>
                       <Tabs
                         tabBar={(props) => {
@@ -140,6 +142,7 @@ export default function RootLayout() {
                         <Tabs.Screen name="spirit-animal-quiz" options={{ title: "Spirit Animal", href: null }} />
                       </Tabs>
                     </SpiritAnimalProvider>
+                    </JourneyProvider>
                   </JournalSessionProvider>
                 </GameProvider>
               </StreakProvider>

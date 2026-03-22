@@ -54,6 +54,8 @@ import { RewordGame } from "@/components/RewordGame";
 import { GameCarousel } from "@/components/GameCarousel";
 import { InsightsSection } from "@/components/InsightsSection";
 import { GameIntroScreen, type GameIntroDef } from "@/components/GameIntroScreen";
+import { JourneyScreen } from "@/components/JourneyScreen";
+import { JOURNEYS } from "@/data/journeys";
 
 /** Metadata for the intro screen of each mini-game.
  * accent colors and bg values are kept in sync with GameCarousel's GAMES list. */
@@ -298,6 +300,11 @@ export default function HistoryScreen() {
   const [introGameId, setIntroGameId] = useState<string | null>(null);
   const introGame = introGameId ? GAME_INTROS[introGameId] ?? null : null;
 
+  const [activeJourneyId, setActiveJourneyId] = useState<string | null>(null);
+  const activeJourney = activeJourneyId
+    ? JOURNEYS.find((j) => j.id === activeJourneyId) ?? null
+    : null;
+
   const gameSetters = {
     setPracticeVisible,
     setRocketVisible,
@@ -336,6 +343,11 @@ export default function HistoryScreen() {
     if (id) openGameById(id, gameSetters);
   }, [introGameId]);
 
+  /** Open a journey by id. */
+  const handleJourneyPress = useCallback((id: string) => {
+    setActiveJourneyId(id);
+  }, []);
+
   /** Navigate to the spirit animal quiz. */
   const handleSpiritAnimalPress = useCallback(() => {
     router.push("/spirit-animal-quiz");
@@ -367,6 +379,13 @@ export default function HistoryScreen() {
   return (
     <View style={styles.root}>
       <StatusBar style="light" />
+
+      {/* Journey modal */}
+      <JourneyScreen
+        visible={!!activeJourney}
+        journey={activeJourney}
+        onClose={() => setActiveJourneyId(null)}
+      />
 
       {/* Game intro overlay — shown before the user enters any game */}
       {introGame && (
@@ -429,7 +448,7 @@ export default function HistoryScreen() {
         ListHeaderComponent={
           <>
             <InsightsSection entries={entries} />
-            <GameCarousel onGamePress={handleGamePress} />
+            <GameCarousel onGamePress={handleGamePress} onJourneyPress={handleJourneyPress} />
           </>
         }
         ListEmptyComponent={EmptyState}

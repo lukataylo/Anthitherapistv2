@@ -54,9 +54,13 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { JOURNEYS, type JourneyDef } from "@/data/journeys";
+import { useJourney } from "@/context/JourneyContext";
 
 const CARD_W = 168;
 const CARD_H = 208;
+const JOURNEY_CARD_W = 200;
+const JOURNEY_CARD_H = 220;
 const ICON_BOX = 52;
 
 type GameDef = {
@@ -316,47 +320,163 @@ function GameCard({
   );
 }
 
+/** A single journey card — taller than game cards to fit a description line.
+ *  Shows progress pill (e.g. "2/6") when the user has started the journey. */
+function JourneyCard({
+  journey,
+  stepsCompleted,
+  onPress,
+}: {
+  journey: JourneyDef;
+  stepsCompleted: number;
+  onPress: () => void;
+}) {
+  const isComplete = stepsCompleted >= journey.steps.length;
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.journeyCard,
+        { backgroundColor: journey.bg },
+        pressed && styles.cardPressed,
+      ]}
+      accessibilityLabel={`${journey.name} journey`}
+      accessibilityRole="button"
+    >
+      {/* Pattern layer */}
+      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+        <Pattern type={journey.patternType} color={journey.patternColor} />
+      </View>
+
+      {/* Progress pill */}
+      {stepsCompleted > 0 && (
+        <View
+          style={[
+            styles.journeyPill,
+            {
+              backgroundColor: isComplete
+                ? "rgba(34,197,94,0.18)"
+                : journey.accentColor + "22",
+            },
+          ]}
+        >
+          <Text
+            style={[
+              styles.journeyPillText,
+              { color: isComplete ? "rgba(34,197,94,0.9)" : journey.accentColor },
+            ]}
+          >
+            {isComplete ? "Complete" : `${stepsCompleted}/${journey.steps.length}`}
+          </Text>
+        </View>
+      )}
+
+      <View style={[styles.iconWrap, { backgroundColor: journey.accentColor + "22" }]}>
+        <Ionicons name={journey.icon} size={24} color="#fff" />
+      </View>
+
+      <View style={styles.journeyCardBottom}>
+        <Text style={styles.gameName}>{journey.name}</Text>
+        <Text style={styles.journeyDesc} numberOfLines={2}>
+          {journey.description}
+        </Text>
+      </View>
+    </Pressable>
+  );
+}
+
 export function GameCarousel({
   onGamePress,
+  onJourneyPress,
 }: {
   onGamePress: (id: string) => void;
+  onJourneyPress: (id: string) => void;
 }) {
   const [activeIdx, setActiveIdx] = useState(0);
+  const [journeyIdx, setJourneyIdx] = useState(0);
+  const { progress } = useJourney();
 
   return (
-    <View style={styles.section}>
-      <Text style={styles.heading}>GAMES</Text>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.scroll}
-        style={styles.scrollOuter}
-        nestedScrollEnabled
-        decelerationRate="fast"
-        snapToInterval={CARD_W + 12}
-        snapToAlignment="start"
-        onScroll={(e) => {
-          const x = e.nativeEvent.contentOffset.x;
-          const idx = Math.round(x / (CARD_W + 12));
-          setActiveIdx(Math.max(0, Math.min(idx, GAMES.length - 1)));
-        }}
-        scrollEventThrottle={16}
-      >
-        {GAMES.map((g) => (
-          <GameCard key={g.id} game={g} onPress={() => onGamePress(g.id)} />
-        ))}
-      </ScrollView>
-      {/* Scroll-position dots */}
-      <View style={styles.dots}>
-        {GAMES.map((g, i) => (
-          <View
-            key={g.id}
-            style={[
-              styles.dot,
-              i === activeIdx ? styles.dotActive : styles.dotInactive,
-            ]}
-          />
-        ))}
+    <View>
+      {/* Games section */}
+      <View style={styles.section}>
+        <Text style={styles.heading}>GAMES</Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.scroll}
+          style={styles.scrollOuter}
+          nestedScrollEnabled
+          decelerationRate="fast"
+          snapToInterval={CARD_W + 12}
+          snapToAlignment="start"
+          onScroll={(e) => {
+            const x = e.nativeEvent.contentOffset.x;
+            const idx = Math.round(x / (CARD_W + 12));
+            setActiveIdx(Math.max(0, Math.min(idx, GAMES.length - 1)));
+          }}
+          scrollEventThrottle={16}
+        >
+          {GAMES.map((g) => (
+            <GameCard key={g.id} game={g} onPress={() => onGamePress(g.id)} />
+          ))}
+        </ScrollView>
+        {/* Scroll-position dots */}
+        <View style={styles.dots}>
+          {GAMES.map((g, i) => (
+            <View
+              key={g.id}
+              style={[
+                styles.dot,
+                i === activeIdx ? styles.dotActive : styles.dotInactive,
+              ]}
+            />
+          ))}
+        </View>
+      </View>
+
+      {/* Journeys section */}
+      <View style={styles.section}>
+        <Text style={styles.heading}>JOURNEYS</Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.scroll}
+          nestedScrollEnabled
+          decelerationRate="fast"
+          snapToInterval={JOURNEY_CARD_W + 12}
+          snapToAlignment="start"
+          onScroll={(e) => {
+            const x = e.nativeEvent.contentOffset.x;
+            const idx = Math.round(x / (JOURNEY_CARD_W + 12));
+            setJourneyIdx(Math.max(0, Math.min(idx, JOURNEYS.length - 1)));
+          }}
+          scrollEventThrottle={16}
+        >
+          {JOURNEYS.map((j) => {
+            const jp = progress[j.id];
+            const stepsCompleted = jp?.currentStep ?? 0;
+            return (
+              <JourneyCard
+                key={j.id}
+                journey={j}
+                stepsCompleted={stepsCompleted}
+                onPress={() => onJourneyPress(j.id)}
+              />
+            );
+          })}
+        </ScrollView>
+        <View style={styles.dots}>
+          {JOURNEYS.map((j, i) => (
+            <View
+              key={j.id}
+              style={[
+                styles.dot,
+                i === journeyIdx ? styles.dotActive : styles.dotInactive,
+              ]}
+            />
+          ))}
+        </View>
       </View>
     </View>
   );
@@ -457,5 +577,37 @@ const styles = StyleSheet.create({
   dotInactive: {
     width: 5,
     backgroundColor: "rgba(255,255,255,0.2)",
+  },
+  journeyCard: {
+    width: JOURNEY_CARD_W,
+    height: JOURNEY_CARD_H,
+    borderRadius: 18,
+    overflow: "hidden",
+    padding: 16,
+    justifyContent: "space-between",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.1)",
+  },
+  journeyPill: {
+    position: "absolute",
+    top: 12,
+    right: 12,
+    borderRadius: 20,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  journeyPillText: {
+    fontSize: 9,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 0.5,
+  },
+  journeyCardBottom: {
+    gap: 4,
+  },
+  journeyDesc: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    color: "rgba(255,255,255,0.4)",
+    lineHeight: 15,
   },
 });
